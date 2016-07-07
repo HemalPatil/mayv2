@@ -1,0 +1,6 @@
+#exclude ISO and build directories, these will be created when building the project
+ISO/*
+build/*
+copyiso
+Makefile
+*~

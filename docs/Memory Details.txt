@@ -1,0 +1,30 @@
+0	to 0x003ff 	IVT	(int 22h print_string added)
+0x00400	to 0x004ff 	BDA
+0x00500	to ??		custom table entries
+
+0x00600 to 0x006ff	Memory Map entries using E820 (done)
+0x00700 to 0x008ff	512 bytes VESA info block
+
+0x01000 to ??		Our core files to kick start kernel 32 bit
+
+0x07000	to 0x07c00 	Stack - bootloader
+0x07c00	to 0x08400		Bootloader
+
+
+0x10000 to 0x20000	GDT
+
+0x100000 to ??		Kernel 32-bit
+
+
+
+
+
+
+-- Custom table for OS --
+boot_disk_number		dw
+number_mmap_entries		dw
+mmap_entries offset		dw
+mmap_entries segment		dw
+vesa_vbe_info block offset	dw
+vesa_vbe_info block segment	dw
+gdt_descriptor			dw+dd
