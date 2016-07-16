@@ -11,7 +11,7 @@ $(ISODIR)/BOOT/STAGE2/K64LOAD.BIN: $(SRCDIR)/boot/stage2/k64load.asm
 	$(NASMBIN) $@ $^
 
 $(BUILDDIR)/boot/stage2/loader32c.o: $(SRCDIR)/boot/stage2/loader32c.c
-	$(CC32) -o $@ -c $^ $(WARNINGS) -ffreestanding
+	$(CC32) -o $@ -c $^ $(CWARNINGS) -ffreestanding
 
 $(BUILDDIR)/boot/stage2/%.o: $(SRCDIR)/boot/stage2/%.asm
 	$(NASM32) $@ $^

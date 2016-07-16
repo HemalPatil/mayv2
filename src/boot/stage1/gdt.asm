@@ -50,16 +50,19 @@ start:
 	mov si,gdt_msg
 	int 22h
 
+;segment selector 0x0
 	mov bx,0x1000
 	mov es,bx
 	xor bx,bx
 	mov dword [es:bx], 0				; Null entry 8 bytes
 	mov dword [es:bx + 4], 0
 
+;segment selector 0x08
 	add bx,8							; cs entry
 	mov dword [es:bx],0xffff			; cs limit[0..15](low), base[0..15](high)
 	mov dword [es:bx + 4],0x00cf9b00	; cs base[16..23](low8), accessflags, lim[16..19], flags, base[24..31](high)
 
+;segment selector 0x10
 	add bx,8							; ds entry
 	mov dword [es:bx],0xffff			; ds limit[0..15](low), base[0..15](high)
 	mov dword [es:bx + 4],0x00cf9200	; ds base[16..23](low8), access flags, lim[16..19], flags, base[24..31](high)
@@ -71,6 +74,7 @@ start:
 	mov [tss_base],eax
 	mov eax,[tss_limit]
 
+;segment selector 0x18
 	add bx,8						; TSS entry
 	mov [es:bx],ax					; tss limit[0..15]
 	mov ax,[tss_base]
@@ -84,20 +88,24 @@ start:
 	mov al,[tss_base + 3]
 	mov [es:bx + 7],al				; tss base[24..31]
 
-	;The base for cs16 and ds16 protected mode segments need to be changed from KERNEL32
+	;The base for cs16 and ds16 protected mode segments need to be changed from LOADER32
 	;since we don't know as of yet where the code is loaded
+;segment selector 0x20
 	add bx,8							; 16-bit code segment for jump to real mode back to set videomode
 	mov dword [es:bx],0xffff			; cs limit[0..15](low), base[0..15](high)
 	mov dword [es:bx + 4],0x9b00		; cs base[16..23](low8), accessflags, lim[16..19], flags, base[24..31](high)
 
+;segment selector 0x28
 	add bx,8							; 16-bit data segment for jump to real mode back to set videomode
 	mov dword [es:bx],0xffff			; ds limit[0..15](low), base[0..15](high)
 	mov dword [es:bx + 4],0x9200		; ds base[16..23](low8), access flags, lim[16..19], flags, base[24..31](high)
 
+;segment selector 0x30
 	add bx,8							; 64-bit long mode code segment for kernel64
 	mov dword [es:bx],0
 	mov dword [es:bx + 4],0x209b00
 
+;segment selector 0x38
 	add bx,8							; 64-bit long mode data segment for kernel64
 	mov dword [es:bx],0
 	mov dword [es:bx + 4],0x209200

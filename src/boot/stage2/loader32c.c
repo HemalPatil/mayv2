@@ -290,7 +290,7 @@ void SetupPAEPagingLongMode()
 	}
 }
 
-int Kernel32Main(uint16_t* InfoTableAddress, const DAP* const DAPKernel64Address, const void* const LoadModuleAddress)
+int Loader32Main(uint16_t* InfoTableAddress, const DAP* const DAPKernel64Address, const void* const LoadModuleAddress)
 {
 	InfoTable = InfoTableAddress;
 	ClearScreen();
@@ -299,7 +299,7 @@ int Kernel32Main(uint16_t* InfoTableAddress, const DAP* const DAPKernel64Address
 	uint64_t RAMSize = GetRAMSize();
 	uint64_t UsableRAMSize = GetUsableRAMSize();
 
-	PrintString("Kernel 32-bit, written in C\n");
+	PrintString("Loader 32-bit, written in C\n");
 	PrintString("RAM size : ");
 	PrintHex(&RAMSize, 8);
 	PrintString(endl);

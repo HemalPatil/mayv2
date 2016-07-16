@@ -1,8 +1,8 @@
-ENTRY(loader32start);
+ENTRY(kernel_start);
 
 SECTIONS
 {
-	. = 0x100000;
+	. = 0x300000;
 
 	.text : ALIGN(0x1000)
 	{
