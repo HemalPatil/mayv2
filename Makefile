@@ -43,7 +43,7 @@ directories:
 all: mayv2.iso
 
 mayv2.iso: utilities/format_iso $(DIR_BOOT)
-	$(ISOMAKER) -no-emul-boot -boot-load-size 4 -b BOOT/STAGE1/BOOTLOAD.BIN -o $@ ./$(ISODIR)/
+	@$(ISOMAKER) -no-emul-boot -boot-load-size 4 -b BOOT/STAGE1/BOOTLOAD.BIN -o $@ ./$(ISODIR)/
 	./utilities/format_iso $@
 
 utilities/format_iso: utilities/format_iso.cpp

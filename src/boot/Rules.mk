@@ -9,9 +9,9 @@ include $(dir)/Rules.mk
 dir:= $(d)/stage2
 include $(dir)/Rules.mk
 
-DIR_BOOT:= $(BOOT_STAGE1_OUTPUT) $(BOOT_STAGE2_OUTPUT) $(ISODIR)/BOOT/KERNEL64
+DIR_BOOT:= $(BOOT_STAGE1_OUTPUT) $(BOOT_STAGE2_OUTPUT) $(ISODIR)/BOOT/KERNEL
 
-$(ISODIR)/BOOT/KERNEL64:
+$(ISODIR)/BOOT/KERNEL:
 
 # Remove elements from directory stack
 d:= $(dirstack_$(sp))

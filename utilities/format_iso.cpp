@@ -107,11 +107,11 @@ int main(int argc, char* argv[])
 		cout<<"STAGE2 directory not found!"<<endl;
 		return 1;
 	}
-	if(!find_record(boot_dir, boot_dir_size,"KERNEL64.;1",kernel64_sector,kernel64_size))
+	if(!find_record(boot_dir, boot_dir_size,"KERNEL.;1",kernel64_sector,kernel64_size))
 	{
 		delete[] boot_dir;
 		isofile.close();
-		cout<<"kernel64 not found!"<<endl;
+		cout<<"KERNEL not found!"<<endl;
 		return 1;
 	}
 	delete[] boot_dir;
@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
 	char *stage2_dir = new char[stage2_dir_size];
 	isofile.seekg(stage2_dir_sector * 0x800, ios::beg);
 	isofile.read(stage2_dir, stage2_dir_size);
-	char core_files[][15] = {"X64.BIN;1","MMAP.BIN;1","VIDMODES.BIN;1","A20.BIN;1","GDT.BIN;1","K64LOAD.BIN;1","ELFPARSE.BIN;1","KERNEL32.;1","KERNEL64.;1"};
+	char core_files[][15] = {"X64.BIN;1","MMAP.BIN;1","VIDMODES.BIN;1","A20.BIN;1","GDT.BIN;1","K64LOAD.BIN;1","ELFPARSE.BIN;1","LOADER32.;1","KERNEL.;1"};
 	int core_file_sectors[9], core_file_sizes[9], core_file_segments[9];
 	for(int i=0;i<5;i++)
 	{
@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
 			uint16_t elfparse_segment = 0x2000;
 			isofile.write((char*)&elfparse_segment,2);
 		}
-		else if(strcmp(core_files[i],"KERNEL32.;1")==0 || strcmp(core_files[i],"KERNEL64.;1")==0)
+		else if(strcmp(core_files[i],"LOADER32.;1")==0 || strcmp(core_files[i],"KERNEL.;1")==0)
 		{
 			uint16_t kernel32elf_segment = 0x8000;
 			isofile.write((char*)&kernel32elf_segment,2);
