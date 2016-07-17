@@ -21,10 +21,10 @@
 
 
 -- Custom table for OS --
-boot_disk_number		dw
-number_mmap_entries		dw
-mmap_entries offset		dw
-mmap_entries segment		dw
-vesa_vbe_info block offset	dw
-vesa_vbe_info block segment	dw
-gdt_descriptor			dw+dd
+0	boot_disk_number		dw
+2	number_mmap_entries		dw
+4	mmap_entries offset		dw
+6	mmap_entries segment		dw
+8	vesa_vbe_info block offset	dw
+10	vesa_vbe_info block segment	dw
+12	gdt_descriptor			dw+dd

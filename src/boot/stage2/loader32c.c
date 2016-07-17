@@ -106,6 +106,8 @@ void ClearScreen();
 extern void PrintHex(const void* const, size_t);
 extern void swap(void*, void*, uint32_t);
 extern void memset(void*, uint8_t, uint32_t);
+extern void Setup16BitSegments(uint16_t*, const void* const);
+extern void JumpTo16BitSegment();
 extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
 
@@ -322,7 +324,18 @@ int Loader32Main(uint16_t* InfoTableAddress, const DAP* const DAPKernel64Address
 	PrintString("\nLoad module address : ");
 	PrintHex(&LoadModuleAddress, 4);
 
-	SetupPAEPagingLongMode();
+	//SetupPAEPagingLongMode();
+
+	DAP DAPKernel64 = *DAPKernel64Address;
+	PrintString("\nNumber of sectors of kernel : ");
+	PrintHex(&(DAPKernel64.NumberOfSectors), 2);
+	uint32_t bytesOfKernel = (uint32_t)0x800 * (uint32_t)DAPKernel64.NumberOfSectors;
+	PrintString("\nBytes of kernel : ");
+	PrintHex(&bytesOfKernel, 4);
+
+	/*Setup16BitSegments(InfoTableAddress, LoadModuleAddress);
+	JumpTo16BitSegment();
+	PrintString("\nReturned to 32-bit protected mode!");*/
 
 	return 0;
 }

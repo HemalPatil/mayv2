@@ -1,8 +1,12 @@
 [bits 32]
 
-section .data
+section .rodata
 	global hexspace
 hexspace db '0123456789ABCDEF',0
+
+section .data
+k64load_segment dw 0
+k64load_offset dw 0
 
 section .text
 	global memset
@@ -10,6 +14,8 @@ section .text
 	global swap
 	global GetPhysicalAddressLimit
 	global GetLinearAddressLimit
+	global Setup16BitSegments
+	global JumpTo16BitSegment
 	extern TerminalPutChar
 
 PrintHex:
@@ -142,4 +148,50 @@ memsetEnd:
 	popad
 	mov esp,ebp
 	pop ebp
+	ret
+
+Setup16BitSegments:
+	push ebp
+	mov ebp,esp
+	mov edx,[ebp+12]	; Get address of the load module
+	mov ebx,[ebp+8]		; Get address of the InfoTable
+	mov eax,[ebx+14]	; Get base of GDT
+	mov ebx,eax
+; CS16 is at offset 0x20
+	add ebx,0x20
+	mov [ebx + 2], dx	; Move base[0..15] to CS16 entry
+	shr edx,16
+	mov [ebx + 4], dl	; Move base[16..23] to CS16 entry
+	mov [ebx + 7], dh	; Move base[24..31] to CS16 entry
+; Copy CS16 to DS16 entry
+	mov eax,[ebx]
+	mov [ebx + 8], eax
+	mov eax,[ebx + 4]
+	mov [ebx + 12], eax
+; Change the DS16 (which is same as CS16 right now to data segment by changing flags)
+	mov ax, [ebx + 12]	; change flags
+	and ax, 0x00ff		; Preserve base[16..23]
+	or ax, 0x9200
+	mov [ebx + 12], ax
+	mov edx,[ebp+12]	; Get address of the load module
+	mov eax,edx			; Separate in segment:offset address
+	and dx,0x000f
+	and ax,0xfff0
+	shr ax,4
+	mov [k64load_segment],ax
+	mov [k64load_offset],dx
+	mov esp,ebp
+	pop ebp
+	ret
+
+JumpTo16BitSegment:
+	pushad
+	xor eax,eax
+	xor ebx,ebx
+	mov ax, [k64load_segment]
+	mov bx, [k64load_offset]
+	mov edx, ReturnFrom16BitSegment
+	jmp word 0x20:0x0
+ReturnFrom16BitSegment:
+	popad
 	ret
