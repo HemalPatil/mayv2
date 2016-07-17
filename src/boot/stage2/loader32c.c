@@ -311,6 +311,8 @@ int Loader32Main(uint16_t* InfoTableAddress, const DAP* const DAPKernel64Address
 
 	uint8_t maxphyaddr = GetPhysicalAddressLimit();
 	uint8_t maxlinaddr = GetLinearAddressLimit();
+	*(InfoTable + 9) = (uint16_t)maxphyaddr;
+	*(InfoTable + 10) = (uint16_t)maxlinaddr;
 	PrintString("Max phy addr limit : ");
 	PrintHex(&maxphyaddr,1);
 	PrintString("\nMax Linear addr limit : ");
@@ -324,14 +326,37 @@ int Loader32Main(uint16_t* InfoTableAddress, const DAP* const DAPKernel64Address
 	PrintString("\nLoad module address : ");
 	PrintHex(&LoadModuleAddress, 4);
 
-	//SetupPAEPagingLongMode();
-
 	DAP DAPKernel64 = *DAPKernel64Address;
 	PrintString("\nNumber of sectors of kernel : ");
-	PrintHex(&(DAPKernel64.NumberOfSectors), 2);
-	uint32_t bytesOfKernel = (uint32_t)0x800 * (uint32_t)DAPKernel64.NumberOfSectors;
+	uint16_t KernelNumberOfSectors = DAPKernel64.NumberOfSectors;
+	PrintHex(&KernelNumberOfSectors, 2);
+	uint32_t bytesOfKernelELF = (uint32_t)0x800 * (uint32_t)KernelNumberOfSectors;
 	PrintString("\nBytes of kernel : ");
-	PrintHex(&bytesOfKernel, 4);
+	PrintHex(&bytesOfKernelELF, 4);
+
+	uint64_t KernelVirtualMemSize = *((uint64_t*)(InfoTable + 0xc));	// Get size of kernel in virtual memory
+	PrintString("\nKernel virtual memory size : ");
+	PrintHex(&KernelVirtualMemSize, 8);
+
+	// Check if enough space is available to load kernel as well as the elf (i.e. length of region > (KernelVirtualMemSize + bytesOfKernelELF))
+	// We will load parsed kernel code from 2MiB physical memory (size : KernelVirtualMemSize)
+	// Kernel ELF will be loaded at 2MiB + KernelVirtualMemSize + 4KiB physical memory form where it will be parsed
+	bool enoughSpace = false;
+	size_t numberMMAPentries = GetNumberOfMMAPEntries();
+	struct ACPI3Entry* mmap = GetMMAPBase();
+	for(size_t i=0; i<numberMMAPentries; i++)
+	{
+		if((mmap[i].BaseAddress <= (uint64_t)0x100000) && (mmap[i].Length > ((uint64_t)0x200000 - mmap[i].BaseAddress + (uint64_t)bytesOfKernelELF + KernelVirtualMemSize)))
+		{
+			enoughSpace = true;
+		}
+	}
+	if(!enoughSpace)
+	{
+		PrintString("\nNot enough space to load kernel! Cannot boot!");
+		return 1;
+	}
+	PrintString("\nLoading kernel...");
 
 	/*Setup16BitSegments(InfoTableAddress, LoadModuleAddress);
 	JumpTo16BitSegment();

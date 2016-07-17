@@ -1,6 +1,6 @@
 [bits 64]
 
-KERNEL_STACK_SIZE equ 4096
+KERNEL_STACK_SIZE equ 65536 ; 64 KiB stack
 
 ;Reserve space for stack
 section .bss

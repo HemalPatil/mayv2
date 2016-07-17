@@ -15,7 +15,7 @@ BOOT_OBJFILES:= $(patsubst $(SRCDIR)/boot/%.asm,$(BUILDDIR)/boot/%.o,$(shell fin
 BOOT_OBJFILES:= $(BOOT_OBJFILES) $(patsubst $(SRCDIR)/boot/%.c,$(BUILDDIR)/boot/%.o,$(shell find $(SRCDIR)/boot -maxdepth 1 -type f -name "*.c"))
 
 $(ISODIR)/BOOT/KERNEL: $(BOOT_OBJFILES) $(SRCDIR)/boot/link.ld
-	$(LD64) -o $@ $(BOOT_OBJFILES) -T $(SRCDIR)/boot/link.ld
+	$(LD64) -o $@ $(BOOT_OBJFILES) -T $(SRCDIR)/boot/link.ld -z max-page-size=0x1000
 
 $(BUILDDIR)/boot/kernelasm.o: $(SRCDIR)/boot/kernelasm.asm
 	$(NASM64) $@ $^

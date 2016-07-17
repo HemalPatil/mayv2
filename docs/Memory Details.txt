@@ -14,17 +14,3 @@
 0x10000 to 0x20000	GDT
 
 0x100000 to ??		Kernel 32-bit
-
-
-
-
-
-
--- Custom table for OS --
-0	boot_disk_number		dw
-2	number_mmap_entries		dw
-4	mmap_entries offset		dw
-6	mmap_entries segment		dw
-8	vesa_vbe_info block offset	dw
-10	vesa_vbe_info block segment	dw
-12	gdt_descriptor			dw+dd

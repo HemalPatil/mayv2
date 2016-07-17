@@ -5,7 +5,9 @@
 #include<stdint.h>
 using namespace std;
 
-bool find_record(const char* directory, const int dir_size, const char* record_name, int& record_sector, int& record_size)
+const int numberOfModules = 9;	// Number of modules that are required by the kernel to bootstrap
+
+bool find_record(const char* directory, const int dir_size, const char* record_name, int &record_sector, int &record_size)
 {
 	bool record_found = false;
 	int dir_seekg = 0x44;			//Skip first 0x44 bytes, they are directory records for current and parent directory
@@ -131,7 +133,7 @@ int main(int argc, char* argv[])
 	isofile.seekg(stage2_dir_sector * 0x800, ios::beg);
 	isofile.read(stage2_dir, stage2_dir_size);
 	char core_files[][15] = {"X64.BIN;1","MMAP.BIN;1","VIDMODES.BIN;1","A20.BIN;1","GDT.BIN;1","K64LOAD.BIN;1","ELFPARSE.BIN;1","LOADER32.;1","KERNEL.;1"};
-	int core_file_sectors[9], core_file_sizes[9], core_file_segments[9];
+	int core_file_sectors[numberOfModules], core_file_sizes[numberOfModules], core_file_segments[numberOfModules];
 	for(int i=0;i<5;i++)
 	{
 		if(!find_record(stage1_dir, stage1_dir_size, core_files[i], core_file_sectors[i], core_file_sizes[i]))
@@ -158,12 +160,12 @@ int main(int argc, char* argv[])
 	core_file_segments[0] = 0x0080;
 	core_file_sectors[8] = kernel64_sector;
 	core_file_sizes[8] = kernel64_size;
-	for(int i=1;i<9;i++)
+	for(int i=1;i<numberOfModules;i++)
 	{
 		core_file_segments[i] = core_file_segments[i-1] + ceil((double)core_file_sizes[i-1]/16);
 	}
 	int boot_bin_seekp = boot_bin_sector * 0x800 + 32;	// Skip first 32 bytes (contains int 22h routine)
-	for(int i=0;i<9;i++)
+	for(int i=0;i<numberOfModules;i++)
 	{
 		isofile.seekp(boot_bin_seekp + 2, ios::beg);	// Skip first 2 bytes of each DAP
 		uint16_t number_of_sectors = ceil((double)core_file_sizes[i]/0x800); //DAP number of sectors to load
@@ -187,6 +189,26 @@ int main(int argc, char* argv[])
 		isofile.write((char*)&(core_file_sectors[i]),4);	//First sector of the file to be loaded
 		boot_bin_seekp+=16;
 	}
+
+	char* kernel = new char[kernel64_size];
+	isofile.seekg(kernel64_sector * 0x800, ios::beg);
+	isofile.read(kernel, kernel64_size);
+	uint32_t program_header = *((uint32_t*)(kernel + 32));
+	uint16_t size_of_entry = *((uint16_t*)(kernel + 54));
+	uint16_t number_of_entries = *((uint16_t*)(kernel + 56));
+	uint64_t total_virtual_size = 0;
+	for(uint16_t i=0; i<number_of_entries; i++)
+	{
+		uint32_t section_type = *((uint32_t*)(kernel + program_header + i*size_of_entry));
+		if(section_type == 1)
+		{
+			uint64_t virtual_mem_size = *((uint64_t*)(kernel + program_header + i*size_of_entry + 40));
+			total_virtual_size+=ceil((double)virtual_mem_size/0x1000)*0x1000;	// sections will be at 4KiB page boundary
+		}
+	}
+	isofile.seekp(boot_bin_sector * 0x800 + 32 + 9*16, ios::beg);
+	isofile.write((char*)&total_virtual_size,8);
+	delete[] kernel;
 
 	cout<<"ISO formatted"<<endl;
 

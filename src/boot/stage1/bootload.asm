@@ -96,6 +96,8 @@ dap_kernel64elf:
 	dw 0x0000
 	dq 0x00000000
 
+KernelActualVirtualMemorySize dq 0
+
 ; Magic bytes
 x64_magic db 'x64',0
 mmap_magic db 'MMAP'
@@ -142,6 +144,15 @@ start:
 	int 10h
 
 	mov si, hello_msg					; Show hello world message on screen
+
+	mov bx,[info_table_segment]		; Store KernelActualVirtualMemorySize in Info Table
+	mov es,bx
+	mov bx,[info_table_offset]
+	add bx,0x18
+	mov eax,[KernelActualVirtualMemorySize]
+	mov [es:bx], eax
+	mov eax,[KernelActualVirtualMemorySize + 4]
+	mov [es:bx + 4], eax
 
 	mov ah,41h						; Check disk extensions
 	int 13h

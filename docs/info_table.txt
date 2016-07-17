@@ -1,0 +1,12 @@
+-- Info table for OS --
+0x0		0		dw	boot_disk_number
+0x2		2		dw	number_mmap_entries
+0x4		4		dw	mmap_entries offset
+0x6		6		dw	mmap_entries segment
+0x8		8		dw	vesa_vbe_info block offset
+0xa		10		dw	vesa_vbe_info block segment
+0xc		12		d6	gdt_descriptor (6 bytes)
+0x12	18		dw	max physical address
+0x14	20		dw	max linear address
+0x18	24		dd	kernel actual virtual mem size (bytes) (to be calculated by format_iso utility)
+0x20	32		dq	kernel physical mem base (bytes) (to be filled in at runtime by LOADER32)
