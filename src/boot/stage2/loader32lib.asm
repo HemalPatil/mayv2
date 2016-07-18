@@ -107,6 +107,7 @@ swapEnd:
 
 GetPhysicalAddressLimit:
 	mov eax,0x80000008
+	and eax,0xff
 	cpuid
 	ret
 
@@ -114,6 +115,7 @@ GetLinearAddressLimit:
 	mov eax,0x80000008
 	cpuid
 	shr eax,8
+	and eax,0xff
 	ret
 
 memset:

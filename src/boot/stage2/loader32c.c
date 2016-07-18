@@ -104,10 +104,11 @@ uint16_t* InfoTable;
 
 void ClearScreen();
 extern void PrintHex(const void* const, size_t);
-extern void swap(void*, void*, uint32_t);
-extern void memset(void*, uint8_t, uint32_t);
+extern void swap(void*, void*, size_t);
+extern void memset(void*, uint8_t, size_t);
+extern void memcopy(const void* const src, void const* dest, size_t count);
 extern void Setup16BitSegments(uint16_t*, const void* const);
-extern void JumpTo16BitSegment();
+extern void LoadKernelELFSectors();
 extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
 
@@ -152,7 +153,7 @@ void ClearScreen()
 size_t strlen(const char* const str)
 {
 	size_t length = 0;
-	while(str[length] != 0 )
+	while(str[length] != 0)
 	{
 		length++;
 	}
@@ -182,6 +183,9 @@ struct ACPI3Entry* GetMMAPBase()
 
 void SortMMAPEntries()
 {
+	// Sort the MMAP entries in ascending order of their base addresses
+	// Number of MMAP entries is in the range of 5-15 typically so a simple bubble sort is used
+
 	size_t NumberMMAPEntries = GetNumberOfMMAPEntries();
 	struct ACPI3Entry *mmap = GetMMAPBase();
 	size_t i,j;
@@ -206,6 +210,17 @@ void SortMMAPEntries()
 
 void ProcessMMAPEntries()
 {
+	// This function checks for any overlaps in the memory regions provided by BIOS
+	// Overlaps occur in very rare cases. Nevertheless they must be handled.
+	// If an overlap is found, two cases occur
+	// 1) Both regions are of same type
+	//		- Change the length of the one entry to match the base of next entry
+	// 2) Regions are of different types and one of them is of type ACPI3_MemType_Usable
+	//		- Change the length of the first entry if it is usable
+	//		- Change the base of the second entry if it is usable
+	// 3) Overlapping of two regions of different types and none of them of type ACPI3_MemType_Usable
+	//    is not handled right now.
+
 	size_t NumberMMAPEntries = GetNumberOfMMAPEntries();
 	size_t ActualEntries = NumberMMAPEntries;
 	struct ACPI3Entry *mmap = GetMMAPBase();
@@ -271,6 +286,7 @@ uint64_t GetUsableRAMSize()
 
 void SetupPAEPagingLongMode()
 {
+	// Identity map first 16 MiB of the physical memory
 	uint64_t *page_ptr = (uint64_t*)0x110000;
 	memset(page_ptr, 0, 11*4096);
 	*(page_ptr) = (uint64_t)0x111003;
@@ -292,7 +308,7 @@ void SetupPAEPagingLongMode()
 	}
 }
 
-int Loader32Main(uint16_t* InfoTableAddress, const DAP* const DAPKernel64Address, const void* const LoadModuleAddress)
+int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, const void* const LoadModuleAddress)
 {
 	InfoTable = InfoTableAddress;
 	ClearScreen();
@@ -309,6 +325,9 @@ int Loader32Main(uint16_t* InfoTableAddress, const DAP* const DAPKernel64Address
 	PrintHex(&UsableRAMSize, 8);
 	PrintString(endl);
 
+	// Get the max physical address and max linear address that can be handled by the CPU
+	// These details are found by using CPUID.EAX=0x80000008 instruction and has to be done from assembly
+	// Refer to Intel documentation Vol. 3 Section 4.1.4 
 	uint8_t maxphyaddr = GetPhysicalAddressLimit();
 	uint8_t maxlinaddr = GetLinearAddressLimit();
 	*(InfoTable + 9) = (uint16_t)maxphyaddr;
@@ -346,21 +365,42 @@ int Loader32Main(uint16_t* InfoTableAddress, const DAP* const DAPKernel64Address
 	struct ACPI3Entry* mmap = GetMMAPBase();
 	for(size_t i=0; i<numberMMAPentries; i++)
 	{
-		if((mmap[i].BaseAddress <= (uint64_t)0x100000) && (mmap[i].Length > ((uint64_t)0x200000 - mmap[i].BaseAddress + (uint64_t)bytesOfKernelELF + KernelVirtualMemSize)))
+		if((mmap[i].BaseAddress <= (uint64_t)0x100000) && (mmap[i].Length > ((uint64_t)0x201000 - mmap[i].BaseAddress + (uint64_t)bytesOfKernelELF + KernelVirtualMemSize)))
 		{
 			enoughSpace = true;
+			break;
 		}
 	}
 	if(!enoughSpace)
 	{
-		PrintString("\nNot enough space to load kernel! Cannot boot!");
+		PrintString("\nFatal Error : System Memory is fragmented too much.\nNot enough space to load kernel.\nCannot boot!");
 		return 1;
 	}
 	PrintString("\nLoading kernel...");
 
-	/*Setup16BitSegments(InfoTableAddress, LoadModuleAddress);
-	JumpTo16BitSegment();
-	PrintString("\nReturned to 32-bit protected mode!");*/
+	// We will be identity mapping the first 16 MiB of the physical memory
+	// To see how the mapping is done refer to docs/mapping.txt
+	SetupPAEPagingLongMode();
+
+	// In GDT change base address of the 16-bit segments
+	Setup16BitSegments(InfoTableAddress, LoadModuleAddress);
+
+	/* ------
+	We have 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in our OS ISO image is 2 KiB in size.
+	So we can load the kernel ELF in batches of 32 sectors.
+	------ */
+	KernelELFBase = (uint64_t)0x201000 + KernelVirtualMemSize;
+	DAPKernel64Address->offset = 0x0;
+	DAPKernel64Address->segment = 0x8000;
+	DAPKernel64Address->NumberOfSectors = 32;
+	for(uint16_t i=0; i<(KernelNumberOfSectors/32);i++)
+	{
+		LoadKernelELFSectors();
+		memcopy(0x80000, KernelELFBase + i*0x10000,0x10000);
+		DAPKernel64Address->FirstSector += 32;
+	}
+
+	PrintString("\nKernel loaded.");
 
 	return 0;
 }

@@ -74,6 +74,8 @@ mmap_short:
 	jz mmap_skip					; if length uint64_t is 0, skip entry
 	cmp word [valid],0
 	jne mmap_valid_entry
+	cmp byte [es:di + 16],1		; Check if memory region type is 1, i.e. free for use
+	jne mmap_valid_entry		; If not skip this validation of this entry
 	push eax
 	mov eax,[es:di]				; Check if the memory 0x80000 to 0x90000
 	mov [num1_low],eax			; is available in the same memory region
