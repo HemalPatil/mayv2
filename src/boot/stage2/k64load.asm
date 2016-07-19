@@ -9,13 +9,15 @@ magic_bytes db 'K64L'
 pmode_cr0 dd 0
 k64load_offset dw 0
 k64load_segment dw 0
+dap_kernel_offset dw 0
+dap_kernel_segment dw 0
+disk_number dw 0
 stackpointer dd 0	; esp from 32-bit protected mode is stored here
-test_str db 'It works 16 bit!',0
 
 start:
 	; still in protected mode (segment is 16-bit)
 	cli
-	mov cx,ax		; Store k64load_segment in cx
+	mov esi,eax		; Store k64load_segment and k64load_offset in esi
 	mov eax,esp
 	mov [stackpointer],eax
 	mov ax,0x28	; Segment selector of DS16
@@ -24,9 +26,10 @@ start:
 	mov fs,ax
 	mov gs,ax
 	mov ss,ax
-	mov [k64load_segment],cx	; Store the segment of this module
-	add bx, bit16_real			; Store the offset of this module
-	mov [k64load_offset],bx
+	add si,bit16_real	; Add offset of the 16 bit real mode code to the offset of this module
+	mov [k64load_offset],esi
+	mov [disk_number],cx
+	mov [dap_kernel_offset],ebx
 	mov [bit32_return],edx		; The offset of the 32-bit protected mode LOADER32 where this module must return
 	mov eax,cr0		; Save protected mode cr0
 	mov [pmode_cr0],eax	; and disable paging and protected mode
@@ -53,16 +56,25 @@ ReturnTo32BitProtected:
 bit32_return dd 0
 	dw 0x0008
 
-times 1024 - ($-$$) db 0
+times 256 - ($-$$) db 0
 
 bit16_real:
 	cli
-	mov ax,cs
+	mov ax,cs	; Make ds = cs
 	mov ds,ax
-	mov ax,0x0700
+	mov ax,0x0700	; Setup to the stack same as the one we used in bootload.asm
 	mov ss,ax
 	xor esp,esp
 	mov sp,0x0c00
-	mov si, test_str
-	int 22h
+	push ds		; We need to store the ds since it will be required later
+	xor edx,edx
+	mov dl,[disk_number]	; Load the boot disk number
+	xor esi,esi
+	mov si,[dap_kernel_offset]
+	mov ax,[dap_kernel_segment]		; Copy the segment in ds after all operations requiring ds are over
+	mov ds,ax
+	xor eax,eax
+	mov ah,0x42		; Extended Function 42h, read extended sectors using LBA
+	int 13h		; BIOS disk service int 13h
+	pop ds	; Restore ds
 	jmp ReturnTo32BitProtected

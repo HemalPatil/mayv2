@@ -206,7 +206,8 @@ int main(int argc, char* argv[])
 			total_virtual_size+=ceil((double)virtual_mem_size/0x1000)*0x1000;	// sections will be at 4KiB page boundary
 		}
 	}
-	isofile.seekp(boot_bin_sector * 0x800 + 32 + 9*16, ios::beg);
+	//Save the virtual_mem_size in BOOTLOAD.BIN after all the DAPs of the modules
+	isofile.seekp(boot_bin_sector * 0x800 + 32 + numberOfModules*16, ios::beg);
 	isofile.write((char*)&total_virtual_size,8);
 	delete[] kernel;
 

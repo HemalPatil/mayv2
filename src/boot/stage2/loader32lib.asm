@@ -5,17 +5,21 @@ section .rodata
 hexspace db '0123456789ABCDEF',0
 
 section .data
-k64load_segment dw 0
 k64load_offset dw 0
+k64load_segment dw 0
+dap_kernel_offset dw 0
+dap_kernel_segment dw 0
+disk_number dw 0
 
 section .text
 	global memset
+	global memcopy
 	global PrintHex
 	global swap
 	global GetPhysicalAddressLimit
 	global GetLinearAddressLimit
 	global Setup16BitSegments
-	global JumpTo16BitSegment
+	global LoadKernelELFSectors
 	extern TerminalPutChar
 
 PrintHex:
@@ -152,9 +156,40 @@ memsetEnd:
 	pop ebp
 	ret
 
+memcopy:
+	push ebp	; Create stack frame
+	mov ebp,esp
+	pushad
+	mov ax,ds	; Copy ds to es
+	mov es,ax
+	mov esi,[ebp+8]		; Get source pointer in ESI
+	mov edi,[ebp+12]	; Get destination pointer in EDI
+	mov eax,[ebp+16]	; Get count in EAX
+	test eax,eax		; If count is 0, exit
+	jz memcopyEnd
+	xor edx,edx		; Divide count by 4
+	mov ecx,4
+	div ecx
+	push edx	; Save the remainder
+	test eax,eax	; Check if quotient is 0, if 0 then skip DWORD loop
+	jz memcopyDWORDskip
+	mov ecx,eax		; copy quotient to ECX
+	rep movsd	; copy doublewords at DS:ESI to ES:EDI
+memcopyDWORDskip:
+	pop ecx		; restore the remainder in ECX
+	test ecx,ecx	; if count is 0, exit
+	jz memcopyEnd
+	rep movsb	; copy bytes at DS:ESI to ES:EDI
+memcopyEnd:
+	popad	; Destory stack frame
+	mov esp,ebp
+	pop ebp
+	ret
+
 Setup16BitSegments:
 	push ebp
 	mov ebp,esp
+	pushad
 	mov edx,[ebp+12]	; Get address of the load module
 	mov ebx,[ebp+8]		; Get address of the InfoTable
 	mov eax,[ebx+14]	; Get base of GDT
@@ -182,18 +217,32 @@ Setup16BitSegments:
 	shr ax,4
 	mov [k64load_segment],ax
 	mov [k64load_offset],dx
+	mov edx,[ebp+16]	; Get DAPkernel address
+	mov eax,edx			; Separate in segment:offset address
+	and dx,0x000f
+	and ax,0xfff0
+	shr ax,4
+	mov [dap_kernel_segment],ax
+	mov [dap_kernel_offset],dx
+	mov cx,[ebp+20]
+	mov [disk_number],cx
+	popad
 	mov esp,ebp
 	pop ebp
 	ret
 
-JumpTo16BitSegment:
+LoadKernelELFSectors:
 	pushad
-	xor eax,eax
-	xor ebx,ebx
 	mov ax, [k64load_segment]
-	mov bx, [k64load_offset]
+	shl eax,16
+	mov ax, [k64load_offset]
+	mov bx, [dap_kernel_segment]
+	shl ebx,16
+	mov bx, [dap_kernel_offset]
+	xor ecx,ecx
+	mov cx,[disk_number]
 	mov edx, ReturnFrom16BitSegment
-	jmp word 0x20:0x0
+	jmp word 0x20:0x0	; Jump to the k64load module
 ReturnFrom16BitSegment:
 	popad
 	ret
