@@ -11,6 +11,7 @@ kernel_stack:
 section .text
 	global kernel_start
 kernel_start:
+	mov rax, 0xdeadc0decafebabe
 kernel_end:
 	cli
 	hlt

@@ -2,7 +2,7 @@ ENTRY(kernel_start);
 
 SECTIONS
 {
-	. = 0x300000;
+	. = 0xffffffff80000000;
 
 	.text : ALIGN(0x1000)
 	{

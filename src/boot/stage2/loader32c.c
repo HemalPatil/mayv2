@@ -256,7 +256,7 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 	if(!enoughSpace)
 	{
 		ClearScreen();
-		PrintString("\nFatal Error : System Memory is fragmented too much.\nNot enough space to load kernel.\nCannot boot!");
+		PrintString("\nFatal Error : System memory is fragmented too much.\nNot enough space to load kernel.\nCannot boot!");
 		return 1;
 	}
 	PrintString("Loading kernel...\n");
@@ -293,6 +293,34 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 	memcopy((void*)0x80000,(void*)(KernelELFBase + iters*0x10000),DAPKernel64Address->NumberOfSectors * 0x800);
 
 	PrintString("Kernel executable loaded.\n");
+
+	// Parse the kernel executable
+	uint16_t ELFFlags = *((uint16_t*)(KernelELFBase + 4));
+	if(ELFFlags != 0x0102)
+	{
+		PrintString("\nKernel executable corrupted! Cannot boot!");
+		return 1;
+	}
+	//uint64_t KernelEntry = *((uint64_t*)(KernelELFBase + 24));
+	uint32_t ProgramHeaderTable = *((uint32_t*)(KernelELFBase + 32));
+	uint16_t ProgramHeaderEntrySize = *((uint16_t*)(KernelELFBase + 54));
+	uint16_t ProgramHeaderEntries = *((uint16_t*)(KernelELFBase + 56));
+	for(uint16_t i=0; i<ProgramHeaderEntries; i++)
+	{
+		uint32_t ProgramHeader = KernelELFBase + ProgramHeaderTable + i*ProgramHeaderEntrySize;
+		uint32_t SegmentOffset = *((uint32_t*)(ProgramHeader + 8));
+		uint64_t SegmentVirtualMemoryAddress = *((uint64_t*)(ProgramHeader + 16));
+		/*PrintString("\nsection offset : ");
+		PrintHex(&SegmentOffset, 4);
+		PrintString("\nsegment vmem address : ");
+		PrintHex(&SegmentVirtualMemoryAddress, 8);
+		uint32_t SegmentType = *((uint32_t*)(ProgramHeader));
+		uint32_t SegmentFlags = *((uint32_t*)(ProgramHeader + 4));
+		PrintString("\nsection type : ");
+		PrintHex(&SegmentType, 4);
+		PrintString("\nsegment flags : ");
+		PrintHex(&SegmentFlags, 4);*/
+	}
 
 	return 0;
 }
