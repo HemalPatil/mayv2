@@ -28,6 +28,19 @@ struct DAP //Disk Address Packet
 } __attribute__((packed));
 typedef struct DAP DAP;
 
+struct ELF64ProgramHeader
+{
+	uint32_t TypeOfSegment;
+	uint32_t SegmentFlags;
+	uint64_t FileOffset;
+	uint64_t VirtualMemoryAddress;
+	uint64_t Ignore;
+	uint64_t SegmentSizeInFile;
+	uint64_t SegmentSizeInMemory;
+	uint64_t Alignment;
+} __attribute__((packed));
+typedef struct ELF64ProgramHeader ELF64ProgramHeader;
+
 char* const vidmem = (char*) 0xb8000;
 const size_t VGAWidth = 80;
 const size_t VGAHeight = 25;
@@ -269,7 +282,8 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 	Setup16BitSegments(InfoTableAddress, LoadModuleAddress, DAPKernel64Address, *InfoTable); // InfoTable[0] = boot disk number
 
 	// Enter the kernel physical memory base address in the info table
-	*((uint64_t*)(InfoTable + 0x10)) = 0x200000;
+	uint32_t KernelBase = 0x200000;
+	*((uint64_t*)(InfoTable + 0x10)) = (uint64_t)KernelBase;
 
 	/* ------
 	We have 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in our OS ISO image is 2 KiB in size.
@@ -305,21 +319,24 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 	uint32_t ProgramHeaderTable = *((uint32_t*)(KernelELFBase + 32));
 	uint16_t ProgramHeaderEntrySize = *((uint16_t*)(KernelELFBase + 54));
 	uint16_t ProgramHeaderEntries = *((uint16_t*)(KernelELFBase + 56));
+	if(ProgramHeaderEntrySize != sizeof(ELF64ProgramHeader))
+	{
+		PrintString("\nKernel executable corrupted! Cannot boot!");
+		return 1;
+	}
+	ELF64ProgramHeader *ProgramHeader = (ELF64ProgramHeader*)(KernelELFBase + ProgramHeaderTable);
+	uint32_t MemorySeekp = KernelBase;
 	for(uint16_t i=0; i<ProgramHeaderEntries; i++)
 	{
-		uint32_t ProgramHeader = KernelELFBase + ProgramHeaderTable + i*ProgramHeaderEntrySize;
-		uint32_t SegmentOffset = *((uint32_t*)(ProgramHeader + 8));
-		uint64_t SegmentVirtualMemoryAddress = *((uint64_t*)(ProgramHeader + 16));
 		/*PrintString("\nsection offset : ");
-		PrintHex(&SegmentOffset, 4);
+		PrintHex(&(ProgramHeader[i].FileOffset), 4);
 		PrintString("\nsegment vmem address : ");
-		PrintHex(&SegmentVirtualMemoryAddress, 8);
-		uint32_t SegmentType = *((uint32_t*)(ProgramHeader));
-		uint32_t SegmentFlags = *((uint32_t*)(ProgramHeader + 4));
+		PrintHex(&(ProgramHeader[i].VirtualMemoryAddress), 8);
 		PrintString("\nsection type : ");
-		PrintHex(&SegmentType, 4);
+		PrintHex(&(ProgramHeader[i].TypeOfSegment), 4);
 		PrintString("\nsegment flags : ");
-		PrintHex(&SegmentFlags, 4);*/
+		PrintHex(&(ProgramHeader[i].SegmentFlags), 4);*/
+		memset((void*)MemorySeekp, 0, (uint32_t)ProgramHeader[i].SegmentSizeInMemory);
 	}
 
 	return 0;
