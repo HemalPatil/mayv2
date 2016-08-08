@@ -41,6 +41,26 @@ struct ELF64ProgramHeader
 } __attribute__((packed));
 typedef struct ELF64ProgramHeader ELF64ProgramHeader;
 
+
+// Right now we just need present, r/w and address fields. Hence all the 4 structures are using a common struct
+struct PML4E
+{
+	uint8_t Present:1;
+	uint8_t ReadWrite:1;
+	uint8_t UserAccess:1;
+	uint8_t PageWriteThrough:1;
+	uint8_t CacheDisable:1;
+	uint8_t Accessed:1;
+	uint8_t Ignore1:6;
+	uint64_t PageAddress:40;
+	uint16_t Ignore2:11;
+	uint8_t ExecuteDisable:1;
+} __attribute__((packed));
+typedef struct PML4E PML4E;
+typedef struct PML4E PDPTE;
+typedef struct PML4E PDE;
+typedef struct PML4E PTE;
+
 char* const vidmem = (char*) 0xb8000;
 const size_t VGAWidth = 80;
 const size_t VGAHeight = 25;
@@ -209,28 +229,45 @@ void ProcessMMAPEntries()
 	SortMMAPEntries();
 }
 
-void SetupPAEPagingLongMode()
+void IdentityMapFirst16MiB()
 {
 	// Identity map first 16 MiB of the physical memory
+	// page_ptr right now points to PML4T at 0x110000;
 	uint64_t *page_ptr = (uint64_t*)0x110000;
-	memset(page_ptr, 0, 11*4096);
-	*(page_ptr) = (uint64_t)0x111003;
+
+	// Clear 22 4KiB pages
+	memset(page_ptr, 0, 0xf0*4096);
+
+	// PML4T[0] points to PDPT at 0x111000, i.e. the first 512GiB are handled by PDPT at 0x111000
+	page_ptr[0] = (uint64_t)0x111003;
+
+	// page_ptr right now points to PDPT at 0x111000 which handles first 512GiB
 	page_ptr = (uint64_t*)0x111000;
-	*(page_ptr) = (uint64_t)0x112003;
+	// PDPT[0] points to PD at 0x112000, i.e. the first 1GiB is handled by PD at 0x112000
+	page_ptr[0] = (uint64_t)0x112003;
+
+	// Each entry in PD points to PT. Each PT handles 2MiB.
+	// So we add 8 entries to PD and fill all entries in the PTs starting from 0x113000 to 0x11afff with page_frames 0x0 to 16MiB
 	uint64_t *pdentry = (uint64_t*)0x112000;
 	uint64_t *ptentry = (uint64_t*)0x113000;
 	uint64_t page_frame = (uint64_t)0x0003;
 	size_t i=0,j=0;
 	for(i=0;i<8;i++)
 	{
-		pdentry[i] = (((uint64_t)(uint32_t)ptentry) + 3);
-		for(j=0;j<512;j++)
+		pdentry[i] = (uint64_t)((uint32_t)ptentry + 3);
+		for(j=0; j<512; j++, ptentry++)
 		{
 			*(ptentry) = page_frame;
 			page_frame += 0x1000;
-			ptentry++;
 		}
 	}
+}
+
+void AllocatePagingEntry(struct PML4E* entry, uint32_t address)
+{
+	entry->Present = 1;
+	entry->ReadWrite = 1;
+	entry->PageAddress = address>>12;
 }
 
 int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, const void* const LoadModuleAddress)
@@ -276,7 +313,7 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 
 	// We will be identity mapping the first 16 MiB of the physical memory
 	// To see how the mapping is done refer to docs/mapping.txt
-	SetupPAEPagingLongMode();
+	IdentityMapFirst16MiB();
 
 	// In GDT change base address of the 16-bit segments
 	Setup16BitSegments(InfoTableAddress, LoadModuleAddress, DAPKernel64Address, *InfoTable); // InfoTable[0] = boot disk number
@@ -285,10 +322,8 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 	uint32_t KernelBase = 0x200000;
 	*((uint64_t*)(InfoTable + 0x10)) = (uint64_t)KernelBase;
 
-	/* ------
-	We have 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in our OS ISO image is 2 KiB in size.
-	So we can load the kernel ELF in batches of 32 sectors. Leave a gap of 4 KiB between kernel process and kernel ELF
-	------ */
+	// We have 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in our OS ISO image is 2 KiB in size.
+	// So we can load the kernel ELF in batches of 32 sectors. Leave a gap of 4 KiB between kernel process and kernel ELF
 	uint32_t KernelELFBase = 0x201000 + (uint32_t)KernelVirtualMemSize;
 	DAPKernel64Address->offset = 0x0;
 	DAPKernel64Address->segment = 0x8000;
@@ -326,6 +361,12 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 	}
 	ELF64ProgramHeader *ProgramHeader = (ELF64ProgramHeader*)(KernelELFBase + ProgramHeaderTable);
 	uint32_t MemorySeekp = KernelBase;
+	PML4E* PML4T = (PML4E*)0x110000;
+	uint32_t NewPageStart = 0x11b000; // New pages that need to be made should start from this address and add 0x1000 to it.
+	/*PrintString("vmem size   : ");
+	PrintHex(&KernelVirtualMemSize, 4);
+	PrintString("\nMemorySeekp : ");
+	PrintHex(&MemorySeekp, 4);*/
 	for(uint16_t i=0; i<ProgramHeaderEntries; i++)
 	{
 		/*PrintString("\nsection offset : ");
@@ -336,8 +377,103 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 		PrintHex(&(ProgramHeader[i].TypeOfSegment), 4);
 		PrintString("\nsegment flags : ");
 		PrintHex(&(ProgramHeader[i].SegmentFlags), 4);*/
-		memset((void*)MemorySeekp, 0, (uint32_t)ProgramHeader[i].SegmentSizeInMemory);
+
+		uint32_t SizeInMemory = (uint32_t)ProgramHeader[i].SegmentSizeInMemory;
+
+		memset((void*)MemorySeekp, 0, SizeInMemory);
+		memcopy((void*)(KernelELFBase + (uint32_t)ProgramHeader[i].FileOffset), (void*)MemorySeekp, (uint32_t)ProgramHeader[i].SegmentSizeInFile);
+
+		// Our kernel is linked at higher half addresses. (right now it is last 2GiB of 64-bit address space, may change if linker script is changed)
+		// Map this section in the paging structure
+		size_t NumberOfPages = SizeInMemory/0x1000;
+		if(SizeInMemory%0x1000)
+		{
+			NumberOfPages++;
+		}
+		/*PrintString("\nNumberOfPages : ");
+		PrintHex(&NumberOfPages, 4);*/
+		for(size_t j = 0; j<NumberOfPages; j++, MemorySeekp += 0x1000)
+		{
+			uint64_t VirtualMemoryAddress = ProgramHeader[i].VirtualMemoryAddress + j*0x1000;
+			VirtualMemoryAddress >>= 12;
+			uint16_t PTIndex = VirtualMemoryAddress & 0x1ff;
+			VirtualMemoryAddress >>= 9;
+			uint16_t PDIndex = VirtualMemoryAddress & 0x1ff;
+			VirtualMemoryAddress >>= 9;
+			uint16_t PDPTIndex = VirtualMemoryAddress & 0x1ff;
+			VirtualMemoryAddress >>= 9;
+			uint16_t PML4TIndex = VirtualMemoryAddress & 0x1ff;
+			/*PrintString("\nPTIndex : ");
+			PrintHex(&PTIndex, 2);
+			PrintString("\nPDIndex : ");
+			PrintHex(&PDIndex, 2);
+			PrintString("\nPDPTIndex : ");
+			PrintHex(&PDPTIndex, 2);
+			PrintString("\nPML4TIndex : ");
+			PrintHex(&PML4TIndex, 2);*/
+			if(PML4T[PML4TIndex].Present)
+			{
+				PDPTE* PDPT = (PDPTE*)((uint32_t)PML4T[PML4TIndex].PageAddress<<12);
+				if(PDPT[PDPTIndex].Present)
+				{
+					PDE* PD = (PDE*)((uint32_t)PDPT[PDPTIndex].PageAddress<<12);
+					if(PD[PDIndex].Present)
+					{
+						PTE* PT = (PTE*)((uint32_t)PD[PDIndex].PageAddress<<12);
+						if(!PT[PTIndex].Present)
+						{
+							AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+							//PrintString("pte\n");
+						}
+					}
+					else
+					{
+						AllocatePagingEntry(&(PD[PDIndex]), NewPageStart);
+						PTE* PT = (PTE*)NewPageStart;
+						NewPageStart += 0x1000;
+						AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+						//PrintString("pde pte\n");
+					}
+				}
+				else
+				{
+					AllocatePagingEntry(&(PDPT[PDPTIndex]), NewPageStart);
+					PDE* PD = (PDE*)NewPageStart;
+					NewPageStart += 0x1000;
+					AllocatePagingEntry(&(PD[PDIndex]), NewPageStart);
+					PTE* PT = (PTE*)NewPageStart;
+					NewPageStart += 0x1000;
+					AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+					//PrintString("pdpte pde pte\n");
+				}
+			}
+			else
+			{
+				AllocatePagingEntry(&(PML4T[PML4TIndex]), NewPageStart);
+				PDPTE* PDPT = (PDPTE*)NewPageStart;
+				NewPageStart += 0x1000;
+				AllocatePagingEntry(&(PDPT[PDPTIndex]), NewPageStart);
+				PDE* PD = (PDE*)NewPageStart;
+				NewPageStart += 0x1000;
+				AllocatePagingEntry(&(PD[PDIndex]), NewPageStart);
+				PTE* PT = (PTE*)NewPageStart;
+				NewPageStart += 0x1000;
+				AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+				//PrintString("pml4e pdpte pde pte\n");
+			}
+		}
+
+		//PrintString("\nMemorySeekp : ");
+		//PrintHex(&MemorySeekp, 4);
 	}
+
+	PrintString("\nNewPageStart : ");
+	PrintHex(&NewPageStart, 4);
+
+	//JumpToKernel(PML4T);	// Jump to kernel. Code beyond this should never get executed.
+	//ClearScreen();
+	//PrintString("Fatal error : Cannot boot!");
+	//return 1;
 
 	return 0;
 }
