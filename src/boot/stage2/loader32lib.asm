@@ -20,6 +20,7 @@ section .text
 	global GetLinearAddressLimit
 	global Setup16BitSegments
 	global LoadKernelELFSectors
+	global JumpToKernel
 	extern TerminalPutChar
 
 PrintHex:
@@ -245,4 +246,25 @@ LoadKernelELFSectors:
 	jmp word 0x20:0x0	; Jump to the k64load module
 ReturnFrom16BitSegment:
 	popad
+	ret
+
+JumpToKernel:
+	push ebp
+	mov ebp,esp
+	mov eax,[ebp+8]		; Get PML4T address in eax
+	mov cr3,eax			; Set CR3 to PML4T address
+	mov eax,cr4
+	or eax, 1<<5		; Set PAE enable bit
+	mov cr4,eax
+	mov ecx, 0xC0000080	; Copy contents of EFER MSR in eax
+	rdmsr
+	or eax, 1<<8		; Set LM (long mode) bit
+	wrmsr				; Write back to EFER MSR
+	mov eax,cr0			; Enable paging
+	or eax, 1<<31
+	mov cr0,eax
+	cli					; Disable interrupts. Although interrupts have been disabled till now, one must disable them just to be sure
+	jmp 0x30:0x80000000		; 0x30 is 64-bit code segment
+	mov esp,ebp
+	pop ebp
 	ret

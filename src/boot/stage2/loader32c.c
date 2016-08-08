@@ -77,6 +77,7 @@ extern void memset(void* const, const uint8_t, const size_t);
 extern void memcopy(const void* const src, void const* dest, const size_t count);
 extern void Setup16BitSegments(const uint16_t* const, const void* const, const DAP* const, const uint16_t);
 extern void LoadKernelELFSectors();
+extern void JumpToKernel(PML4E*);
 extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
 
@@ -467,13 +468,13 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 		//PrintHex(&MemorySeekp, 4);
 	}
 
-	PrintString("\nNewPageStart : ");
-	PrintHex(&NewPageStart, 4);
+	//PrintString("\nNewPageStart : ");
+	//PrintHex(&NewPageStart, 4);
 
-	//JumpToKernel(PML4T);	// Jump to kernel. Code beyond this should never get executed.
-	//ClearScreen();
-	//PrintString("Fatal error : Cannot boot!");
-	//return 1;
+	JumpToKernel(PML4T);	// Jump to kernel. Code beyond this should never get executed.
+	ClearScreen();
+	PrintString("Fatal error : Cannot boot!");
+	return 1;
 
-	return 0;
+	//return 0;
 }
