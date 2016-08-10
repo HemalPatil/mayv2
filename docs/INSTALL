@@ -1,0 +1,58 @@
+Following commands have been tested on Ubuntu 14.0.4 LTS 32-bit.
+(64-bit versions of Ubuntu might raise errors while building GCC since some headers and libraries are not stable or/and are different in 64-bit and 32-bit versions)
+
+You should have GCC and G++ 4.8.0 or above installed on your system.
+
+You need to set up cross compilers for x86 as well as x64 architectures.
+We will be using GCC compiler suite.
+Grab source code for GCC from one of the mirrors listed at https://gcc.gnu.org/mirrors.html
+The instructions for installation are available at https://gcc.gnu.org/install
+
+Recommended versions of softwares:
+gcc 5.2.0
+binutils 2.25.1
+gmp 4.3.2
+mpfr 2.4.2
+mpc 0.8.1
+isl 0.14
+
+Extract all the archives.
+Place gmp, mpfr, mpc and isl folders in the gcc source code directory.
+Your directory tree should look something like:
+|--binutils
+|--gcc
+  |--mpfr
+  |--mpc
+  |--gmp
+  |--isl
+
+Remove all the version numbers from folder names of mpfr, gmp, mpc, gcc, binutils and isl.
+Follow the instructions given at http://wiki.osdev.org/GCC_Cross-Compiler.
+
+Your targets should be:
+i686-elf
+x86_64
+
+Follow the instructions given on the page separately for each mentioned target.
+Remove any intermediate directories that were made during installation.
+
+Suppose your installation directories are:
+/path/gcc5_2_i686
+/path2/gcc5_2_x86_64
+add them to your PATH environment variable using
+export PATH="$PATH:<your_path>"
+
+To make the PATH variable persist across sessions, add the above command to your .bashrc file (or your shell's configuration file that runs every time you log in).
+
+Now you need to install NASM.
+Run the following command:
+sudo apt-get install nasm
+
+Change your current directory to the root of this repository.
+Run the following commands:
+(To remove all extra files)
+make clean
+
+(To generate the ISO file for the OS)
+make directories (only after make clean)
+make all

@@ -93,7 +93,7 @@ start:
 ;segment selector 0x20
 	add bx,8							; 16-bit code segment for jump to real mode back to set videomode
 	mov dword [es:bx],0xffff			; cs limit[0..15](low), base[0..15](high)
-	mov dword [es:bx + 4],0x9b00		; cs base[16..23](low8), accessflags, lim[16..19], flags, base[24..31](high)
+	mov dword [es:bx + 4],0x9a00		; cs base[16..23](low8), accessflags, lim[16..19], flags, base[24..31](high)
 
 ;segment selector 0x28
 	add bx,8							; 16-bit data segment for jump to real mode back to set videomode
@@ -103,7 +103,7 @@ start:
 ;segment selector 0x30
 	add bx,8							; 64-bit long mode code segment for kernel64
 	mov dword [es:bx],0
-	mov dword [es:bx + 4],0x209b00
+	mov dword [es:bx + 4],0x209a00
 
 ;segment selector 0x38
 	add bx,8							; 64-bit long mode data segment for kernel64

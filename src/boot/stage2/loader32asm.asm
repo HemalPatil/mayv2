@@ -7,7 +7,7 @@ section .bss
 LoaderStack:
 	resb LOADER_STACK_SIZE
 
-section .text
+section .setup
 	global loader32start		; Loader execution starts here
 	extern Loader32Main
 loader32start:

@@ -3,7 +3,12 @@ ENTRY(kernel_start);
 SECTIONS
 {
 	. = 0x80000000;
+	.lowerhalf : ALIGN(0x1000)
+	{
+		*(.lowerhalf);
+	}
 
+	. = 0xffffffff80000000;
 	.text : ALIGN(0x1000)
 	{
 		*(.text);

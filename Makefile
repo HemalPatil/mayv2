@@ -38,6 +38,7 @@ include $(dir)/Rules.mk
 clean:
 	rm -rf ISO
 	rm -rf build
+	rm mayv2.iso
 	mkdir ISO build
 
 # Create directory structure after cleaning the directory 
