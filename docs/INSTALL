@@ -40,7 +40,7 @@ Suppose your installation directories are:
 /path/gcc5_2_i686
 /path2/gcc5_2_x86_64
 add them to your PATH environment variable using
-export PATH="$PATH:<your_path>"
+export PATH="$PATH:<your_path1>:<your_path2>"
 
 To make the PATH variable persist across sessions, add the above command to your .bashrc file (or your shell's configuration file that runs every time you log in).
 
