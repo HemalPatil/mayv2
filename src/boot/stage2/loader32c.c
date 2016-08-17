@@ -364,21 +364,8 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 	uint32_t MemorySeekp = KernelBase;
 	PML4E* PML4T = (PML4E*)0x110000;
 	uint32_t NewPageStart = 0x11b000; // New pages that need to be made should start from this address and add 0x1000 to it.
-	/*PrintString("vmem size   : ");
-	PrintHex(&KernelVirtualMemSize, 4);
-	PrintString("\nMemorySeekp : ");
-	PrintHex(&MemorySeekp, 4);*/
 	for(uint16_t i=0; i<ProgramHeaderEntries; i++)
 	{
-		/*PrintString("\nsection offset : ");
-		PrintHex(&(ProgramHeader[i].FileOffset), 4);
-		PrintString("\nsegment vmem address : ");
-		PrintHex(&(ProgramHeader[i].VirtualMemoryAddress), 8);
-		PrintString("\nsection type : ");
-		PrintHex(&(ProgramHeader[i].TypeOfSegment), 4);
-		PrintString("\nsegment flags : ");
-		PrintHex(&(ProgramHeader[i].SegmentFlags), 4);*/
-
 		uint32_t SizeInMemory = (uint32_t)ProgramHeader[i].SegmentSizeInMemory;
 
 		memset((void*)MemorySeekp, 0, SizeInMemory);
@@ -391,8 +378,6 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 		{
 			NumberOfPages++;
 		}
-		/*PrintString("\nNumberOfPages : ");
-		PrintHex(&NumberOfPages, 4);*/
 		for(size_t j = 0; j<NumberOfPages; j++, MemorySeekp += 0x1000)
 		{
 			uint64_t VirtualMemoryAddress = ProgramHeader[i].VirtualMemoryAddress + j*0x1000;
@@ -404,14 +389,6 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 			uint16_t PDPTIndex = VirtualMemoryAddress & 0x1ff;
 			VirtualMemoryAddress >>= 9;
 			uint16_t PML4TIndex = VirtualMemoryAddress & 0x1ff;
-			/*PrintString("\nPTIndex : ");
-			PrintHex(&PTIndex, 2);
-			PrintString("\nPDIndex : ");
-			PrintHex(&PDIndex, 2);
-			PrintString("\nPDPTIndex : ");
-			PrintHex(&PDPTIndex, 2);
-			PrintString("\nPML4TIndex : ");
-			PrintHex(&PML4TIndex, 2);*/
 			if(PML4T[PML4TIndex].Present)
 			{
 				PDPTE* PDPT = (PDPTE*)((uint32_t)PML4T[PML4TIndex].PageAddress<<12);
@@ -424,7 +401,6 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 						if(!PT[PTIndex].Present)
 						{
 							AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
-							//PrintString("pte\n");
 						}
 					}
 					else
@@ -433,7 +409,6 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 						PTE* PT = (PTE*)NewPageStart;
 						NewPageStart += 0x1000;
 						AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
-						//PrintString("pde pte\n");
 					}
 				}
 				else
@@ -445,7 +420,6 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 					PTE* PT = (PTE*)NewPageStart;
 					NewPageStart += 0x1000;
 					AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
-					//PrintString("pdpte pde pte\n");
 				}
 			}
 			else
@@ -460,21 +434,12 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 				PTE* PT = (PTE*)NewPageStart;
 				NewPageStart += 0x1000;
 				AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
-				//PrintString("pml4e pdpte pde pte\n");
 			}
 		}
-
-		//PrintString("\nMemorySeekp : ");
-		//PrintHex(&MemorySeekp, 4);
 	}
-
-	//PrintString("\nNewPageStart : ");
-	//PrintHex(&NewPageStart, 4);
 
 	JumpToKernel(PML4T);	// Jump to kernel. Code beyond this should never get executed.
 	ClearScreen();
 	PrintString("Fatal error : Cannot boot!");
 	return 1;
-
-	//return 0;
 }
