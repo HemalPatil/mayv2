@@ -13,6 +13,7 @@ section .lowerhalf
 kernel_start:		; Execution starts here. 32-bit code cannot jump to 64-bit address. Hence, we first jump to 0x80000000 and then jump to 0xffffffff80000000
 	mov ax,0x38		; 64-bit data segment
 	mov ds,ax
+	mov es,ax
 	mov ss,ax
 	mov rax, higher_half_start
 	jmp rax
@@ -22,18 +23,18 @@ section .text
 	global test1
 	extern KernelMain
 higher_half_start:
-	jmp KernelMain
+	;push rax
+	;push rdi
+	;push rcx
+	;mov rcx, 500
+	;mov rdi, 0xb8000
+	;mov rax, 0x1f201f201f201f20
+	;rep stosq
+	;pop rcx
+	;pop rdi
+	;pop rax
+	call KernelMain
 kernel_end:
 	cli
 	hlt
 	jmp kernel_end
-
-test1:
-	push rbp
-	mov rbp,rsp
-	mov rax,[rbp+16]
-	mov r14,[rbp+24]
-	jmp kernel_end
-	mov rsp,rbp
-	pop rbp
-	ret

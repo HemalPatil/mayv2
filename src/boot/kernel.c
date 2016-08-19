@@ -1,10 +1,10 @@
-#include<stdint.h>
-#include<stddef.h>
-#include<stdbool.h>
-
-extern void test1(uint64_t, uint64_t);
+#include"kernel.h"
 
 void KernelMain()
 {
-	test1(0xdeadc0dedeadbeef, 0xcafebabeff123456);
+	char* const vidmem = (char*)0xb8000;
+	vidmem[398] = 'F';
+	vidmem[3998] = 'F';
+	TerminalClearScreen();
+	TerminalSetCursor(0, 0);
 }

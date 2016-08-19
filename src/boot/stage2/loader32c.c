@@ -9,6 +9,7 @@
 #define ACPI3_MemType_Bad 5
 #define ACPI3_MemType_Hole 10
 
+// ACPI 3.0 entry format (we have used extended entries of 24 bytes)
 struct ACPI3Entry
 {
 	uint64_t BaseAddress;
@@ -17,7 +18,8 @@ struct ACPI3Entry
 	uint32_t ExtendedAttributes;
 } __attribute__((packed));
 
-struct DAP //Disk Address Packet
+// Disk Address Packet for extended disk operations
+struct DAP
 {
 	char DAPSize;
 	char alwayszero;
@@ -28,6 +30,7 @@ struct DAP //Disk Address Packet
 } __attribute__((packed));
 typedef struct DAP DAP;
 
+// Program Header of 64-bit ELF binaries
 struct ELF64ProgramHeader
 {
 	uint32_t TypeOfSegment;
