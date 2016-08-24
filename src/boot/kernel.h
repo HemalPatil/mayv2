@@ -6,3 +6,4 @@
 void KernelMain();
 void TerminalClearScreen();
 void TerminalSetCursor(size_t x, size_t y);
+bool 

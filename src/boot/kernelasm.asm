@@ -23,16 +23,6 @@ section .text
 	global test1
 	extern KernelMain
 higher_half_start:
-	;push rax
-	;push rdi
-	;push rcx
-	;mov rcx, 500
-	;mov rdi, 0xb8000
-	;mov rax, 0x1f201f201f201f20
-	;rep stosq
-	;pop rcx
-	;pop rdi
-	;pop rax
 	call KernelMain
 kernel_end:
 	cli

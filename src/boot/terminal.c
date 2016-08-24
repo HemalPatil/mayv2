@@ -1,5 +1,8 @@
 #include"kernel.h"
 
+// TODO : This is a temporary file. The functions from this file need to be shifted to drivers/terminal after some higher level
+// functions are established
+
 // This file provides the lowest level of terminal output functionality
 
 // Before all terminal operations take place, i.e. before writing to the VGA video memory
@@ -40,4 +43,5 @@ void TerminalClearScreen()
 void TerminalSetCursor(size_t x, size_t y)
 {
 	if (!IsTerminalMode()) { return; }
+
 }
