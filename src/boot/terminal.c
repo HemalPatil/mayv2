@@ -1,4 +1,4 @@
-#include"kernel.h"
+#include "kernel.h"
 
 // TODO : This is a temporary file. The functions from this file need to be shifted to drivers/terminal after some higher level
 // functions are established
@@ -17,12 +17,14 @@ char* const TerminalVideoMemory = (char*)0xb8000;
 const size_t VGAWidth = 80, VGAHeight = 25;
 size_t CursorX = 0, CursorY = 0;
 
+// Check if video mode is 80x25 VGA
 bool IsTerminalMode()
 {
 	// TODO : right now we are just checking a boolean value, add functionality to actually check if the mode is the assumed one
 	return TerminalModeVGA80_25;
 }
 
+// Clears the terminal screen
 void TerminalClearScreen()
 {
 	if (!IsTerminalMode()) { return; }
@@ -40,8 +42,11 @@ void TerminalClearScreen()
 	CursorX = CursorY = 0;
 }
 
+// Set the cursor to a given x,y point where 0<=x<=79 and 0<=y<=24
 void TerminalSetCursor(size_t x, size_t y)
 {
-	if (!IsTerminalMode()) { return; }
-
+	if (!IsTerminalMode() || x<0 || x>=80 || y<0 || y>=25)
+	{
+		return;
+	}
 }

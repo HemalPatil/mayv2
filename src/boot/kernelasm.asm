@@ -10,6 +10,7 @@ kernel_stack:
 
 section .lowerhalf
 	global kernel_start
+	; rdi will hve the address of the info table. DO NOT trash it.
 kernel_start:		; Execution starts here. 32-bit code cannot jump to 64-bit address. Hence, we first jump to 0x80000000 and then jump to 0xffffffff80000000
 	mov ax,0x38		; 64-bit data segment
 	mov ds,ax
@@ -23,6 +24,7 @@ section .text
 	global test1
 	extern KernelMain
 higher_half_start:
+	and rdi, 0x00000000ffffffff	; rdi contains info table address, pass it as 1st parameter to KernelMain
 	call KernelMain
 kernel_end:
 	cli

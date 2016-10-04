@@ -44,8 +44,8 @@ struct ELF64ProgramHeader
 } __attribute__((packed));
 typedef struct ELF64ProgramHeader ELF64ProgramHeader;
 
-
-// Right now we just need present, r/w and address fields. Hence all the 4 structures are using a common struct
+// 64-bit long mode paging structures
+// Right now in this very early stage of system initialization we just need present, r/w and address fields. Hence all the 4 structures are using a common struct
 struct PML4E
 {
 	uint8_t Present:1;
@@ -80,7 +80,7 @@ extern void memset(void* const, const uint8_t, const size_t);
 extern void memcopy(const void* const src, void const* dest, const size_t count);
 extern void Setup16BitSegments(const uint16_t* const, const void* const, const DAP* const, const uint16_t);
 extern void LoadKernelELFSectors();
-extern void JumpToKernel(PML4E*);
+extern void JumpToKernel(PML4E*, uint16_t*);
 extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
 
@@ -354,7 +354,6 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 		PrintString("\nKernel executable corrupted! Cannot boot!");
 		return 1;
 	}
-	//uint64_t KernelEntry = *((uint64_t*)(KernelELFBase + 24));
 	uint32_t ProgramHeaderTable = *((uint32_t*)(KernelELFBase + 32));
 	uint16_t ProgramHeaderEntrySize = *((uint16_t*)(KernelELFBase + 54));
 	uint16_t ProgramHeaderEntries = *((uint16_t*)(KernelELFBase + 56));
@@ -441,7 +440,7 @@ int Loader32Main(uint16_t* InfoTableAddress, DAP* const DAPKernel64Address, cons
 		}
 	}
 
-	JumpToKernel(PML4T);	// Jump to kernel. Code beyond this should never get executed.
+	JumpToKernel(PML4T, InfoTableAddress);	// Jump to kernel. Code beyond this should never get executed.
 	ClearScreen();
 	PrintString("Fatal error : Cannot boot!");
 	return 1;

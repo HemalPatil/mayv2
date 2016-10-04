@@ -1,7 +1,12 @@
-#include"kernel.h"
+#include "kernel.h"
 
-void KernelMain()
+// First C-function to be called
+void KernelMain(uint16_t* InfoTableAddress)
 {
-	TerminalClearScreen();
-	TerminalSetCursor(0, 0);
+	InfoTable = InfoTableAddress;
+
+	//TerminalClearScreen();
+	//TerminalSetCursor(0, 0);
+
+	uint64_t mem = GetKernelSize();
 }

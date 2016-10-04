@@ -264,7 +264,9 @@ JumpToKernel:
 	or eax, 1<<31
 	mov cr0,eax
 	cli					; Disable interrupts. Although interrupts have been disabled till now, one must disable them just to be sure
+	mov edi, [ebp+12]
 	jmp 0x30:0x80000000		; 0x30 is 64-bit code segment
+	; Code beyond this should never get executed
 	mov esp,ebp
 	pop ebp
 	ret
