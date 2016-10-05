@@ -5,8 +5,8 @@ void KernelMain(uint16_t* InfoTableAddress)
 {
 	InfoTable = InfoTableAddress;
 
-	//TerminalClearScreen();
-	//TerminalSetCursor(0, 0);
+	//OutputByte(0x160, 0xca);
 
-	uint64_t mem = GetKernelSize();
+	//TerminalClearScreen();
+	TerminalSetCursor(79, 0);
 }

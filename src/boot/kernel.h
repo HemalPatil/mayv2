@@ -45,3 +45,6 @@ bool InitializeVirtualMemory();
 // float.c
 //bool FPUExists();
 //bool InitializeFPU();
+
+// io.c
+void OutputByte(uint16_t port, uint8_t byte);

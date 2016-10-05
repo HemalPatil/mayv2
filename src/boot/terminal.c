@@ -29,6 +29,7 @@ void TerminalClearScreen()
 {
 	if (!IsTerminalMode()) { return; }
 	// Following code is inline assembly using AT&T syntax for the GCC assemlber
+	// set 4000 bytes of framebuffer at 0xb8000 to white text on black screen
 	asm("push %rax\n"
 		"push %rdi\n"
 		"push %rcx\n"
@@ -40,6 +41,7 @@ void TerminalClearScreen()
 		"pop %rdi\n"
 		"pop %rax");
 	CursorX = CursorY = 0;
+	TerminalSetCursor(0, 0);
 }
 
 // Set the cursor to a given x,y point where 0<=x<=79 and 0<=y<=24
@@ -49,4 +51,9 @@ void TerminalSetCursor(size_t x, size_t y)
 	{
 		return;
 	}
+	size_t position = y * 80 + x;	// Multiply 80 to row and add column to it
+	OutputByte(0x3d4, 0x0f);	// Cursor LOW port to VGA INDEX register
+	OutputByte(0x3d5, (uint8_t)(position & 0xff));
+	OutputByte(0x3d4, 0x0e);	// Cursor HIGH port to VGA INDEX register
+	OutputByte(0x3d5, (uint8_t)((position >> 8) & 0xff));
 }

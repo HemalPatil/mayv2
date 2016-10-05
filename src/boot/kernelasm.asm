@@ -16,7 +16,7 @@ kernel_start:		; Execution starts here. 32-bit code cannot jump to 64-bit addres
 	mov ds,ax
 	mov es,ax
 	mov ss,ax
-	mov rax, higher_half_start
+	mov rax, higher_half_start	; Since higher half of the kernel is at a distance of more than 2 GiB, we put the address of higher half in RAX and then jump to it
 	jmp rax
 
 section .text
