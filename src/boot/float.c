@@ -2,5 +2,5 @@
 
 bool FPUExists()
 {
-
+	return true;
 }

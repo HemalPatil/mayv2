@@ -36,15 +36,16 @@ include $(dir)/Rules.mk
 
 # Remove all contents of the ISO and build directories
 clean:
-	rm -rf ISO
-	rm -rf build
-	rm mayv2.iso
-	mkdir ISO build
+	@echo "Cleaning working directory"
+	-@rm -rf ISO
+	-@rm -rf build
+	-@rm -f mayv2.iso
 
 # Create directory structure after cleaning the directory 
 directories:
 	@echo "Making ISO and build directory structure"
-	-@mkdir $(ISO_DIRECTORIES) $(BUILD_DIRECTORIES)
+	@mkdir ISO build
+	@mkdir $(ISO_DIRECTORIES) $(BUILD_DIRECTORIES)
 
 all: mayv2.iso
 

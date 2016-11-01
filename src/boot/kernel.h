@@ -28,7 +28,7 @@ void KernelMain(uint16_t *InfoTableAddress);
 // terminal.c
 bool IsTerminalMode();
 void TerminalClearScreen();
-void TerminalSetCursor(size_t x, size_t y);
+void TerminalSetCursorPosition(size_t x, size_t y);
 
 // phymemmgmt.c
 struct ACPI3Entry* GetMMAPBase();
@@ -48,3 +48,7 @@ bool InitializeVirtualMemory();
 
 // io.c
 void OutputByte(uint16_t port, uint8_t byte);
+
+// Assembly level functions
+// kernellib.asm
+extern void HaltSystem();

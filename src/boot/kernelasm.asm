@@ -21,7 +21,6 @@ kernel_start:		; Execution starts here. 32-bit code cannot jump to 64-bit addres
 
 section .text
 	global higher_half_start
-	global test1
 	extern KernelMain
 higher_half_start:
 	and rdi, 0x00000000ffffffff	; rdi contains info table address, pass it as 1st parameter to KernelMain

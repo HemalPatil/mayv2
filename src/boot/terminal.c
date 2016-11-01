@@ -41,13 +41,13 @@ void TerminalClearScreen()
 		"pop %rdi\n"
 		"pop %rax");
 	CursorX = CursorY = 0;
-	TerminalSetCursor(0, 0);
+	TerminalSetCursorPosition(0, 0);
 }
 
 // Set the cursor to a given x,y point where 0<=x<=79 and 0<=y<=24
-void TerminalSetCursor(size_t x, size_t y)
+void TerminalSetCursorPosition(size_t x, size_t y)
 {
-	if (!IsTerminalMode() || x<0 || x>=80 || y<0 || y>=25)
+	if (!IsTerminalMode() || x>=80 || y>=25)
 	{
 		return;
 	}
