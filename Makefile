@@ -18,21 +18,33 @@ CWARNINGS:=-Wall -Wextra
 LD64:=x86_64-elf-ld
 CC64:=x86_64-elf-gcc
 
-# root directories
+# Root directories
 SRCDIR := src
 ISODIR := ISO
 BUILDDIR := build
+UTILITIESDIR := utilities
 
 # The directory structure in the above root directories
 SRC_DIRECTORIES:= $(shell find $(SRCDIR) -type d -printf "%d\t%P\n" | sort -nk1 | cut -f2-)
 ISO_DIRECTORIES:= $(addprefix $(ISODIR)/,$(shell echo "$(SRC_DIRECTORIES)" | tr a-z A-Z))
 BUILD_DIRECTORIES:= $(addprefix $(BUILDDIR)/,$(SRC_DIRECTORIES))
 
-.PHONY: all clean directories
+# Source files
+CFILES := $(shell find $(addprefix $(SRCDIR)/,$(SRC_DIRECTORIES)) $(UTILITIESDIR) -type f -name "*.c")
+CPPFILES := $(shell find $(addprefix $(SRCDIR)/,$(SRC_DIRECTORIES)) $(UTILITIESDIR) -type f -name "*.cpp")
+HEADERFILES := $(shell find $(addprefix $(SRCDIR)/,$(SRC_DIRECTORIES)) $(UTILITIESDIR) -type f -name "*.h")
+ASMFILES := $(shell find $(addprefix $(SRCDIR)/,$(SRC_DIRECTORIES)) $(UTILITIESDIR) -type f -name "*.asm")
+ALLSRCFILES := $(CFILES) $(CPPFILES) $(HEADERFILES) $(ASMFILES)
+
+.PHONY: all clean directories todolist
 
 # Include the rules from subdirectories recursively using stack-like structure (See implementing non-recursive make article https://evbergen.home.xs4all.nl/nonrecursive-make.html)
 dir:=$(SRCDIR)/boot
 include $(dir)/Rules.mk
+
+# Show all TODOs in all source files
+todolist:
+	-@for file in $(ALLSRCFILES); do fgrep -H -e TODO -e FIXME $$file; done; true
 
 # Remove all contents of the ISO and build directories
 clean:
@@ -47,11 +59,12 @@ directories:
 	@mkdir ISO build
 	@mkdir $(ISO_DIRECTORIES) $(BUILD_DIRECTORIES)
 
+# Generate the ISO containing the OS and all required files
 all: mayv2.iso
 
-mayv2.iso: utilities/format_iso $(DIR_BOOT)
+mayv2.iso: $(UTILITIESDIR)/format_iso $(DIR_BOOT)
 	$(ISOMAKER) -quiet -no-emul-boot -boot-load-size 4 -b BOOT/STAGE1/BOOTLOAD.BIN -o $@ ./$(ISODIR)/
-	./utilities/format_iso $@
+	./$(UTILITIESDIR)/format_iso $@
 
 utilities/format_iso: utilities/format_iso.cpp
 	$(CXX) $^ -o $@
