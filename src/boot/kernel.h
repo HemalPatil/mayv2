@@ -52,3 +52,7 @@ void OutputByte(uint16_t port, uint8_t byte);
 // Assembly level functions
 // kernellib.asm
 extern void HaltSystem();
+
+// Linker script symbols
+extern const uint64_t __IDT_START;
+extern const uint64_t __IDT_END;

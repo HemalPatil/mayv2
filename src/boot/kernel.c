@@ -19,4 +19,9 @@ void KernelMain(uint16_t* InfoTableAddress)
 		//KernelPanic();
 		HaltSystem();
 	}
+
+	uint64_t idtstart = (uint64_t)(&__IDT_START);
+	uint64_t idtend = (uint64_t)(&__IDT_END);
+
+	TerminalSetCursorPosition((size_t) idtstart, (size_t)idtend);
 }

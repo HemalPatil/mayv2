@@ -9,6 +9,12 @@ SECTIONS
 	}
 
 	. = 0xffffffff80000000;
+	__IDT_START = .;
+	.IDT : ALIGN(0x1000)
+	{
+		*(.IDT);
+	}
+	__IDT_END = .;
 	.text : ALIGN(0x1000)
 	{
 		*(.text);
