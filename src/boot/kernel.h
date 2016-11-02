@@ -24,6 +24,7 @@ uint16_t *InfoTable;
 
 // kernel.c
 void KernelMain(uint16_t *InfoTableAddress);
+void KernelPanic();
 
 // terminal.c
 bool IsTerminalMode();

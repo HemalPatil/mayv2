@@ -3,6 +3,7 @@
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool InitializePhysicalMemory()
 {
+	// TODO : add initialize phy mem implementation
 	return true;
 }
 

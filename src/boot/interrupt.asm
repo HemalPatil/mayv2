@@ -5,4 +5,4 @@
 section .IDT
 	global InterruptDescriptorTable
 InterruptDescriptorTable:
-	dw 0
+	times 65536 - ($-$$) db 0	; Make the IDT 64 KiB long

@@ -9,5 +9,6 @@ uint64_t GetKernelSize()
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool InitializeVirtualMemory()
 {
+	// TODO : add initialize vir mem implementation
 	return true;
 }

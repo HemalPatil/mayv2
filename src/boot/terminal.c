@@ -15,7 +15,7 @@ bool TerminalModeVGA80_25 = true;
 // This mode is initialized by the LOADER32
 char* const TerminalVideoMemory = (char*)0xb8000;
 const size_t VGAWidth = 80, VGAHeight = 25;
-size_t CursorX = 0, CursorY = 0;
+size_t TerminalCursorX = 0, TerminalCursorY = 0;
 
 // Check if video mode is 80x25 VGA
 bool IsTerminalMode()
@@ -40,7 +40,7 @@ void TerminalClearScreen()
 		"pop %rcx\n"
 		"pop %rdi\n"
 		"pop %rax");
-	CursorX = CursorY = 0;
+	TerminalCursorX = TerminalCursorY = 0;
 	TerminalSetCursorPosition(0, 0);
 }
 

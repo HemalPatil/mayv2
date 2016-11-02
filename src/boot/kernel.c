@@ -9,19 +9,17 @@ void KernelMain(uint16_t* InfoTableAddress)
 
 	if (!InitializePhysicalMemory())
 	{
-		// TODO : add implementation of kernel panic
-		//KernelPanic();
-		HaltSystem();
+		KernelPanic();
 	}
 
 	if (!InitializeVirtualMemory())
 	{
-		//KernelPanic();
-		HaltSystem();
+		KernelPanic();
 	}
+}
 
-	uint64_t idtstart = (uint64_t)(&__IDT_START);
-	uint64_t idtend = (uint64_t)(&__IDT_END);
-
-	TerminalSetCursorPosition((size_t) idtstart, (size_t)idtend);
+void KernelPanic()
+{
+	// TODO : add kernel panic implementation
+	HaltSystem();
 }
