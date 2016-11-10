@@ -55,5 +55,9 @@ void OutputByte(uint16_t port, uint8_t byte);
 extern void HaltSystem();
 
 // Linker script symbols
+extern const uint64_t __GDT_START;
+extern const uint64_t __GDT_END;
 extern const uint64_t __IDT_START;
 extern const uint64_t __IDT_END;
+extern const uint64_t __TSS_START;
+extern const uint64_t __TSS_END;
