@@ -16,6 +16,7 @@ __GDT_START:
 	dq 0x0020920000000000
 
 ; 64 bit TSS descriptor
+	; TSS base address to be filled in at runtime
 	dw 104	; TSS size
 	dw 0	; TSS base[0..15]
 	db 0	; TSS base[16..23]

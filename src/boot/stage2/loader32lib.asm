@@ -2,6 +2,20 @@
 
 section .rodata
 	global hexspace
+	; We are having of the copy of the initial GDT from kernel
+	; here because doing far jumps in 64-bit mode is tedious
+	; so to change the cs selector, we will load a copy of GDT from here itself
+	; do a far jump and then just change base of GDT to a 64-bit address
+KernelGDTcopy:
+	;null entry
+	dq 0
+	; 64 bit code segment
+	dq 0x00209a0000000000
+	; 64 bit data segment
+	dq 0x0020920000000000
+GDTDescriptor:
+	dw $ - KernelGDTcopy -1
+	dd KernelGDTcopy
 hexspace db '0123456789ABCDEF',0
 
 section .data
@@ -265,7 +279,8 @@ JumpToKernel:
 	mov cr0,eax
 	cli					; Disable interrupts. Although interrupts have been disabled till now, one must disable them just to be sure
 	mov edi, [ebp+12]
-	jmp 0x30:0x80000000		; 0x30 is 64-bit code segment
+	lgdt [GDTDescriptor]	; shift to kernel GDT
+	jmp 0x8:0x80000000		; 0x8 is 64-bit code segment
 	; Code beyond this should never get executed
 	mov esp,ebp
 	pop ebp

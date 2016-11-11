@@ -9,13 +9,13 @@
 // at 0xb8000 or manipulating the frame buffer, always make sure that video mode is VGA 80x25 16 bit colour mode
 // This is done by calling IsTerminalMode()
 
-bool TerminalModeVGA80_25 = true;
+static bool TerminalModeVGA80_25 = true;
 
 // Our terminal is always in VGA 80x25 16 bit colour mode
 // This mode is initialized by the LOADER32
-char* const TerminalVideoMemory = (char*)0xb8000;
-const size_t VGAWidth = 80, VGAHeight = 25;
-size_t TerminalCursorX = 0, TerminalCursorY = 0;
+static char* const TerminalVideoMemory = (char*)0xb8000;
+static const size_t VGAWidth = 80, VGAHeight = 25;
+static size_t TerminalCursorX = 0, TerminalCursorY = 0;
 
 // Check if video mode is 80x25 VGA
 bool IsTerminalMode()

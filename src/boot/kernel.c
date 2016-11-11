@@ -16,6 +16,8 @@ void KernelMain(uint16_t* InfoTableAddress)
 	{
 		KernelPanic();
 	}
+
+	TerminalSetCursorPosition(0,1);
 }
 
 void KernelPanic()

@@ -100,21 +100,11 @@ start:
 	mov dword [es:bx],0xffff			; ds limit[0..15](low), base[0..15](high)
 	mov dword [es:bx + 4],0x9200		; ds base[16..23](low8), access flags, lim[16..19], flags, base[24..31](high)
 
-;segment selector 0x30
-	add bx,8							; 64-bit long mode code segment for kernel64
-	mov dword [es:bx],0
-	mov dword [es:bx + 4],0x209a00
-
-;segment selector 0x38
-	add bx,8							; 64-bit long mode data segment for kernel64
-	mov dword [es:bx],0
-	mov dword [es:bx + 4],0x209200
-
 	mov bx,[bp+8]					; GDT descriptor is in our custom table at offset 12
 	mov es,bx
 	mov bx,[bp+6]
 	add bx,12
-	mov word [es:bx],63				; 8 entries as of now (null,cs32,ds32,tss,cs16,ds16,cs64,ds64)
+	mov word [es:bx],47				; 6 entries as of now (null,cs32,ds32,tss,cs16,ds16)
 	mov dword [es:bx + 2],0x00010000		; our GDT is at 0x00010000 to 0x00020000
 
 	pop ds
