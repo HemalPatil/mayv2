@@ -24,6 +24,6 @@ __GDT_START:
 	dw 0x10	; TSS flags and limit[16..19] and base[24..31]
 	dq 0	; TSS base[32..63] and reserved dword
 
-	times 65536 - ($-$$) db 0	; Make the GDT 64 KiB long
+	times 4096 - ($-$$) db 0	; Make the GDT 4 KiB long
 
 __GDT_END:

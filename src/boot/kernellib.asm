@@ -3,9 +3,9 @@
 ; Assembly level routines
 
 section .text
-	global HaltSystem
-HaltSystem:
+	global HangSystem
+HangSystem:
 	cli
 	hlt
-	jmp HaltSystem
-	ret	; reduntant since system should exit from here
+	jmp HangSystem
+	ret	; reduntant since system should not exit from here

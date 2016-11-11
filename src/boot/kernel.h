@@ -52,7 +52,10 @@ void OutputByte(uint16_t port, uint8_t byte);
 
 // Assembly level functions
 // kernellib.asm
-extern void HaltSystem();
+extern void HangSystem();
+
+// idt64.asm
+extern void PopulateIDTWithOffsets();
 
 // Linker script symbols
 extern const uint64_t __GDT_START;

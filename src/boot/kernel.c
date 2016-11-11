@@ -7,6 +7,8 @@ void KernelMain(uint16_t* InfoTableAddress)
 	// gained during system boot; and the information that is best found out about in real mode.
 	InfoTable = InfoTableAddress;
 
+	PopulateIDTWithOffsets();
+
 	if (!InitializePhysicalMemory())
 	{
 		KernelPanic();
@@ -23,5 +25,5 @@ void KernelMain(uint16_t* InfoTableAddress)
 void KernelPanic()
 {
 	// TODO : add kernel panic implementation
-	HaltSystem();
+	HangSystem();
 }

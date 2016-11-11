@@ -9,6 +9,7 @@ kernel_stack:
 
 section .lowerhalf
 	extern GDTDescriptor
+	extern IDTDescriptor
 	extern __GDT_START
 	extern __TSS_START
 	global kernel_start
@@ -22,11 +23,12 @@ kernel_start:		; Execution starts here. 32-bit code of the loader cannot jump to
 	mov rsp, kernel_stack + KERNEL_STACK_SIZE
 	xor rbp, rbp
 
-	; Setup 64-bit GDT and TSS
+	; Setup 64-bit GDT
 	mov rax, GDTDescriptor
 	lgdt [rax]	; load new GDT
 
-	; Setup TSS
+	; We initialize TSS first because ISTs in IDT requires TSS
+	; Setup 64 bit TSS
 	mov rdx, __GDT_START
 	add rdx, 0x1a	; point to TSS descriptor byte 2
 	mov rax, __TSS_START
@@ -40,6 +42,10 @@ kernel_start:		; Execution starts here. 32-bit code of the loader cannot jump to
 	mov ax, 0x18
 	ltr ax
 
+	; Setup 64 bit IDT
+	mov rax, IDTDescriptor
+	lidt [rax]	; load the IDT
+
 	mov rax, higher_half_start	; Since higher half of the kernel is at a distance of more than 2 GiB, we put the address of higher half in RAX and then jump to it
 	jmp rax
 
@@ -49,6 +55,7 @@ section .text
 higher_half_start:
 	and rdi, 0x00000000ffffffff	; rdi contains info table address, pass it as 1st parameter to KernelMain
 	call KernelMain
+	; code beyond this should never get executed technically
 kernel_end:
 	cli
 	hlt
