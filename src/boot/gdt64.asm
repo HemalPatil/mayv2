@@ -9,13 +9,13 @@ __GDT_START:
 ; null entry
 	dq 0
 
-; 64 bit code segment descriptor
+; selector 0x8 - 64 bit code segment descriptor
 	dq 0x00209a0000000000
 
-; 64 bit data segment descriptor
+; selector 0x10 - 64 bit data segment descriptor
 	dq 0x0020920000000000
 
-; 64 bit TSS descriptor
+; selector 0x18 - 64 bit TSS descriptor
 	; TSS base address to be filled in at runtime
 	dw 104	; TSS size
 	dw 0	; TSS base[0..15]
