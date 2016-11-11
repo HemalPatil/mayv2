@@ -2,6 +2,15 @@
 
 ; IDT for 64 bit mode
 
+IST1_STACK_SIZE equ 4096 ; 64 KiB stack
+
+;Reserve space for IST1 stack
+section .IST1STACK
+	global IST1_stack_end
+IST1_stack:
+	times IST1_STACK_SIZE db 0
+IST1_stack_end:
+
 section .IDT64
 	global __IDT_START
 	global __IDT_END

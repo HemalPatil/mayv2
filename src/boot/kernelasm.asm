@@ -3,10 +3,9 @@
 KERNEL_STACK_SIZE equ 65536 ; 64 KiB stack
 
 ;Reserve space for stack
-section .bss
-	global kernel_stack
+section .KERNELSTACK
 kernel_stack:
-	resb KERNEL_STACK_SIZE
+	times KERNEL_STACK_SIZE db 0
 
 section .lowerhalf
 	extern GDTDescriptor
@@ -20,6 +19,8 @@ kernel_start:		; Execution starts here. 32-bit code of the loader cannot jump to
 	mov ds,ax
 	mov es,ax
 	mov ss,ax
+	mov rsp, kernel_stack + KERNEL_STACK_SIZE
+	xor rbp, rbp
 
 	; Setup 64-bit GDT and TSS
 	mov rax, GDTDescriptor
@@ -36,8 +37,6 @@ kernel_start:		; Execution starts here. 32-bit code of the loader cannot jump to
 	mov [rdx + 5], al	; move base[24..31] of TSS 
 	shr rax, 8
 	mov [rdx + 6], eax	; move base[32..63] of TSS
-
-setup_tss:
 	mov ax, 0x18
 	ltr ax
 

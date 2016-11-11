@@ -8,26 +8,28 @@ section .TSS64
 	extern __GDT_END
 	extern __IDT_START
 	extern __IDT_END
+	extern IST1_stack_end
 	global __TSS_START
 	global __TSS_END
 	global GDTDescriptor
 	global IDTDescriptor
 	global NewGDTFarJump
 __TSS_START:
-	dq 0
-	dq 0
-	dq 0
-	dq 0
-	dd 0
-	dq 0	; IST1 entry (Interrupt Stack Table)
-	dq 0
-	dq 0
-	dq 0
-	dq 0
-	dq 0
-	dq 0
-	dq 0
-	dd 0
+reserved	dd 0
+rsp0		dq 0
+rsp1		dq 0
+rsp2		dq 0
+reserved1	dq 0
+IST1		dq IST1_stack_end
+IST2		dq 0
+IST3		dq 0
+IST4		dq 0
+IST5		dq 0
+IST6		dq 0
+IST7		dq 0
+reserved2	dq 0
+reserved3	dw 0
+iomapbase	dw 0
 __TSS_END:
 
 	; to save space in other sections we are declaring these variables here

@@ -24,6 +24,16 @@ SECTIONS
 		*(.TSS64);
 	}
 
+	.KERNELSTACK : ALIGN(0x1000)
+	{
+		*(.KERNELSTACK);
+	}
+
+	.IST1STACK : ALIGN(0x1000)
+	{
+		*(.IST1STACK);
+	}
+
 	.text : ALIGN(0x1000)
 	{
 		*(.text);
