@@ -15,13 +15,13 @@ BOOT_ASMOBJFILES:= $(patsubst $(SRCDIR)/boot/%.asm,$(BUILDDIR)/boot/%.o,$(shell 
 BOOT_COBJFILES:= $(patsubst $(SRCDIR)/boot/%.c,$(BUILDDIR)/boot/%.o,$(shell find $(SRCDIR)/boot -maxdepth 1 -type f -name "*.c"))
 
 $(ISODIR)/BOOT/KERNEL: $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) $(SRCDIR)/boot/link.ld
-	$(LD64) -o $@ $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) -T $(SRCDIR)/boot/link.ld -z max-page-size=0x1000
+	$(LD64) $(LD64FLAGS) -o $@ $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) -T $(SRCDIR)/boot/link.ld -z max-page-size=0x1000
 
 $(BUILDDIR)/boot/%.o: $(SRCDIR)/boot/%.asm
 	$(NASM64) $@ $^
 
 $(BUILDDIR)/boot/%.o: $(SRCDIR)/boot/%.c
-	$(CC64) -o $@ -c $^ $(CWARNINGS) -ffreestanding
+	$(CC64) -o $@ -c $^ $(CWARNINGS) $(CC64FLAGS)
 
 # Remove elements from directory stack
 d:= $(dirstack_$(sp))

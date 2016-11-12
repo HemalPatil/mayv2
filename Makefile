@@ -16,7 +16,9 @@ CWARNINGS:=-Wall -Wextra
 
 # Necessary flags and compiler and linker names required for generating binaries for x64
 LD64:=x86_64-elf-ld
+LD64FLAGS:=-b elf64-x86-64
 CC64:=x86_64-elf-gcc
+CC64FLAGS:=-ffreestanding -m64 -march=x86-64 -I/mnt/d/Hemal/OSDev2/mayv2/src/include
 
 # Root directories
 SRCDIR := src

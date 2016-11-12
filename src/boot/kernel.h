@@ -30,6 +30,8 @@ void KernelPanic();
 bool IsTerminalMode();
 void TerminalClearScreen();
 void TerminalSetCursorPosition(size_t x, size_t y);
+void TerminalPrintString(const char* const str, const size_t length);
+void TerminalPutChar(char);
 
 // phymemmgmt.c
 struct ACPI3Entry* GetMMAPBase();

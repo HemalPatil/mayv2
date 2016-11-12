@@ -1,6 +1,7 @@
 #include "kernel.h"
+#include<string.h>
 
-// First C-function to be called
+// First C function to be called
 void KernelMain(uint16_t* InfoTableAddress)
 {
 	// InfoTable is our custom structure which has some essential information about the system
@@ -19,7 +20,7 @@ void KernelMain(uint16_t* InfoTableAddress)
 		KernelPanic();
 	}
 
-	TerminalSetCursorPosition(0,1);
+	TerminalSetCursorPosition(5,1);
 }
 
 void KernelPanic()
