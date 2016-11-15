@@ -2,6 +2,6 @@
 
 bool FPUExists()
 {
-	// TODO : add implementation
+	// TODO : add fpu exists implementation
 	return true;
 }

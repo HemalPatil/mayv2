@@ -90,14 +90,15 @@ void TerminalPutChar(char c)
 }
 
 // Prints a string of given length to the terminal
-void TerminalPrintString(const char* const str, const size_t length)
+void TerminalPrintString(const char* str, const size_t length)
 {
 	// We are printing only length number of characters to
 	// the terminal to avoid buffer overrun which may be caused by no null char at end of string
 	if (!IsTerminalMode()) { return; }
 	for(size_t i=0; i<length; i++)
 	{
-		TerminalPutChar(str[i]);
+		TerminalPutChar(*str);
+		str++;
 	}
 	TerminalSetCursorPosition(TerminalCursorX, TerminalCursorY);
 }

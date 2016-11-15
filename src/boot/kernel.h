@@ -2,6 +2,8 @@
 #include<stdint.h>
 #include<stddef.h>
 #include<stdbool.h>
+// custom c standard library includes
+
 
 #define ACPI3_MemType_Usable 1
 #define ACPI3_MemType_Reserved 2
@@ -26,12 +28,19 @@ uint16_t *InfoTable;
 void KernelMain(uint16_t *InfoTableAddress);
 void KernelPanic();
 
+// acpi.c
+bool InitializeACPI3();
+
 // terminal.c
 bool IsTerminalMode();
 void TerminalClearScreen();
 void TerminalSetCursorPosition(size_t x, size_t y);
 void TerminalPrintString(const char* const str, const size_t length);
 void TerminalPutChar(char);
+
+// interrupts.c
+bool SetupInterrupts();
+bool APICExists();
 
 // phymemmgmt.c
 struct ACPI3Entry* GetMMAPBase();
@@ -46,7 +55,7 @@ uint64_t GetKernelSize();
 bool InitializeVirtualMemory();
 
 // float.c
-//bool FPUExists();
+bool FPUExists();
 //bool InitializeFPU();
 
 // io.c
