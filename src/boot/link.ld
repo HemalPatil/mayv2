@@ -29,9 +29,9 @@ SECTIONS
 		*(.KERNELSTACK);
 	}
 
-	.IST1STACK : ALIGN(0x1000)
+	.ISTs : ALIGN(0x1000)
 	{
-		*(.IST1STACK);
+		*(.ISTs);
 	}
 
 	.text : ALIGN(0x1000)

@@ -3,6 +3,11 @@
 bool SetupHardwareInterrupts()
 {
 	// TODO : add ioapic and hardware irq redirection
+	if(!APICExists())
+	{
+		return false;
+	}
+
 	return true;
 }
 
@@ -14,16 +19,4 @@ bool APICExists()
 		"shr $0x9, %edx\n"
 		"xor %rax, %rax\n"
 		"mov %edx, %eax");
-}
-
-bool SetupInterrupts()
-{
-	PopulateIDTWithOffsets();
-
-	if(!APICExists())
-	{
-		return false;
-	}
-
-	return SetupHardwareInterrupts();
 }

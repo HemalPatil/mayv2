@@ -9,6 +9,7 @@ section .TSS64
 	extern __IDT_START
 	extern __IDT_END
 	extern IST1_stack_end
+	extern IST2_stack_end
 	global __TSS_START
 	global __TSS_END
 	global GDTDescriptor
@@ -21,7 +22,7 @@ rsp1		dq 0
 rsp2		dq 0
 reserved1	dq 0
 IST1		dq IST1_stack_end
-IST2		dq 0
+IST2		dq IST2_stack_end
 IST3		dq 0
 IST4		dq 0
 IST5		dq 0

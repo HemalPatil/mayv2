@@ -3,8 +3,6 @@
 
 const char* HelloWorld = "Hello World!";
 const char* SystemInitializationFailed = "System initialization failed. Cannot boot. Halting the system";
-const char* str1 = "hello";
-const char* str2 = "Helwo";
 
 // First C-function to be called
 void KernelMain(uint16_t* InfoTableAddress)
@@ -13,24 +11,27 @@ void KernelMain(uint16_t* InfoTableAddress)
 	// gained during system boot; and the information that is best found out about in real mode.
 	InfoTable = InfoTableAddress;
 
-	if(!InitializeACPI3())
-	{
-		KernelPanic(SystemInitializationFailed);
-	}
-
-	if(!SetupInterrupts())
-	{
-		KernelPanic(SystemInitializationFailed);
-	}
-
+	// Do memory setup
 	if (!InitializePhysicalMemory())
 	{
 		KernelPanic(SystemInitializationFailed);
 	}
-
 	if (!InitializeVirtualMemory(SystemInitializationFailed))
 	{
 		KernelPanic();
+	}
+
+	// Get basic interrupts and exceptions setup
+	// Initializing ACPI will generate page faults while parsing ACPI tables
+	// so we must first fill the IDT with offsets to basic exceptions and interrupts
+	PopulateIDTWithOffsets();
+	if(!InitializeACPI3())
+	{
+		KernelPanic(SystemInitializationFailed);
+	}
+	if(!SetupHardwareInterrupts())
+	{
+		KernelPanic(SystemInitializationFailed);
 	}
 
 	TerminalSetCursorPosition(33,12);

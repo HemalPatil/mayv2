@@ -54,7 +54,8 @@ bool InitializeACPI3()
 		return false;
 	}
 
-
+	// will generate page fault because not memory mapped
+	uint8_t x = *((uint8_t*)rsdp->XSDTAddress);
 
 	return true;
 }
