@@ -2,7 +2,9 @@
 #include<string.h>
 
 const char* HelloWorld = "Hello World!";
-const char* SystemInitializationFailed = "System initialization failed. Cannot boot. Halting the system";
+const char* SystemInitializationFailed = "\nSystem initialization failed. Cannot boot. Halting the system\n";
+
+uint16_t *InfoTable;
 
 // First C-function to be called
 void KernelMain(uint16_t* InfoTableAddress)
@@ -41,8 +43,6 @@ void KernelMain(uint16_t* InfoTableAddress)
 void KernelPanic(const char* ErrorString)
 {
 	// TODO : add kernel panic implementation
-	TerminalClearScreen();
-	TerminalSetCursorPosition(0, 0);
 	TerminalPrintString(ErrorString, strlen(ErrorString));
 	HangSystem();
 }

@@ -65,11 +65,12 @@ void TerminalSetCursorPosition(size_t x, size_t y)
 
 void TerminalPutChar(char c)
 {
-	if(TerminalCursorX>=VGAWidth || TerminalCursorY>=VGAHeight)
+	if(!IsTerminalMode() ||  TerminalCursorX >= VGAWidth || TerminalCursorY >= VGAHeight)
 	{
+		TerminalCursorX = TerminalCursorY = 0;
 		return;
 	}
-	if(c=='\n')
+	if(c == '\n')
 	{
 		goto skip;
 	}
@@ -95,7 +96,7 @@ void TerminalPrintString(const char* str, const size_t length)
 	// We are printing only length number of characters to
 	// the terminal to avoid buffer overrun which may be caused by no null char at end of string
 	if (!IsTerminalMode()) { return; }
-	for(size_t i=0; i<length; i++)
+	for(size_t i = 0; i < length; i++)
 	{
 		TerminalPutChar(*str);
 		str++;

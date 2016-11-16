@@ -51,49 +51,51 @@ struct ACPISDTHeader
 typedef struct ACPISDTHeader ACPISDTHeader;
 
 // System information table (see docs for more info)
-uint16_t *InfoTable;
+extern uint16_t *InfoTable;
 
 // kernel.c
 // do not expose the KernelMain function to other files
-// void KernelMain(uint16_t *InfoTableAddress);
-void KernelPanic();
+//extern void KernelMain(uint16_t *InfoTableAddress);
+extern void KernelPanic();
 
 // acpi.c
-bool InitializeACPI3();
+extern bool InitializeACPI3();
 
 // terminal.c
-bool IsTerminalMode();
-void TerminalClearScreen();
-void TerminalSetCursorPosition(size_t x, size_t y);
-void TerminalPrintString(const char* const str, const size_t length);
-void TerminalPutChar(char);
+extern bool IsTerminalMode();
+extern void TerminalClearScreen();
+extern void TerminalSetCursorPosition(size_t x, size_t y);
+extern void TerminalPrintString(const char* const str, const size_t length);
+extern void TerminalPutChar(char);
 
 // interrupts.c
-bool SetupHardwareInterrupts();
-bool APICExists();
+extern bool SetupHardwareInterrupts();
+extern bool APICExists();
 
 // phymemmgmt.c
-struct ACPI3Entry* GetMMAPBase();
-size_t GetNumberOfMMAPEntries();
-uint64_t GetPhysicalMemorySize();
-uint64_t GetUsablePhysicalMemorySize();
-uint64_t GetKernelBasePhysicalMemory();
-bool InitializePhysicalMemory();
+extern struct ACPI3Entry* GetMMAPBase();
+extern size_t GetNumberOfMMAPEntries();
+extern uint64_t GetPhysicalMemorySize();
+extern uint64_t GetUsablePhysicalMemorySize();
+extern uint64_t GetKernelBasePhysicalMemory();
+extern bool InitializePhysicalMemory();
 
 // virtualmemmgmt.c
-uint64_t GetKernelSize();
-bool InitializeVirtualMemory();
+extern uint64_t GetKernelSize();
+extern bool InitializeVirtualMemory();
 
 // float.c
-bool FPUExists();
-//bool InitializeFPU();
+extern bool FPUExists();
+//extern bool InitializeFPU();
 
 // io.c
-void OutputByte(uint16_t port, uint8_t byte);
+extern void OutputByte(uint16_t port, uint8_t byte);
 
 // Assembly level functions
 // kernellib.asm
 extern void HangSystem();
+extern uint8_t GetLinearAddressLimit();
+extern uint8_t GetPhysicalAddressLimit();
 
 // idt64.asm
 extern void PopulateIDTWithOffsets();

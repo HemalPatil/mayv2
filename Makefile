@@ -41,6 +41,10 @@ ALLSRCFILES := $(CFILES) $(CPPFILES) $(HEADERFILES) $(ASMFILES)
 .PHONY: all clean directories todolist
 
 # Include the rules from subdirectories recursively using stack-like structure (See implementing non-recursive make article https://evbergen.home.xs4all.nl/nonrecursive-make.html)
+dir:=$(SRCDIR)/include
+include $(dir)/Rules.mk
+dir:=$(SRCDIR)/lib
+include $(dir)/Rules.mk
 dir:=$(SRCDIR)/boot
 include $(dir)/Rules.mk
 
@@ -64,7 +68,7 @@ directories:
 # Generate the ISO containing the OS and all required files
 all: mayv2.iso
 
-mayv2.iso: $(UTILITIESDIR)/format_iso $(DIR_BOOT)
+mayv2.iso: $(UTILITIESDIR)/format_iso $(DIR_INCLUDE) $(DIR_LIB) $(DIR_BOOT)
 	$(ISOMAKER) -quiet -no-emul-boot -boot-load-size 4 -b BOOT/STAGE1/BOOTLOAD.BIN -o $@ ./$(ISODIR)/
 	./$(UTILITIESDIR)/format_iso $@
 

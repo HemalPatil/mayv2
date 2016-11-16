@@ -1,9 +1,21 @@
 #include "kernel.h"
 
+static uint64_t FreePhysicalMemory = 0;
+
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool InitializePhysicalMemory()
 {
 	// TODO : add initialize phy mem implementation
+	uint64_t size = GetPhysicalMemorySize();
+
+	// remove the size of kernel from this usable memory
+	// also make first 1MiB of physical memory unusable, we have important structures there
+	// although some areas of the first 1MiB are already decalred unusable
+	// by GetUsablePhysicalMemorySize, we are ignoring this overlapping memory (size : around 240 KiB), it won't make much difference
+	FreePhysicalMemory = GetUsablePhysicalMemorySize() - GetKernelSize() - 0x100000;
+
+	
+
 	return true;
 }
 
