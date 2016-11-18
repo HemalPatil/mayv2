@@ -79,6 +79,10 @@ extern uint64_t GetPhysicalMemorySize();
 extern uint64_t GetUsablePhysicalMemorySize();
 extern uint64_t GetKernelBasePhysicalMemory();
 extern bool InitializePhysicalMemory();
+//extern void AllocatePhysicalMemoryContiguous();
+//extern void AllocatePhysicalMemory();
+extern void MarkPhysicalPagesAsUsed(uint64_t address, size_t NumberOfPages);
+extern bool IsPhysicalPageAvailable(uint64_t address, size_t NumberOfPages);
 
 // virtualmemmgmt.c
 extern uint64_t GetKernelSize();

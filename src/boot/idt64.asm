@@ -28,7 +28,7 @@ __IDT_START:
 PageFaultDescriptor:
 	dw 0	; offset[0..15]
 	dw 0x8	; 64 bit code segment selector
-	dw 0x8e01	; descriptor type and IST index
+	dw 0x8e02	; descriptor type and IST index
 	dw 0	; offset[16..31]
 	dq 0	; offset[32..63] and reserved
 
@@ -45,7 +45,7 @@ Interrupt32Descriptor:
 __IDT_END:
 
 section .rodata:
-	PageFaultString db 10, 'Page Fault Exception', 10, 0, 0
+	PageFaultString db 10, 'Page Fault', 10, 0, 0, 0, 0
 
 section .text
 	extern TerminalPrintString
@@ -70,11 +70,13 @@ FillOffsets:
 PageFaultHandler:
 	mov r8, 0xdeadbeefdeadc0de
 	mov rdi, PageFaultString
-	mov rsi, 22
+	mov rsi, 12
 	call TerminalPrintString
+	pop r8	; Pop the 32 bit error code in thrashable register
 	hlt
 	iretq
 
 Interrupt32Handler:
+	; TODO : add interrupt 32 handler implementation
 	mov r8, 0xdeadc0de
-	hlt
+	iretq

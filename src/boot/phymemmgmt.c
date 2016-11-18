@@ -1,12 +1,24 @@
 #include "kernel.h"
 
 static uint64_t FreePhysicalMemory = 0;
+static uint64_t AllocatorBuffer[512] = {0};
+static size_t AllocatorIndex = 0;
+static char *BuddyStructure;
+static size_t BuddyStructureSize = 0;
+static size_t BuddyLevels = 0;
+static size_t NumberOfPhysicalPages = 0;
+static const size_t PhyPageSize = 0x1000;
 
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool InitializePhysicalMemory()
 {
 	// TODO : add initialize phy mem implementation
-	uint64_t size = GetPhysicalMemorySize();
+	uint64_t PhyMemSize = GetPhysicalMemorySize();
+	NumberOfPhysicalPages = PhyMemSize / PhyPageSize;
+	if(PhyMemSize % PhyPageSize)
+	{
+		NumberOfPhysicalPages++;
+	}
 
 	// remove the size of kernel from this usable memory
 	// also make first 1MiB of physical memory unusable, we have important structures there
@@ -14,9 +26,38 @@ bool InitializePhysicalMemory()
 	// by GetUsablePhysicalMemorySize, we are ignoring this overlapping memory (size : around 240 KiB), it won't make much difference
 	FreePhysicalMemory = GetUsablePhysicalMemorySize() - GetKernelSize() - 0x100000;
 
-	
+	// we have physical memory available right after the kernel,
+	// this is where we will be setting up our buddy allocator structure
+	// at this stage this region of memory has the kernel elf that was loaded
+	uint64_t temp = 1;
+	while(temp < NumberOfPhysicalPages)
+	{
+		temp *= 2;
+		BuddyLevels++;
+	}
+	if(temp >= NumberOfPhysicalPages)
+	{
+		BuddyLevels++;
+	}
+	// TODO : we need to make sure the entire buddy structure is mapped in virtual memory
+	BuddyStructure = (char*)(GetKernelBasePhysicalMemory() + GetKernelSize());
+	// we have 2 bits for each page, hence we require twice the size, divide by 3 to get size in bytes
+	BuddyStructureSize = (uint64_t)1 << (BuddyLevels + 1 - 3);
+	memset((void*)BuddyStructure, 0, BuddyStructureSize);
 
 	return true;
+}
+
+// marks physical pages as used in the physical memory allocator
+void MarkPhysicalPagesAsUsed(uint64_t address, size_t NumberOfPages)
+{
+
+}
+
+// returns true if all the physical pages starting at given address are free, false if even one page is allocated
+bool IsPhysicalPageAvailable(uint64_t address, size_t NumberOfPages)
+{
+
 }
 
 // Get base address of array of MMAP entries
