@@ -45,13 +45,32 @@ bool InitializePhysicalMemory()
 	BuddyStructureSize = (uint64_t)1 << (BuddyLevels + 1 - 3);
 	memset((void*)BuddyStructure, 0, BuddyStructureSize);
 
+	// Mark non exitstant areas of memory as in-use
+	MarkPhysicalPagesAsUsed(PhyMemSize, temp - NumberOfPhysicalPages);
+
+	// Mark areas from memory map that are not usable to in-use list
+	struct ACPI3Entry *mmap = GetMMAPBase();
+	const size_t n = GetNumberOfMMAPEntries();
+	for(size_t i = 0; i < n; i++)
+	{
+		if(mmap[i].RegionType != ACPI3_MemType_Usable)
+		{
+			uint64_t templen = mmap[i].Length / PhyPageSize;
+			if(mmap[i].Length % PhyPageSize)
+			{
+				templen++;
+			}
+			MarkPhysicalPagesAsUsed(mmap[i].BaseAddress, templen);
+		}
+	}
+
 	return true;
 }
 
 // marks physical pages as used in the physical memory allocator
 void MarkPhysicalPagesAsUsed(uint64_t address, size_t NumberOfPages)
 {
-
+	size_t CurrentLevel = 0;
 }
 
 // returns true if all the physical pages starting at given address are free, false if even one page is allocated
