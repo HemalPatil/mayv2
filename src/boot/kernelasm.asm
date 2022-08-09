@@ -35,25 +35,6 @@ kernel_start:
 	mov rax, higher_half_start
 	jmp rax
 
-	; We initialize TSS first because ISTs in IDT requires TSS
-	; Setup 64 bit TSS
-	mov rdx, __GDT_START
-	add rdx, 0x1a	; point to TSS descriptor byte 2
-	mov rax, __TSS_START
-	mov [rdx], ax	; move base[0..16] of TSS
-	shr rax, 16
-	mov [rdx + 2], al	; move base[16..23] of TSS
-	shr rax, 8
-	mov [rdx + 5], al	; move base[24..31] of TSS 
-	shr rax, 8
-	mov [rdx + 6], eax	; move base[32..63] of TSS
-	mov ax, 0x18
-	ltr ax
-
-	; Setup 64 bit IDT
-	mov rax, IDTDescriptor
-	lidt [rax]	; load the IDT
-
 section .text
 	global higher_half_start
 	extern KernelMain
@@ -62,6 +43,5 @@ higher_half_start:
 	call KernelMain
 	; code beyond this should never get executed
 kernel_end:
-	cli
 	hlt
 	jmp kernel_end

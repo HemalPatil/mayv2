@@ -1,7 +1,7 @@
 #pragma once
-#include<stdint.h>
-#include<stddef.h>
-#include<stdbool.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
 
 #define ACPI3_MemType_Usable 1
 #define ACPI3_MemType_Reserved 2
@@ -55,7 +55,6 @@ extern uint16_t *InfoTable;
 
 // kernel.c
 // do not expose the KernelMain function to other files
-//extern void KernelMain(uint16_t *InfoTableAddress);
 extern void KernelPanic();
 
 // acpi.c
@@ -102,7 +101,10 @@ extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
 
 // idt64.asm
-extern void PopulateIDTWithOffsets();
+extern void SetupIDT64();
+
+// tss64.asm
+extern void SetupTSS64();
 
 // Linker script symbols
 extern const uint64_t __GDT_START;

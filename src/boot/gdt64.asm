@@ -25,15 +25,20 @@ __GDT_START:
 	dq 0
 
 ; selector 0x8 - 64 bit code segment descriptor
-	dw 0	; Limit bits 0-15, ignored
-	dw 0	; Base bits 0-15, ignored
-	db 0	; Base bits 16-23, ignored
+	dw 0	; limit[0..15], ignored
+	dw 0	; base[0..15], ignored
+	db 0	; base[16..23], ignored
 	db PRESENT | NOT_SYS | EXEC | RW	; Access
-	db GRAN_4K | LONG_MODE	; Limit bits 16-19 (low), ignored
-	db 0	; Base bits 24-31, ignored
+	db GRAN_4K | LONG_MODE	; limit[16..19] (low), ignored
+	db 0	; base[24..31], ignored
 
 ; selector 0x10 - 64 bit data segment descriptor
-	dq 0x0020920000000000
+	dw 0	; limit[0..15], ignored
+	dw 0	; base[0..15], ignored
+	db 0	; base[16..23], ignored
+	db PRESENT | NOT_SYS | RW	; Access
+	db GRAN_4K | LONG_MODE	; limit[16..19] (low), ignored
+	db 0	; base[24..31], ignored
 
 ; selector 0x18 - 64 bit TSS descriptor
 	; TSS base address to be filled in at runtime
@@ -41,13 +46,15 @@ __GDT_START:
 	dw 0	; TSS base[0..15]
 	db 0	; TSS base[16..23]
 	db 0x89	; TSS access flags
-	dw 0x10	; TSS flags and limit[16..19] and base[24..31]
+	db 0x90	; TSS flags and limit[16..19]
+	db 0	; base[24..31]
 	dq 0	; TSS base[32..63] and reserved dword
 
 	times 4096 - ($-$$) db 0	; Make the GDT 4 KiB long
 
 __GDT_END:
 
+section .rodata:
 GDTDescriptor:
 	GDT64Limit dw 65535
 	GDT64Base dq __GDT_START

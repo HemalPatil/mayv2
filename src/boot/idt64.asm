@@ -2,8 +2,8 @@
 
 ; IDT for 64 bit mode
 
-IST1_STACK_SIZE equ 4096 ; 4 KiB stack
-IST2_STACK_SIZE equ 4096 ; 4 KiB stack
+IST1_STACK_SIZE equ 4096	; 4 KiB stack
+IST2_STACK_SIZE equ 4096	; 4 KiB stack
 
 ; IST stack 1 - custom interrupt handlers
 ; IST stack 2 - processor exception handlers
@@ -23,40 +23,71 @@ section .IDT64
 	global __IDT_END
 
 __IDT_START:
+	times 128 - ($-$$) db 0		; Skip first 8 interrupts/exception
+
+DoubleFaultDescriptor:
+	dq 0
+	dq 0
+
 	times 224 - ($-$$) db 0		; Skip first 14 interrupts/exception
 
 PageFaultDescriptor:
-	dw 0	; offset[0..15]
-	dw 0x8	; 64 bit code segment selector
-	dw 0x8e02	; descriptor type and IST index
-	dw 0	; offset[16..31]
-	dq 0	; offset[32..63] and reserved
-
-	times 512 - ($- $$) db 0	; Skip first 32 (0x00 to 0x1f) interrupts
-
-Interrupt32Descriptor:
-	dw 0	; offset[0..15]
-	dw 0x8	; 64 bit code segment selector
-	dw 0x8e01	; descriptor type and IST index
-	dw 0	; offset[16..31]
-	dq 0	; offset[32..63] and reserved
+	dq 0
+	dq 0
 
 	times 4096 - ($-$$) db 0	; Make the 64-bit IDT 4 KiB long
 __IDT_END:
 
 section .rodata:
-	PageFaultString db 10, 'Page Fault', 10, 0, 0, 0, 0
+IDTDescriptor:
+	IDT64Limit dw 4095
+	IDT64Base dq __IDT_START
+	DefaultInterruptString db 'Default interrupt handler!', 10, 0
+	DoubleFaultString db 'Double Fault!', 10, 0
+	IDTLoading db 10, 'Loading IDT...', 10, 0
+	IDTLoaded db 'IDT loaded', 10, 0
+	InterruptsEnabled db 'Enabled interrupts', 10, 0
+	PageFaultString db 'Page Fault!', 10, 0
 
 section .text
 	extern TerminalPrintString
-	global PopulateIDTWithOffsets
-PopulateIDTWithOffsets:
-	mov rdx, Interrupt32Descriptor
-	mov rax, Interrupt32Handler
+	global SetupIDT64
+SetupIDT64:
+	mov rdi, IDTLoading
+	mov rsi, 16
+	call TerminalPrintString
+; Fill all 256 interrupt handlers with DefaultInterruptHandler
+; Set rdx to base address of IDT and loop through all 256
+	mov r9, 0x00008e0200080000	; 64-bit code selector, descriptor type, and IST_2 index
+	mov rdx, __IDT_START
+SetupIDT64DescriptorLoop:
+	mov [rdx], r9
+	mov rax, DefaultInterruptHandler
 	call FillOffsets
+	add rdx, 16
+	cmp rdx, __IDT_END
+	jle SetupIDT64DescriptorLoop
 	mov rdx, PageFaultDescriptor
 	mov rax, PageFaultHandler
 	call FillOffsets
+	mov rdx, DoubleFaultDescriptor
+	mov rax, DoubleFaultHandler
+	call FillOffsets
+	mov rdi, IDTLoaded
+	mov rsi, 11
+	call TerminalPrintString
+
+	; Disable PIC
+	mov al, 0xff
+	out 0xa1, al
+	out 0x21, al
+
+	mov rax, IDTDescriptor
+	lidt [rax]	; load the IDT
+	sti
+	mov rdi, InterruptsEnabled
+	mov rsi, 19
+	call TerminalPrintString
 	ret
 
 FillOffsets:
@@ -67,8 +98,21 @@ FillOffsets:
 	mov [rdx + 8], eax
 	ret
 
+DoubleFaultHandler:
+	mov r10, 0x1010c0dedeadbeef
+	cli
+	hlt
+	mov rdi, DoubleFaultString
+	mov rsi, 14
+	call TerminalPrintString
+	pop r8	; Pop the 64 bit error code in thrashable register
+	iretq
+
 PageFaultHandler:
-	mov r8, 0xdeadbeefdeadc0de
+	mov r10, 0xdeadbeefcafebabe
+	cli
+	hlt
+	mov r8, 0xcafebabedeadc0de
 	mov rdi, PageFaultString
 	mov rsi, 12
 	call TerminalPrintString
@@ -76,7 +120,13 @@ PageFaultHandler:
 	hlt
 	iretq
 
-Interrupt32Handler:
-	; TODO : add interrupt 32 handler implementation
-	mov r8, 0xdeadc0de
+DefaultInterruptHandler:
+	mov r10, 0xdeadbeef1010c0de
+	cli
+	hlt
+	mov rdi, DefaultInterruptString
+	mov rsi, 27
+	call TerminalPrintString
+	cli
+	hlt
 	iretq

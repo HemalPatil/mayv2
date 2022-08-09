@@ -3,17 +3,10 @@
 ; TSS for 64 bit mode
 
 section .TSS64
-	extern setup_tss
-	extern __GDT_START
-	extern __GDT_END
 	extern __IDT_START
 	extern __IDT_END
 	extern IST1_stack_end
 	extern IST2_stack_end
-	global __TSS_START
-	global __TSS_END
-	global IDTDescriptor
-	global NewGDTFarJump
 __TSS_START:
 reserved	dd 0
 rsp0		dq 0
@@ -32,6 +25,31 @@ reserved3	dw 0
 iomapbase	dw 0
 __TSS_END:
 
-IDTDescriptor:
-	IDT64Limit dw 4095
-	IDT64Base dq __IDT_START
+section .rodata
+	TSSLoading db 10, 'Loading TSS...', 10, 0
+	TSSLoaded db 'TSS loaded', 10, 0
+
+section .text
+	extern __GDT_START
+	extern TerminalPrintString
+	global SetupTSS64
+SetupTSS64:
+	mov rdi, TSSLoading
+	mov rsi, 16
+	call TerminalPrintString
+	mov rdx, __GDT_START
+	add rdx, 0x1a	; point to TSS descriptor byte 2
+	mov rax, __TSS_START
+	mov [rdx], ax	; move base[0..16] of TSS
+	shr rax, 16
+	mov [rdx + 2], al	; move base[16..23] of TSS
+	shr rax, 8
+	mov [rdx + 5], al	; move base[24..31] of TSS 
+	shr rax, 8
+	mov [rdx + 6], eax	; move base[32..63] of TSS
+	mov ax, 0x18
+	ltr ax
+	mov rdi, TSSLoaded
+	mov rsi, 11
+	call TerminalPrintString
+	ret

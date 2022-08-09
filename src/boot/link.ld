@@ -19,7 +19,7 @@ SECTIONS
 		*(.IDT64);
 	}
 
-	.TSS64 : ALIGN(0x10)
+	.TSS64 : ALIGN(0x1000)
 	{
 		*(.TSS64);
 	}
