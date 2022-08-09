@@ -16,7 +16,7 @@ mmap:
 	mov eax, 0xe820
 	mov [es:di + 20], dword 1		; force a valid ACPI 3.X entry
 	mov ecx, 24						; ask for 24 bytes
-	int 0x15
+	int 15h
 	jc short mmap_fail				; carry set on first call means "unsupported function"
 	mov edx, 0x0534D4150			; Some BIOSes apparently trash this register?
 	cmp eax, edx					; on success, eax must have been reset to "SMAP"
@@ -28,7 +28,7 @@ mmap_loop:
 	mov eax, 0xe820					; eax, ecx get trashed on every int 0x15 call
 	mov [es:di + 20], dword 1		; force a valid ACPI 3.X entry
 	mov ecx, 24						; ask for 24 bytes again
-	int 0x15
+	int 15h
 	jc short mmap_exit				; carry set means "end of list already reached"
 	mov edx, 0x0534D4150			; repair potentially trashed register
 mmap_inside:

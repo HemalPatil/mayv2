@@ -1,5 +1,5 @@
+#include <string.h>
 #include "kernel.h"
-#include<string.h>
 
 const char* HelloWorld = "Hello World!";
 const char* SystemInitializationFailed = "\nSystem initialization failed. Cannot boot. Halting the system\n";

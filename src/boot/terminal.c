@@ -65,7 +65,7 @@ void TerminalSetCursorPosition(size_t x, size_t y)
 
 void TerminalPutChar(char c)
 {
-	if(!IsTerminalMode() ||  TerminalCursorX >= VGAWidth || TerminalCursorY >= VGAHeight)
+	if(!IsTerminalMode() || TerminalCursorX >= VGAWidth || TerminalCursorY >= VGAHeight)
 	{
 		TerminalCursorX = TerminalCursorY = 0;
 		return;
