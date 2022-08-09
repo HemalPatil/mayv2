@@ -35,4 +35,5 @@ APICPresentBlock:
 	mov rdi, APICPresent
 	mov rsi, 13
 	call TerminalPrintString
+	; TODO: enable APIC
 	ret

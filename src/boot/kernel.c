@@ -3,22 +3,23 @@
 
 const char *Kernel64Loaded = "Kernel64 loaded\nRunning in 64-bit long mode\n";
 const char *SystemInitializationFailed = "\nSystem initialization failed. Cannot boot. Halting the system\n";
+const char *KernelPanicString = "\nKernel panic!!!\n";
 
 uint16_t *InfoTable;
 
 // First C-function to be called
 void KernelMain(uint16_t *InfoTableAddress)
 {
-	// TerminalSetCursorPosition(0, 0);
-	// TerminalPrintString(HelloWorld, strlen(HelloWorld));
 	TerminalClearScreen();
 	TerminalSetCursorPosition(0, 0);
 	TerminalPrintString(Kernel64Loaded, strlen(Kernel64Loaded));
 
-
 	// Initialize TSS first because ISTs in IDT require TSS
 	SetupTSS64();
 	SetupIDT64();
+
+	// Disable PIC and setup APIC
+	SetupAPIC();
 
 	// InfoTable is our custom structure which has some essential information about the system
 	// gained during system boot; and the information that is best found out about in real mode.
@@ -51,9 +52,9 @@ void KernelMain(uint16_t *InfoTableAddress)
 	// TerminalPrintString(HelloWorld, strlen(HelloWorld));
 }
 
-void KernelPanic(const char *ErrorString)
+void KernelPanic()
 {
-	// TODO : add kernel panic implementation
-	TerminalPrintString(ErrorString, strlen(ErrorString));
+	// TODO : improve kernel panic implementation
+	TerminalPrintString(KernelPanicString, strlen(KernelPanicString));
 	HangSystem();
 }

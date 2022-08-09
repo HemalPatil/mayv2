@@ -52,6 +52,7 @@ IDTDescriptor:
 section .text
 	extern TerminalPrintString
 	global SetupIDT64
+	global EnableInterrupts
 SetupIDT64:
 	mov rdi, IDTLoading
 	mov rsi, 16
@@ -76,18 +77,8 @@ SetupIDT64DescriptorLoop:
 	mov rdi, IDTLoaded
 	mov rsi, 11
 	call TerminalPrintString
-
-	; Disable PIC
-	mov al, 0xff
-	out 0xa1, al
-	out 0x21, al
-
 	mov rax, IDTDescriptor
 	lidt [rax]	; load the IDT
-	sti
-	mov rdi, InterruptsEnabled
-	mov rsi, 19
-	call TerminalPrintString
 	ret
 
 FillOffsets:
@@ -96,6 +87,13 @@ FillOffsets:
 	mov [rdx + 6], ax
 	shr rax, 16
 	mov [rdx + 8], eax
+	ret
+
+EnableInterrupts:
+	sti
+	mov rdi, InterruptsEnabled
+	mov rsi, 19
+	call TerminalPrintString
 	ret
 
 DoubleFaultHandler:

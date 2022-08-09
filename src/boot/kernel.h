@@ -95,6 +95,9 @@ extern bool FPUExists();
 extern void OutputByte(uint16_t port, uint8_t byte);
 
 // Assembly level functions
+// apic.asm
+extern void SetupAPIC();
+
 // kernellib.asm
 extern void HangSystem();
 extern uint8_t GetLinearAddressLimit();
@@ -102,6 +105,7 @@ extern uint8_t GetPhysicalAddressLimit();
 
 // idt64.asm
 extern void SetupIDT64();
+extern void EnableInterrupts();
 
 // tss64.asm
 extern void SetupTSS64();
