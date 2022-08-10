@@ -30,7 +30,7 @@ struct RSDPDescriptor2
 	uint8_t revision;
 	uint32_t RSDTAddress;
 	uint32_t length;
-	uint64_t XSDTAddress;
+	struct ACPISDTHeader *XSDTAddress;
 	uint8_t ExtendedChecksum;
 	uint8_t reserved[3];
 } __attribute__((packed));
@@ -38,6 +38,7 @@ typedef struct RSDPDescriptor2 RSDPDescriptor2;
 
 struct ACPISDTHeader
 {
+	// Read https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf Section 5.2.8
 	char Signature[4];
 	uint32_t Length;
 	uint8_t Revision;
@@ -58,14 +59,17 @@ extern uint16_t *InfoTable;
 extern void KernelPanic();
 
 // acpi.c
-extern bool InitializeACPI3();
+extern struct RSDPDescriptor2 *rsdp;
+extern bool ParseACPI3();
 
 // terminal.c
+extern const char* const HexPalette;
 extern bool IsTerminalMode();
 extern void TerminalClearScreen();
 extern void TerminalSetCursorPosition(size_t x, size_t y);
 extern void TerminalPrintString(const char* const str, const size_t length);
 extern void TerminalPutChar(char);
+extern void TerminalPrintHex(void* value, size_t size);
 
 // interrupts.c
 extern bool SetupHardwareInterrupts();
@@ -102,6 +106,8 @@ extern void SetupAPIC();
 extern void HangSystem();
 extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
+extern RSDPDescriptor2* SearchRSDP();
+extern void TerminalClearScreenASM();
 
 // idt64.asm
 extern void SetupIDT64();

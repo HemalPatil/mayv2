@@ -18,7 +18,7 @@ CWARNINGS:=-Wall -Wextra
 LD64:=x86_64-elf-ld
 LD64FLAGS:=-b elf64-x86-64
 CC64:=x86_64-elf-gcc
-CC64FLAGS:=-ffreestanding -m64 -march=x86-64 -mno-red-zone -I/home/hemal/mayv2/src/include
+CC64FLAGS:=-ffreestanding -mcmodel=kernel -m64 -march=x86-64 -mno-red-zone -I/home/hemal/mayv2/src/include
 
 # Root directories
 SRCDIR := src

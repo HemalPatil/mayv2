@@ -9,11 +9,18 @@ static size_t BuddyLevels = 0;
 static size_t NumberOfPhysicalPages = 0;
 static const size_t PhyPageSize = 0x1000;
 
+const char* const getPhyMemSizeStr = "Getting physical memory size...\n";
+const char* const phyMemSizeStr = "Physical memory size ";
+
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool InitializePhysicalMemory()
 {
 	// TODO : add initialize phy mem implementation
+	TerminalPrintString(getPhyMemSizeStr, strlen(getPhyMemSizeStr));
 	uint64_t PhyMemSize = GetPhysicalMemorySize();
+	TerminalPrintString(phyMemSizeStr, strlen(phyMemSizeStr));
+	TerminalPrintHex(&PhyMemSize, sizeof(PhyMemSize));
+	return true;
 	NumberOfPhysicalPages = PhyMemSize / PhyPageSize;
 	if(PhyMemSize % PhyPageSize)
 	{
@@ -94,16 +101,14 @@ size_t GetNumberOfMMAPEntries()
 }
 
 // Returns physical memory size in bytes
-uint64_t GetPhysicalMemorySize()
-{
+uint64_t GetPhysicalMemorySize() {
 	struct ACPI3Entry* BaseMMAP = GetMMAPBase();
-	size_t i, number = GetNumberOfMMAPEntries();
-	uint64_t PhyMemSize = 0;
-	for (i = 0; i < number; i++)
-	{
-		PhyMemSize += BaseMMAP[i].Length;
+	size_t i, count = GetNumberOfMMAPEntries();
+	uint64_t phyMemSize = 0;
+	for (i = 0; i < count; ++i) {
+		phyMemSize += BaseMMAP[i].Length;
 	}
-	return PhyMemSize;
+	return phyMemSize;
 }
 
 // Returns usable (conventional ACPI3_MemType_Usable) physical memory size

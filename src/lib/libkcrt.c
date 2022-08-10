@@ -12,18 +12,16 @@ size_t strlen(const char* str)
 	return length;
 }
 
-int64_t strcmp(const char* str1, const char* str2)
-{
-	while(*str1 && (*str1 == *str2))
-	{
-		str1++;
-		str2++;
+int64_t strcmp(const char* str1, const char* str2) {
+	while (*str1 && (*str1 == *str2)) {
+		++str1;
+		++str2;
 	}
 	return *(const unsigned char*)str1 - *(const unsigned char*)str2;
 }
 
-void memset(void* const address /*rdi*/, const uint8_t data /*rsi*/, const size_t length /*rdx*/)
-{
+void memset(void* const address /*rdi*/, const uint8_t data /*rsi*/, const size_t length /*rdx*/) {
+	// TODO: convert to NASM syntax
 	asm("test %rdx,%rdx\n"	// check if length is 0
 	"je memsetEnd\n"
 	"mov %rdx,%rax\n"	// get length in rax

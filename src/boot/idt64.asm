@@ -97,9 +97,6 @@ EnableInterrupts:
 	ret
 
 DoubleFaultHandler:
-	mov r10, 0x1010c0dedeadbeef
-	cli
-	hlt
 	mov rdi, DoubleFaultString
 	mov rsi, 14
 	call TerminalPrintString
@@ -107,24 +104,15 @@ DoubleFaultHandler:
 	iretq
 
 PageFaultHandler:
-	mov r10, 0xdeadbeefcafebabe
-	cli
-	hlt
-	mov r8, 0xcafebabedeadc0de
 	mov rdi, PageFaultString
 	mov rsi, 12
 	call TerminalPrintString
 	pop r8	; Pop the 32 bit error code in thrashable register
-	hlt
 	iretq
 
 DefaultInterruptHandler:
-	mov r10, 0xdeadbeef1010c0de
-	cli
-	hlt
 	mov rdi, DefaultInterruptString
 	mov rsi, 27
 	call TerminalPrintString
-	cli
-	hlt
+	pop r8	; Pop the 64 bit error code in thrashable register
 	iretq
