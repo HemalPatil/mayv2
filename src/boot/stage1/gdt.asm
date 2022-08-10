@@ -48,7 +48,7 @@ start:
 	mov ax, cs
 	mov ds, ax
 	mov si, gdt_msg
-	int 22h
+	int 0x22
 
 ;segment selector 0x0
 	mov bx, 0x1000

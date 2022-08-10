@@ -103,10 +103,30 @@ size_t GetNumberOfMMAPEntries()
 // Returns physical memory size in bytes
 uint64_t GetPhysicalMemorySize() {
 	struct ACPI3Entry* BaseMMAP = GetMMAPBase();
+	const char* const mmapBase = "MMAP Base ";
+	const char* const entry = "    Entry ";
+	TerminalPrintString(mmapBase, strlen(mmapBase));
+	TerminalPrintHex(&BaseMMAP, sizeof(BaseMMAP));
+	TerminalPutChar('\n');
 	size_t i, count = GetNumberOfMMAPEntries();
+	const char* const countStr = "Number of MMAP entries ";
+	TerminalPrintString(countStr, strlen(countStr));
+	TerminalPrintHex(&count, sizeof(count));
+	TerminalPutChar('\n');
 	uint64_t phyMemSize = 0;
 	for (i = 0; i < count; ++i) {
-		phyMemSize += BaseMMAP[i].Length;
+		TerminalPrintString(entry, strlen(entry));
+		TerminalPutChar(' ');
+		TerminalPrintHex(&(BaseMMAP[i].BaseAddress), sizeof(BaseMMAP->BaseAddress));
+		TerminalPutChar(' ');
+		TerminalPrintHex(&(BaseMMAP[i].Length), sizeof(BaseMMAP->Length));
+		TerminalPutChar(' ');
+		uint8_t usable = BaseMMAP[i].RegionType == ACPI3_MemType_Usable;
+		TerminalPrintHex(&(BaseMMAP[i].RegionType), 1);
+		TerminalPutChar('\n');
+		if (usable) {
+			phyMemSize += BaseMMAP[i].Length;
+		}
 	}
 	return phyMemSize;
 }

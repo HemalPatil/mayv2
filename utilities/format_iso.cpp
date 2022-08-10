@@ -164,7 +164,7 @@ int main(int argc, char* argv[])
 	{
 		core_file_segments[i] = core_file_segments[i-1] + ceil((double)core_file_sizes[i-1]/16);
 	}
-	int boot_bin_seekp = boot_bin_sector * 0x800 + 32;	// Skip first 32 bytes (contains int 22h routine)
+	int boot_bin_seekp = boot_bin_sector * 0x800 + 32;	// Skip first 32 bytes (contains int 0x22 routine)
 	for(int i=0;i<numberOfModules;i++)
 	{
 		isofile.seekp(boot_bin_seekp + 2, ios::beg);	// Skip first 2 bytes of each DAP

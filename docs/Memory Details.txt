@@ -1,4 +1,4 @@
-0	to 0x003ff 	IVT	(int 22h print_string added)
+0	to 0x003ff 	IVT	(int 0x22 print_string added)
 0x00400	to 0x004ff 	BDA
 0x00500	to ??		custom table entries
 

@@ -43,21 +43,21 @@ check_x64:
 	jz no_longmode
 
 	mov si, longmode
-	int 22h
+	int 0x22
 	jmp end
 
 no_cpuid:
 	mov si, cpuid_not_available
-	int 22h
+	int 0x22
 	jmp error
 
 no_longmode:
 	mov si, no_x64
-	int 22h
+	int 0x22
 
 error:
 	mov si, cannot_boot
-	int 22h
+	int 0x22
 error_end:
 	cli
 	hlt

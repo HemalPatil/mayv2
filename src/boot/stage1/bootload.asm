@@ -3,9 +3,9 @@
 [bits 16]
 [org 0x0000]
 
-;Our bootloader is loaded from an El-Torito standard "no emulation" boot CD
+; Our bootloader is loaded from an El-Torito standard "no emulation" boot CD
 
-jmp 0x07c0:start	;Ensure cs=0x07c0
+jmp 0x07c0:start	; Ensure cs=0x07c0
 
 times 8 - ($-$$) db 0
 print_string:
@@ -119,10 +119,9 @@ kernel32_jmp_failed db 'Jumping to kernel failed. Cannot boot!', 13, 10, 0
 returnx64 db 'returned form x64.bin', 13, 10, 0
 
 start:
-	mov ax, 0x07c0	;Right now DS=CS
-	mov ds, ax		;Setup DS
-
 	cli						; Disable interrupts
+	mov ax, 0x07c0	; Right now DS=CS
+	mov ds, ax		; Setup DS
 	mov ax, [info_table_segment]
 	mov es, ax
 	mov [drive_number], dl	; Store the disk number from which this bootloader was loaded
@@ -130,7 +129,7 @@ start:
 	xor dh, dh
 	mov [es:bx], dx			; Store the disk number from which this bootloader was loaded in our custom table
 
-	xor ax, ax							; Setup int 22h
+	xor ax, ax							; Setup int 0x22
 	mov es, ax
 	mov word [es:136], print_string		; Offset in the current segment
 	mov word [es:138], cs				; Code segment is current code segment
@@ -138,10 +137,9 @@ start:
 	mov ax, 0x0700						; Set up 3 KiB stack space before bootloader
 	mov ss, ax							; starting from 0x7000 to 0x7c00
 	mov sp, 0x0c00
-	sti					; Enable interrupts
 
 	mov ax, 0x0003				; Set 80x25 text mode
-	int 10h
+	int 0x10
 
 	mov si, hello_msg					; Show hello world message on screen
 
@@ -155,7 +153,7 @@ start:
 	mov [es:bx + 4], eax
 
 	mov ah, 41h						; Check disk extensions
-	int 13h
+	int 0x13
 	jc diskerror						; No support for disk extensions if carry flag set
 
 	mov cx, 8						; Load 8 core files (subject to change if more files are needed to kick start kernel64)
@@ -164,12 +162,12 @@ start:
 	mov dl, [drive_number]					; Boot drive remains consistent for all drive operations
 
 loadcorefiles_loop:
-	mov ah, 42h						; Extended function 42h of int 13h
+	mov ah, 42h						; Extended function 42h of int 0x13
 	push cx
 	mov cx, 3						; Try reading correct data 3 times
 retry_loop:
 	pusha
-	int 13h							; Load data from disk
+	int 0x13							; Load data from disk
 	popa
 	mov ax, [si+6]						; Get segment
 	mov es, ax
@@ -198,8 +196,8 @@ loadcorefiles_cont:
 	push dword [info_table_offset]
 	call far [dap_mmap+4]				; Generate memory map
 
-	;push dword [info_table_offset]
-	;call far [dap_vidmodes+4]			; Get list of all video modes
+	; push dword [info_table_offset]
+	; call far [dap_vidmodes+4]			; Get list of all video modes
 	
 	call far [dap_a20enable+4]			; Enable the A20 line to access above 1MiB
 
@@ -254,21 +252,21 @@ loadcorefiles_cont:
 	jmp dword 0x0008:0x00020000	; Jump to kernel32 ELF parser and bye-bye real mode
 
 	mov si, kernel32_jmp_failed		; This should never get executed
-	int 22h
+	int 0x22
 	jmp end
 
 diskerror:
 	mov si, disk_error
-	int 22h
+	int 0x22
 	jmp end
 
 corefileerror:
 	mov si, corefiles_error
-	int 22h
+	int 0x22
 
 end:
 	mov si, boot_end
-	int 22h
+	int 0x22
 	cli							; Disable interrupts
 	hlt							; Halt the processor
 	jmp end						; Jump to end again just in case if the processor resumes its operation

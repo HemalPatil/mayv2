@@ -14,7 +14,7 @@ start:
 	mov ax,cs
 	mov ds,ax
 	mov si,vidmodes_msg
-	int 22h
+	int 0x22
 	
 	pop ds
 	popa

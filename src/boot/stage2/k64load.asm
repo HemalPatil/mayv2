@@ -75,6 +75,6 @@ bit16_real:
 	mov ds, ax
 	xor eax, eax
 	mov ah, 0x42		; Extended Function 42h, read extended sectors using LBA
-	int 13h		; BIOS disk service int 13h
+	int 0x13		; BIOS disk service int 0x13
 	pop ds	; Restore ds
 	jmp ReturnTo32BitProtected

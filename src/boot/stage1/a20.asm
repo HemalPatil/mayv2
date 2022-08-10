@@ -15,21 +15,21 @@ start:
 	mov ax,cs					; set data segment as current code segment
 	mov ds,ax
 	mov si,a20_msg
-	int 22h
+	int 0x22
 
 	call check_a20				; check if A20 line is already enabled
 	cmp ax,1					; ax=1 means line enabled
 	je a20_enabled
 
 	mov ax,0x2401				; Use BIOS method to activate A20 line
-	int 15h
+	int 0x15
 
 	call check_a20				; check if A20 enabled now
 	cmp ax,1
 	je a20_enabled
 
 	mov si,a20_failed_msg		; if not enabled yet, halt the processor completely
-	int 22h
+	int 0x22
 error_end:
 	cli
 	hlt
@@ -37,7 +37,7 @@ error_end:
 
 a20_enabled:
 	mov si,a20_enabled_msg
-	int 22h
+	int 0x22
 
 end:
 	pop ds
