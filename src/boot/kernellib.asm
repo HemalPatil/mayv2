@@ -3,11 +3,18 @@
 ; Assembly level routines
 
 section .text
-	global HangSystem
 	global GetPhysicalAddressLimit
 	global GetLinearAddressLimit
+	global HangSystem
+	global OutputByte
 	global SearchRSDP
 	global TerminalClearScreenASM
+
+OutputByte:
+	mov al, sil
+	mov dx, di
+	out dx, al
+	ret
 
 SearchRSDP:
 	; Move 'RSD PTR ' magic string into rax in little endian

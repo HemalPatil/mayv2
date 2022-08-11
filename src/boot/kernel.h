@@ -95,17 +95,15 @@ extern bool InitializeVirtualMemory();
 extern bool FPUExists();
 //extern bool InitializeFPU();
 
-// io.c
-extern void OutputByte(uint16_t port, uint8_t byte);
-
 // Assembly level functions
 // apic.asm
 extern void SetupAPIC();
 
 // kernellib.asm
-extern void HangSystem();
 extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
+extern void HangSystem();
+extern void OutputByte(uint16_t port, uint8_t byte);
 extern RSDPDescriptor2* SearchRSDP();
 extern void TerminalClearScreenASM();
 

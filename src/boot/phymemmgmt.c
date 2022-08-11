@@ -1,3 +1,4 @@
+#include <string.h>
 #include "kernel.h"
 
 static uint64_t FreePhysicalMemory = 0;
@@ -11,19 +12,53 @@ static const size_t PhyPageSize = 0x1000;
 
 const char* const getPhyMemSizeStr = "Getting physical memory size...\n";
 const char* const phyMemSizeStr = "Physical memory size ";
+const char* const usableMemSizeStr = "Usable physical memory size ";
+const char* const mmapBase = "MMAP Base ";
+const char* const entry = "    ";
+const char* const countStr = "Number of MMAP entries ";
+const char* const tableHeader = "    Base address         Length               Type\n";
 
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool InitializePhysicalMemory()
 {
 	// TODO : add initialize phy mem implementation
 	TerminalPrintString(getPhyMemSizeStr, strlen(getPhyMemSizeStr));
-	uint64_t PhyMemSize = GetPhysicalMemorySize();
+
+	// Display diagnostic information about memory like MMAP entries,
+	// physical and usable memory size
+	struct ACPI3Entry* BaseMMAP = GetMMAPBase();
+	TerminalPrintString(mmapBase, strlen(mmapBase));
+	TerminalPrintHex(&BaseMMAP, sizeof(BaseMMAP));
+	TerminalPutChar('\n');
+
+	size_t i, count = GetNumberOfMMAPEntries();
+	TerminalPrintString(countStr, strlen(countStr));
+	TerminalPrintHex(&count, sizeof(count));
+	TerminalPutChar('\n');
+	TerminalPrintString(tableHeader, strlen(tableHeader));
+	for (i = 0; i < count; ++i) {
+		TerminalPrintString(entry, strlen(entry));
+		TerminalPrintHex(&(BaseMMAP[i].BaseAddress), sizeof(BaseMMAP->BaseAddress));
+		TerminalPutChar(' ');
+		TerminalPrintHex(&(BaseMMAP[i].Length), sizeof(BaseMMAP->Length));
+		TerminalPutChar(' ');
+		uint8_t usable = BaseMMAP[i].RegionType == ACPI3_MemType_Usable;
+		TerminalPrintHex(&(BaseMMAP[i].RegionType), 1);
+		TerminalPutChar('\n');
+	}
+
+	uint64_t phyMemSize = GetPhysicalMemorySize();
 	TerminalPrintString(phyMemSizeStr, strlen(phyMemSizeStr));
-	TerminalPrintHex(&PhyMemSize, sizeof(PhyMemSize));
+	TerminalPrintHex(&phyMemSize, sizeof(phyMemSize));
+	TerminalPutChar('\n');
+
+	uint64_t usableMemSize = GetUsablePhysicalMemorySize();
+	TerminalPrintString(usableMemSizeStr, strlen(usableMemSizeStr));
+	TerminalPrintHex(&usableMemSize, sizeof(usableMemSize));
 	return true;
-	NumberOfPhysicalPages = PhyMemSize / PhyPageSize;
-	if(PhyMemSize % PhyPageSize)
-	{
+
+	NumberOfPhysicalPages = phyMemSize / PhyPageSize;
+	if (phyMemSize % PhyPageSize) {
 		NumberOfPhysicalPages++;
 	}
 
@@ -31,7 +66,7 @@ bool InitializePhysicalMemory()
 	// also make first 1MiB of physical memory unusable, we have important structures there
 	// although some areas of the first 1MiB are already decalred unusable
 	// by GetUsablePhysicalMemorySize, we are ignoring this overlapping memory (size : around 240 KiB), it won't make much difference
-	FreePhysicalMemory = GetUsablePhysicalMemorySize() - GetKernelSize() - 0x100000;
+	FreePhysicalMemory = usableMemSize - GetKernelSize() - 0x100000;
 
 	// we have physical memory available right after the kernel,
 	// this is where we will be setting up our buddy allocator structure
@@ -53,7 +88,7 @@ bool InitializePhysicalMemory()
 	memset((void*)BuddyStructure, 0, BuddyStructureSize);
 
 	// Mark non exitstant areas of memory as in-use
-	MarkPhysicalPagesAsUsed(PhyMemSize, temp - NumberOfPhysicalPages);
+	MarkPhysicalPagesAsUsed(phyMemSize, temp - NumberOfPhysicalPages);
 
 	// Mark areas from memory map that are not usable to in-use list
 	struct ACPI3Entry *mmap = GetMMAPBase();
@@ -81,9 +116,8 @@ void MarkPhysicalPagesAsUsed(uint64_t address, size_t NumberOfPages)
 }
 
 // returns true if all the physical pages starting at given address are free, false if even one page is allocated
-bool IsPhysicalPageAvailable(uint64_t address, size_t NumberOfPages)
-{
-
+bool IsPhysicalPageAvailable(uint64_t address, size_t NumberOfPages) {
+	return true;
 }
 
 // Get base address of array of MMAP entries
@@ -103,48 +137,25 @@ size_t GetNumberOfMMAPEntries()
 // Returns physical memory size in bytes
 uint64_t GetPhysicalMemorySize() {
 	struct ACPI3Entry* BaseMMAP = GetMMAPBase();
-	const char* const mmapBase = "MMAP Base ";
-	const char* const entry = "    Entry ";
-	TerminalPrintString(mmapBase, strlen(mmapBase));
-	TerminalPrintHex(&BaseMMAP, sizeof(BaseMMAP));
-	TerminalPutChar('\n');
 	size_t i, count = GetNumberOfMMAPEntries();
-	const char* const countStr = "Number of MMAP entries ";
-	TerminalPrintString(countStr, strlen(countStr));
-	TerminalPrintHex(&count, sizeof(count));
-	TerminalPutChar('\n');
 	uint64_t phyMemSize = 0;
 	for (i = 0; i < count; ++i) {
-		TerminalPrintString(entry, strlen(entry));
-		TerminalPutChar(' ');
-		TerminalPrintHex(&(BaseMMAP[i].BaseAddress), sizeof(BaseMMAP->BaseAddress));
-		TerminalPutChar(' ');
-		TerminalPrintHex(&(BaseMMAP[i].Length), sizeof(BaseMMAP->Length));
-		TerminalPutChar(' ');
-		uint8_t usable = BaseMMAP[i].RegionType == ACPI3_MemType_Usable;
-		TerminalPrintHex(&(BaseMMAP[i].RegionType), 1);
-		TerminalPutChar('\n');
-		if (usable) {
-			phyMemSize += BaseMMAP[i].Length;
-		}
+		phyMemSize += BaseMMAP[i].Length;
 	}
 	return phyMemSize;
 }
 
 // Returns usable (conventional ACPI3_MemType_Usable) physical memory size
-uint64_t GetUsablePhysicalMemorySize()
-{
+uint64_t GetUsablePhysicalMemorySize() {
 	struct ACPI3Entry* BaseMMAP = GetMMAPBase();
 	size_t i, number = GetNumberOfMMAPEntries();
-	uint64_t UsableMemSize = 0;
-	for (i = 0; i < number; i++)
-	{
-		if (BaseMMAP[i].RegionType == ACPI3_MemType_Usable)
-		{
-			UsableMemSize += BaseMMAP[i].Length;
+	uint64_t usableMemSize = 0;
+	for (i = 0; i < number; ++i) {
+		if (BaseMMAP[i].RegionType == ACPI3_MemType_Usable) {
+			usableMemSize += BaseMMAP[i].Length;
 		}
 	}
-	return UsableMemSize;
+	return usableMemSize;
 }
 
 // Returns the base address of kernel in physical memory in bytes

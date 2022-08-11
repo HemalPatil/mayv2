@@ -19,12 +19,13 @@ static size_t TerminalCursorX = 0, TerminalCursorY = 0;
 static const uint8_t DEFAULT_TERMINAL_COLOUR = 0x0f;
 static uint8_t CurrentTextColour = 0x0f;
 static uint8_t CurrentTerminalColour = 0x0f;
+static uint16_t CursorPort = 0x3d4;
+static uint16_t CursorPortIndex = 0x3d5;
 
 const char* const HexPalette = "0123456789ABCDEF";
 
 // Check if video mode is 80x25 VGA
-bool IsTerminalMode()
-{
+bool IsTerminalMode() {
 	// TODO : right now we are just checking a boolean value, add functionality to actually check if the mode is the assumed one
 	return TerminalModeVGA80_25;
 }
@@ -41,7 +42,7 @@ void TerminalClearScreen() {
 	TerminalSetCursorPosition(0, 0);
 }
 
-// Set the cursor to a given x,y point where 0<=x<=79 and 0<=y<=24
+// Set the cursor to a given (x, y) where 0<=x<=79 and 0<=y<=24
 void TerminalSetCursorPosition(size_t x, size_t y) {
 	if (!IsTerminalMode() || x >= VGAWidth || y >= VGAHeight) {
 		return;
@@ -49,10 +50,10 @@ void TerminalSetCursorPosition(size_t x, size_t y) {
 	size_t position = y * VGAWidth + x; // Multiply 80 to row and add column to it
 	TerminalCursorX = x;
 	TerminalCursorY = y;
-	OutputByte(0x3d4, 0x0f); // Cursor LOW port to VGA INDEX register
-	OutputByte(0x3d5, (uint8_t)(position & 0xff));
-	OutputByte(0x3d4, 0x0e); // Cursor HIGH port to VGA INDEX register
-	OutputByte(0x3d5, (uint8_t)((position >> 8) & 0xff));
+	OutputByte(CursorPort, 0x0f); // Cursor LOW port to VGA INDEX register
+	OutputByte(CursorPortIndex, (uint8_t)(position & 0xff));
+	OutputByte(CursorPort, 0x0e); // Cursor HIGH port to VGA INDEX register
+	OutputByte(CursorPortIndex, (uint8_t)((position >> 8) & 0xff));
 }
 
 void TerminalPutChar(char c) {
