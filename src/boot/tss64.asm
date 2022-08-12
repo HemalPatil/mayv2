@@ -31,12 +31,12 @@ section .rodata
 
 section .text
 	extern __GDT_START
-	extern TerminalPrintString
+	extern terminalPrintString
 	global SetupTSS64
 SetupTSS64:
 	mov rdi, TSSLoading
 	mov rsi, 16
-	call TerminalPrintString
+	call terminalPrintString
 	mov rdx, __GDT_START
 	add rdx, 0x1a	; point to TSS descriptor byte 2
 	mov rax, __TSS_START
@@ -51,5 +51,5 @@ SetupTSS64:
 	ltr ax
 	mov rdi, TSSLoaded
 	mov rsi, 11
-	call TerminalPrintString
+	call terminalPrintString
 	ret

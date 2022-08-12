@@ -20,31 +20,45 @@ int64_t strcmp(const char* str1, const char* str2) {
 	return *(const unsigned char*)str1 - *(const unsigned char*)str2;
 }
 
-void memset(void* const address /*rdi*/, const uint8_t data /*rsi*/, const size_t length /*rdx*/) {
-	// TODO: convert to NASM syntax
-	asm("test %rdx,%rdx\n"	// check if length is 0
-	"je memsetEnd\n"
-	"mov %rdx,%rax\n"	// get length in rax
-	"xor %rdx,%rdx\n"	// 0 rdx for division
-	"mov $0x8,%ecx\n"	// get copy of 8 in rcx and r10
-	"mov %rcx,%r10\n"
-	"div %rcx\n"	// get qword moves in rax
-	"mov %rdx,%r8\n"	// copy remainder in r8
-	"test %rax,%rax\n"	// check if number of qword moves are 0
-	"je memsetQWORDskip\n"
-	"mov %rax,%r9\n"	// keep a copy of qword moves in r9
-	"mov %r10,%rcx\n"
-	"memsetRAXloop:\n"	// set rax to sil 8 times
-	"shl $0x8,%rax\n"
-	"mov %sil,%al\n"
-	"dec %rcx\n"
-	"test %rcx,%rcx\n"
-	"je memsetRAXloop\n"
-	"mov %r9,%rcx\n"	// get qword moves back in rcx
-	"rep stos %rax,%es:(%rdi)\n"	// do 8 byte stores
-	"memsetQWORDskip:\n"
-	"mov %r8,%rcx\n"	// get single byte moves in rcx
-	"mov %sil,%al\n"
-	"rep stos %al,%es:(%rdi)\n"	// do byte stores
-	"memsetEnd:\n");
+void* memcpy(void *dest, void *src, size_t n) {
+	// Copy in blocks of 8 because it's most efficient in 64-bit mode
+	// Copy the rest in bytes
+	if (dest == src) {
+		return;
+	}
+	uint64_t *d = dest;
+	uint64_t *s = src;
+	size_t iters = n / sizeof(uint64_t);
+	size_t remaining = n - iters * sizeof(uint64_t);
+	bool isCopyUp = d < s;
+	if (isCopyUp) {
+		for (size_t i = 0; i < iters; ++i, ++d, ++s) {
+			*d = *s;
+		}
+		uint8_t *d8 = d;
+		uint8_t *s8 = s;
+		for (size_t i = 0; i < remaining; ++i, ++d8, ++s8) {
+			*d8 = *s8;
+		}
+	}
+}
+
+void* memset(void *address, int data, size_t length) {
+	uint64_t *a8 = address;
+	uint64_t d8 = 0;
+	uint8_t d = data & 0xff;
+	for (size_t i = 0; i < 8; ++i) {
+		d8 |= d;
+		d8 <<= 8;
+	}
+	size_t iters = length / sizeof(uint64_t);
+	size_t remaining = length - iters * sizeof(uint64_t);
+	for (size_t i = 0; i < iters; ++i, ++a8) {
+		*a8 = d8;
+	}
+	uint8_t *a = a8;
+	for (size_t i = 0; i < remaining; ++i, ++a) {
+		*a = d;
+	}
+	return address;
 }

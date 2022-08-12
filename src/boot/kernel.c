@@ -13,9 +13,9 @@ void KernelMain(uint16_t *InfoTableAddress) {
 	// gained during system boot; and the information that is best found out about in real mode.
 	InfoTable = InfoTableAddress;
 
-	TerminalClearScreen();
-	TerminalSetCursorPosition(0, 0);
-	TerminalPrintString(Kernel64Loaded, strlen(Kernel64Loaded));
+	terminalClearScreen();
+	terminalSetCursorPosition(0, 0);
+	terminalPrintString(Kernel64Loaded, strlen(Kernel64Loaded));
 
 	// Do memory setup
 	if (!InitializePhysicalMemory()) {
@@ -47,12 +47,12 @@ void KernelMain(uint16_t *InfoTableAddress) {
 	// 	KernelPanic(SystemInitializationFailed);
 	// }
 
-	// TerminalSetCursorPosition(33, 12);
-	// TerminalPrintString(HelloWorld, strlen(HelloWorld));
+	// terminalSetCursorPosition(33, 12);
+	// terminalPrintString(HelloWorld, strlen(HelloWorld));
 }
 
 void KernelPanic() {
 	// TODO : improve kernel panic implementation
-	TerminalPrintString(KernelPanicString, strlen(KernelPanicString));
+	terminalPrintString(KernelPanicString, strlen(KernelPanicString));
 	HangSystem();
 }

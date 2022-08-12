@@ -17,52 +17,52 @@ const char* const rsdtAddress = "RSDT Address = ";
 const char* const xsdtAddress = "XSDT Address = ";
 
 bool ParseACPI3() {
-	TerminalPrintString(parsingACPI, strlen(parsingACPI));
-	TerminalPrintString(searchingRSDP, strlen(searchingRSDP));
+	terminalPrintString(parsingACPI, strlen(parsingACPI));
+	terminalPrintString(searchingRSDP, strlen(searchingRSDP));
 	rsdp = SearchRSDP();
 	if (!rsdp) {
-		TerminalPrintString(acpiParseFailed, strlen(acpiParseFailed));
+		terminalPrintString(acpiParseFailed, strlen(acpiParseFailed));
 		return false;
 	}
-	TerminalPrintString(acpiFound, strlen(acpiFound));
-	TerminalPrintHex(&rsdp, sizeof(&rsdp));
-	TerminalPutChar('\n');
+	terminalPrintString(acpiFound, strlen(acpiFound));
+	terminalPrintHex(&rsdp, sizeof(&rsdp));
+	terminalPrintChar('\n');
 
 	if (rsdp->revision <= RSDP_Revision_2_and_above) {
 		return false;
 	}
 
 	// Verify the checksum
-	TerminalPrintString(verifyingChecksum, strlen(verifyingChecksum));
+	terminalPrintString(verifyingChecksum, strlen(verifyingChecksum));
 	uint8_t checksum = 0;
 	for (size_t i = 0; i < sizeof(RSDPDescriptor2); ++i) {
 		checksum += ((uint8_t*)rsdp)[i];
 	}
-	TerminalPrintString(checksumStr, strlen(checksumStr));
+	terminalPrintString(checksumStr, strlen(checksumStr));
 	if (checksum != 0) {
-		TerminalPrintString(not, strlen(not));
-		TerminalPrintString(ok, strlen(ok));
+		terminalPrintString(not, strlen(not));
+		terminalPrintString(ok, strlen(ok));
 		return false;
 	}
-	TerminalPrintString(ok, strlen(ok));
+	terminalPrintString(ok, strlen(ok));
 
 	// TODO: Initalize ACPI3
 	// Read https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf Section 5.2
 	struct ACPISDTHeader *rsdt = rsdp->RSDTAddress;
-	TerminalPrintString(rsdtAddress, strlen(rsdtAddress));
-	TerminalPrintHex(&rsdt, sizeof(rsdt));
-	TerminalPutChar('\n');
+	terminalPrintString(rsdtAddress, strlen(rsdtAddress));
+	terminalPrintHex(&rsdt, sizeof(rsdt));
+	terminalPrintChar('\n');
 	struct ACPISDTHeader *xsdt = rsdp->XSDTAddress;
-	TerminalPrintString(xsdtAddress, strlen(xsdtAddress));
-	TerminalPrintHex(&xsdt, sizeof(xsdt));
-	TerminalPutChar('\n');
-	TerminalPrintString(verifyingXSDTsig, strlen(verifyingXSDTsig));
+	terminalPrintString(xsdtAddress, strlen(xsdtAddress));
+	terminalPrintHex(&xsdt, sizeof(xsdt));
+	terminalPrintChar('\n');
+	terminalPrintString(verifyingXSDTsig, strlen(verifyingXSDTsig));
 	if (strcmp(xsdt->Signature, XSDTSignature)) {
-		TerminalPrintString(not, strlen(not));
-		TerminalPrintString(ok, strlen(ok));
+		terminalPrintString(not, strlen(not));
+		terminalPrintString(ok, strlen(ok));
 		return false;
 	}
-	TerminalPrintString(ok, strlen(ok));
+	terminalPrintString(ok, strlen(ok));
 
 	return true;
 }

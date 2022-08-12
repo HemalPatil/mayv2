@@ -7,9 +7,10 @@ section .rodata
 	DisabledPIC db 10, 'Disabled PIC', 10, 0
 
 section .text
-extern KernelPanic
-	extern TerminalPrintString
+	extern KernelPanic
+	extern terminalPrintString
 	global SetupAPIC
+
 SetupAPIC:
 	; Disable PIC
 	mov al, 0xff
@@ -17,23 +18,23 @@ SetupAPIC:
 	out 0x21, al
 	mov rdi, DisabledPIC
 	mov rsi, 14
-	call TerminalPrintString
+	call terminalPrintString
 	; Check APIC presence
 	mov rdi, CheckingAPIC
 	mov rsi, 26
-	call TerminalPrintString
+	call terminalPrintString
 	mov eax, 1
 	cpuid
 	and edx, 1 << 9
 	jnz APICPresentBlock
 	mov rdi, APICNotPresent
 	mov rsi, 17
-	call TerminalPrintString
+	call terminalPrintString
 	call KernelPanic
 	ret	; Should never be executed
 APICPresentBlock:
 	mov rdi, APICPresent
 	mov rsi, 13
-	call TerminalPrintString
+	call terminalPrintString
 	; TODO: enable APIC
 	ret

@@ -35,7 +35,7 @@ section .text
 	global Setup16BitSegments
 	global LoadKernelELFSectors
 	global JumpToKernel
-	extern TerminalPutChar
+	extern terminalPrintChar
 
 PrintHex:
 	push ebp
@@ -69,7 +69,7 @@ PrintHexCore:
 	xlat
 	push 0x0f
 	push eax
-	call TerminalPutChar
+	call terminalPrintChar
 	add esp, 8
 	pop edx
 	mov ebx, hexspace
@@ -79,7 +79,7 @@ PrintHexCore:
 	xlat
 	push 0x0f
 	push eax
-	call TerminalPutChar
+	call terminalPrintChar
 	add esp, 8
 	popad
 	ret

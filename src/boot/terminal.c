@@ -1,4 +1,7 @@
+#include <string.h>
 #include "kernel.h"
+
+#define DEFAULT_TERMINAL_COLOUR = 0x0f
 
 // TODO : This is a temporary file. The functions from this file need to be shifted to drivers/terminal after some higher level
 // functions are established
@@ -7,100 +10,125 @@
 
 // Before all terminal operations take place, i.e. before writing to the VGA video memory
 // at 0xb8000 or manipulating the frame buffer, always make sure that video mode is VGA 80x25 16 bit colour mode
-// This is done by calling IsTerminalMode()
+// This is done by calling isTerminalMode()
 
-static bool TerminalModeVGA80_25 = true;
+static bool vgaMode80x25 = true;
 
 // Our terminal is always in VGA 80x25 16 bit colour mode
 // This mode is initialized by the LOADER32
-static char *const TerminalVideoMemory = (char *)0xb8000;
-static const size_t VGAWidth = 80, VGAHeight = 25;
-static size_t TerminalCursorX = 0, TerminalCursorY = 0;
-static const uint8_t DEFAULT_TERMINAL_COLOUR = 0x0f;
-static uint8_t CurrentTextColour = 0x0f;
-static uint8_t CurrentTerminalColour = 0x0f;
-static uint16_t CursorPort = 0x3d4;
-static uint16_t CursorPortIndex = 0x3d5;
+static char *const videoMemory = (char *)0xb8000;
+static const size_t vgaWidth = 80;
+static const size_t vgaHeight = 25;
+static const size_t videoMemSize = vgaWidth * vgaHeight * 2;
+static size_t cursorX = 0, cursorY = 0;
+static uint8_t currentTextColour = 0x0f;
+static uint8_t currentTerminalColour = 0x0f;
+static uint16_t cursorPort = 0x3d4;
+static uint16_t cursorPortIndex = 0x3d5;
 
-const char* const HexPalette = "0123456789ABCDEF";
+const char* const hexPalette = "0123456789ABCDEF";
 
 // Check if video mode is 80x25 VGA
-bool IsTerminalMode() {
+bool isTerminalMode() {
 	// TODO : right now we are just checking a boolean value, add functionality to actually check if the mode is the assumed one
-	return TerminalModeVGA80_25;
+	return vgaMode80x25;
 }
 
 // Clears the terminal screen
-void TerminalClearScreen() {
-	if (!IsTerminalMode()) {
+void terminalClearScreen() {
+	if (!isTerminalMode()) {
 		return;
 	}
-	// Inline assembly to set 4000 bytes
-	// of framebuffer at 0xb8000 to white text on black screen
-	TerminalClearScreenASM();
-	TerminalCursorX = TerminalCursorY = 0;
-	TerminalSetCursorPosition(0, 0);
+	for (size_t i = 0; i < vgaHeight; ++i) {
+		terminalClearLine(i);
+	}
+	cursorX = cursorY = 0;
+	terminalSetCursorPosition(0, 0);
+}
+
+void terminalClearLine(size_t lineNumber) {
+	uint64_t data = 0;
+	for (size_t i = 0; i < 4; ++i) {
+		data <<= 8;
+		data |= currentTextColour;
+		data <<= 8;
+		data |= 0x20;
+	}
+	uint64_t *lineAddress = videoMemory + lineNumber * vgaWidth * 2;
+	for (size_t i = 0; i < 20; ++i, ++lineAddress) {
+		*lineAddress = data;
+	}
 }
 
 // Set the cursor to a given (x, y) where 0<=x<=79 and 0<=y<=24
-void TerminalSetCursorPosition(size_t x, size_t y) {
-	if (!IsTerminalMode() || x >= VGAWidth || y >= VGAHeight) {
+void terminalSetCursorPosition(size_t x, size_t y) {
+	if (!isTerminalMode() || x >= vgaWidth || y >= vgaHeight) {
 		return;
 	}
-	size_t position = y * VGAWidth + x; // Multiply 80 to row and add column to it
-	TerminalCursorX = x;
-	TerminalCursorY = y;
-	OutputByte(CursorPort, 0x0f); // Cursor LOW port to VGA INDEX register
-	OutputByte(CursorPortIndex, (uint8_t)(position & 0xff));
-	OutputByte(CursorPort, 0x0e); // Cursor HIGH port to VGA INDEX register
-	OutputByte(CursorPortIndex, (uint8_t)((position >> 8) & 0xff));
+	cursorX = x;
+	cursorY = y;
+	size_t position = y * vgaWidth + x; // Multiply 80 to row and add column to it
+	outputByte(cursorPort, 0x0f); // Cursor LOW port to VGA INDEX register
+	outputByte(cursorPortIndex, (uint8_t)(position & 0xff));
+	outputByte(cursorPort, 0x0e); // Cursor HIGH port to VGA INDEX register
+	outputByte(cursorPortIndex, (uint8_t)((position >> 8) & 0xff));
 }
 
-void TerminalPutChar(char c) {
+void terminalScroll(size_t lineCount) {
+	// TODO: hide scrolled data somewhere so we can use pgUp and pgDown
+	size_t count = lineCount * vgaWidth * 2;
+	terminalPrintHex(&count, sizeof(count));
+	memcpy(videoMemory, videoMemory + count, videoMemSize - count);
+	terminalClearLine(vgaHeight - 1);
+}
+
+void terminalPrintChar(char c) {
 	// TODO: Add text scroll. Newline behaviour needs to be better.
-	if (!IsTerminalMode() || TerminalCursorX >= VGAWidth || TerminalCursorY >= VGAHeight) {
-		TerminalCursorX = TerminalCursorY = 0;
+	if (!isTerminalMode() || cursorX >= vgaWidth || cursorY >= vgaHeight) {
+		cursorX = cursorY = 0;
 		return;
 	}
 	if (c == '\n') {
-		goto skip;
+		cursorX = 0;
+		++cursorY;
+	} else {
+		const size_t index = (cursorY * vgaWidth + cursorX) * 2;
+		videoMemory[index] = c;
+		videoMemory[index + 1] = currentTextColour;
+		++cursorX;
 	}
-	const size_t index = (TerminalCursorY * VGAWidth + TerminalCursorX) * 2;
-	TerminalVideoMemory[index] = c;
-	TerminalVideoMemory[index + 1] = CurrentTextColour;
-	if (++TerminalCursorX == VGAWidth) {
-	skip:
-		TerminalCursorX = 0;
-		if (++TerminalCursorY == VGAHeight) {
-			TerminalCursorY = 0;
-			TerminalClearScreen();
-		}
+	if (cursorX >= vgaWidth) {
+		cursorX = 0;
+		++cursorY;
 	}
-	return;
+	if (cursorY >= vgaHeight) {
+		terminalScroll(1);
+		cursorX = 0;
+		cursorY = vgaHeight - 1;
+	}
+	terminalSetCursorPosition(cursorX, cursorY);
 }
 
 // Prints a string of given length to the terminal
-void TerminalPrintString(const char *str, const size_t length) {
+void terminalPrintString(const char *str, const size_t length) {
 	// We are printing only length number of characters to
 	// the terminal to avoid buffer overrun which may be caused by no null char at end of string
-	if (!IsTerminalMode()) {
+	if (!isTerminalMode()) {
 		return;
 	}
 	for (size_t i = 0; i < length; ++i, ++str) {
-		TerminalPutChar(*str);
+		terminalPrintChar(*str);
 	}
-	TerminalSetCursorPosition(TerminalCursorX, TerminalCursorY);
 }
 
-void TerminalPrintHex(void* value, size_t size) {
-	TerminalPrintString("[0x", 3);
+void terminalPrintHex(void* value, size_t size) {
+	terminalPrintString("[0x", 3);
 	char hexValue[size * 2];
 	for (size_t i = 0; i < size; ++i) {
 		uint8_t x = *((uint8_t*)value + i);
-		hexValue[size * 2 - 1 - i * 2] = HexPalette[x & 0xf];
-		hexValue[size * 2 - 2 - i * 2] = HexPalette[(x >> 4) & 0xf];
+		hexValue[size * 2 - 1 - i * 2] = hexPalette[x & 0xf];
+		hexValue[size * 2 - 2 - i * 2] = hexPalette[(x >> 4) & 0xf];
 	}
-	TerminalPrintString(hexValue, size * 2);
-	TerminalPutChar(']');
-	TerminalSetCursorPosition(TerminalCursorX, TerminalCursorY);
+	terminalPrintString(hexValue, size * 2);
+	terminalPrintChar(']');
 }

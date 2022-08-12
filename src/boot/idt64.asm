@@ -50,13 +50,13 @@ IDTDescriptor:
 	PageFaultString db 'Page Fault!', 10, 0
 
 section .text
-	extern TerminalPrintString
+	extern terminalPrintString
 	global SetupIDT64
 	global EnableInterrupts
 SetupIDT64:
 	mov rdi, IDTLoading
 	mov rsi, 16
-	call TerminalPrintString
+	call terminalPrintString
 ; Fill all 256 interrupt handlers with DefaultInterruptHandler
 ; Set rdx to base address of IDT and loop through all 256
 	mov r9, 0x00008e0200080000	; 64-bit code selector, descriptor type, and IST_2 index
@@ -76,7 +76,7 @@ SetupIDT64DescriptorLoop:
 	call FillOffsets
 	mov rdi, IDTLoaded
 	mov rsi, 11
-	call TerminalPrintString
+	call terminalPrintString
 	mov rax, IDTDescriptor
 	lidt [rax]	; load the IDT
 	ret
@@ -93,26 +93,26 @@ EnableInterrupts:
 	sti
 	mov rdi, InterruptsEnabled
 	mov rsi, 19
-	call TerminalPrintString
+	call terminalPrintString
 	ret
 
 DoubleFaultHandler:
 	mov rdi, DoubleFaultString
 	mov rsi, 14
-	call TerminalPrintString
+	call terminalPrintString
 	pop r8	; Pop the 64 bit error code in thrashable register
 	iretq
 
 PageFaultHandler:
 	mov rdi, PageFaultString
 	mov rsi, 12
-	call TerminalPrintString
+	call terminalPrintString
 	pop r8	; Pop the 32 bit error code in thrashable register
 	iretq
 
 DefaultInterruptHandler:
 	mov rdi, DefaultInterruptString
 	mov rsi, 27
-	call TerminalPrintString
+	call terminalPrintString
 	pop r8	; Pop the 64 bit error code in thrashable register
 	iretq

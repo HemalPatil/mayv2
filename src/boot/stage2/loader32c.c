@@ -84,7 +84,7 @@ extern void JumpToKernel(PML4E *, uint16_t *);
 extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
 
-void TerminalPutChar(char c, uint8_t color)
+void terminalPrintChar(char c, uint8_t color)
 {
 	if (CursorX >= VGAWidth || CursorY >= VGAHeight)
 	{
@@ -137,7 +137,7 @@ void PrintString(const char *const str)
 	size_t length = strlen(str);
 	for (size_t i = 0; i < length; ++i)
 	{
-		TerminalPutChar(str[i], DEFAULT_TERMINAL_COLOR);
+		terminalPrintChar(str[i], DEFAULT_TERMINAL_COLOR);
 	}
 }
 

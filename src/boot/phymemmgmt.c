@@ -22,39 +22,40 @@ const char* const tableHeader = "    Base address         Length               T
 bool InitializePhysicalMemory()
 {
 	// TODO : add initialize phy mem implementation
-	TerminalPrintString(getPhyMemSizeStr, strlen(getPhyMemSizeStr));
+	terminalPrintString(getPhyMemSizeStr, strlen(getPhyMemSizeStr));
 
 	// Display diagnostic information about memory like MMAP entries,
 	// physical and usable memory size
 	struct ACPI3Entry* BaseMMAP = GetMMAPBase();
-	TerminalPrintString(mmapBase, strlen(mmapBase));
-	TerminalPrintHex(&BaseMMAP, sizeof(BaseMMAP));
-	TerminalPutChar('\n');
+	terminalPrintString(mmapBase, strlen(mmapBase));
+	terminalPrintHex(&BaseMMAP, sizeof(BaseMMAP));
+	terminalPrintChar('\n');
 
 	size_t i, count = GetNumberOfMMAPEntries();
-	TerminalPrintString(countStr, strlen(countStr));
-	TerminalPrintHex(&count, sizeof(count));
-	TerminalPutChar('\n');
-	TerminalPrintString(tableHeader, strlen(tableHeader));
+	terminalPrintString(countStr, strlen(countStr));
+	terminalPrintHex(&count, sizeof(count));
+	terminalPrintChar('\n');
+	terminalPrintString(tableHeader, strlen(tableHeader));
 	for (i = 0; i < count; ++i) {
-		TerminalPrintString(entry, strlen(entry));
-		TerminalPrintHex(&(BaseMMAP[i].BaseAddress), sizeof(BaseMMAP->BaseAddress));
-		TerminalPutChar(' ');
-		TerminalPrintHex(&(BaseMMAP[i].Length), sizeof(BaseMMAP->Length));
-		TerminalPutChar(' ');
+		terminalPrintString(entry, strlen(entry));
+		terminalPrintHex(&(BaseMMAP[i].BaseAddress), sizeof(BaseMMAP->BaseAddress));
+		terminalPrintChar(' ');
+		terminalPrintHex(&(BaseMMAP[i].Length), sizeof(BaseMMAP->Length));
+		terminalPrintChar(' ');
 		uint8_t usable = BaseMMAP[i].RegionType == ACPI3_MemType_Usable;
-		TerminalPrintHex(&(BaseMMAP[i].RegionType), 1);
-		TerminalPutChar('\n');
+		terminalPrintHex(&(BaseMMAP[i].RegionType), 1);
+		terminalPrintChar('\n');
 	}
 
 	uint64_t phyMemSize = GetPhysicalMemorySize();
-	TerminalPrintString(phyMemSizeStr, strlen(phyMemSizeStr));
-	TerminalPrintHex(&phyMemSize, sizeof(phyMemSize));
-	TerminalPutChar('\n');
+	terminalPrintString(phyMemSizeStr, strlen(phyMemSizeStr));
+	terminalPrintHex(&phyMemSize, sizeof(phyMemSize));
+	terminalPrintChar('\n');
 
 	uint64_t usableMemSize = GetUsablePhysicalMemorySize();
-	TerminalPrintString(usableMemSizeStr, strlen(usableMemSizeStr));
-	TerminalPrintHex(&usableMemSize, sizeof(usableMemSize));
+	terminalPrintString(usableMemSizeStr, strlen(usableMemSizeStr));
+	terminalPrintHex(&usableMemSize, sizeof(usableMemSize));
+	terminalPrintChar('\n');
 	return true;
 
 	NumberOfPhysicalPages = phyMemSize / PhyPageSize;

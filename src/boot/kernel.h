@@ -63,13 +63,15 @@ extern struct RSDPDescriptor2 *rsdp;
 extern bool ParseACPI3();
 
 // terminal.c
-extern const char* const HexPalette;
-extern bool IsTerminalMode();
-extern void TerminalClearScreen();
-extern void TerminalSetCursorPosition(size_t x, size_t y);
-extern void TerminalPrintString(const char* const str, const size_t length);
-extern void TerminalPutChar(char);
-extern void TerminalPrintHex(void* value, size_t size);
+extern const char* const hexPalette;
+extern bool isTerminalMode();
+extern void terminalClearLine(size_t lineNumber);
+extern void terminalClearScreen();
+extern void terminalSetCursorPosition(size_t x, size_t y);
+extern void terminalPrintString(const char* const str, const size_t length);
+extern void terminalPrintChar(char);
+extern void terminalPrintHex(void* value, size_t size);
+extern void terminalScroll(size_t lineCount);
 
 // interrupts.c
 extern bool SetupHardwareInterrupts();
@@ -103,9 +105,8 @@ extern void SetupAPIC();
 extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
 extern void HangSystem();
-extern void OutputByte(uint16_t port, uint8_t byte);
+extern void outputByte(uint16_t port, uint8_t byte);
 extern RSDPDescriptor2* SearchRSDP();
-extern void TerminalClearScreenASM();
 
 // idt64.asm
 extern void SetupIDT64();
