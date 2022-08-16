@@ -21,7 +21,7 @@ void kernelMain(uint16_t *infoTableAddress) {
 	if (!initializePhysicalMemory()) {
 		kernelPanic(systemInitializationFailed);
 	}
-	// return;
+	return;
 	// if (!InitializeVirtualMemory(SystemInitializationFailed))
 	// {
 	// 	KernelPanic();

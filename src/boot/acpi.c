@@ -15,6 +15,7 @@ const char* const not = "not ";
 const char* const verifyingXsdtSig = "Verifying XSDT signature...\nSignature ";
 const char* const rsdtAddress = "RSDT Address = ";
 const char* const xsdtAddress = "XSDT Address = ";
+const char* const oldAcpi = " ACPI version found is older than ACPI3\n";
 
 struct RSDPDescriptor2* searchRsdp() {
 	// Put the magic string 'RSD PTR ' in a 64-bit number and search
@@ -32,6 +33,9 @@ struct RSDPDescriptor2* searchRsdp() {
 bool parseAcpi3() {
 	terminalPrintString(parsingAcpi, strlen(parsingAcpi));
 	terminalPrintString(searchingRsdp, strlen(searchingRsdp));
+
+	// At this stage 16 MiB are identity mapped
+	// so we need worry about page faults
 	rsdp = searchRsdp();
 	if (!rsdp) {
 		terminalPrintString(acpiParseFailed, strlen(acpiParseFailed));
@@ -42,6 +46,7 @@ bool parseAcpi3() {
 	terminalPrintChar('\n');
 
 	if (rsdp->revision <= RSDP_Revision_2_and_above) {
+		terminalPrintString(&oldAcpi, strlen(oldAcpi));
 		return false;
 	}
 

@@ -106,7 +106,6 @@ extern uint8_t getLinearAddressLimit();
 extern uint8_t getPhysicalAddressLimit();
 extern void hangSystem();
 extern void outputByte(uint16_t port, uint8_t byte);
-extern RSDPDescriptor2* searchRsdp();
 
 // idt64.asm
 extern void setupIdt64();

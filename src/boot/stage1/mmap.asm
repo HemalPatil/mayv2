@@ -132,7 +132,7 @@ mmap_finish:
 	cmp word [valid], 1
 	jne insuffmem_msg
 
-	;Check memory size (We need atleast 1GiB of free usable conventional memory)
+	; Check memory size (We need atleast 1GiB of free usable conventional memory)
 	mov bx, [bp+8]					;Custom table stored at 0x0050:0x0000
 	mov es, bx
 	mov bx, [bp+6]

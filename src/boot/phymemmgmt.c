@@ -65,7 +65,7 @@ bool initializePhysicalMemory() {
 	// remove the size of kernel from this usable memory
 	// also make first 1MiB of physical memory unusable, we have important structures there
 	// although some areas of the first 1MiB are already decalred unusable
-	// by GetUsablePhysicalMemorySize, we are ignoring this overlapping memory (size : around 240 KiB), it won't make much difference
+	// by getUsablePhysicalMemorySize, we are ignoring this overlapping memory (size : around 240 KiB), it won't make much difference
 	freePhysicalMemory = usableMemSize - getKernelSize() - 0x100000;
 
 	// we have physical memory available right after the kernel,

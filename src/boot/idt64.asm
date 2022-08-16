@@ -47,9 +47,11 @@ idtDescriptor:
 	idtLoading db 10, 'Loading IDT...', 10, 0
 	idtLoaded db 'IDT loaded', 10, 0
 	interruptsEnabled db 'Enabled interrupts', 10, 0
-	pageFaultString db 'Page Fault!', 10, 0
+	pageFaultString db 'Page Fault! Tried to access ', 0
 
 section .text
+	extern terminalPrintChar
+	extern terminalPrintHex
 	extern terminalPrintString
 	global setupIdt64
 	global enableInterrupts
@@ -105,9 +107,22 @@ doubleFaultHandler:
 
 pageFaultHandler:
 	mov rdi, pageFaultString
-	mov rsi, 12
+	mov rsi, 28
 	call terminalPrintString
-	pop r8	; Pop the 32 bit error code in thrashable register
+
+	; Pop the 32 bit error code in thrashable register
+	pop r8
+
+	; Get the virtual address that caused this fault
+	; and display it
+	mov rax, cr2
+	push rax
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	pop rax
+	mov rdi, 10
+	call terminalPrintChar
 	iretq
 
 defaultInterruptHandler:
