@@ -10,17 +10,16 @@
 #define ACPI3_MemType_Hole 10
 
 // ACPI 3.0 entry format (we have used extended entries of 24 bytes)
-struct ACPI3Entry
-{
+struct ACPI3Entry {
 	uint64_t baseAddress;
-	uint64_t Length;
-	uint32_t RegionType;
-	uint32_t ExtendedAttributes;
+	uint64_t length;
+	uint32_t regionType;
+	uint32_t extendedAttributes;
 } __attribute__((packed));
+typedef struct ACPI3Entry ACPI3Entry;
 
 // Disk Address Packet for extended disk operations
-struct DAP
-{
+struct DAP {
 	char DAPSize;
 	char alwayszero;
 	uint16_t NumberOfSectors;
@@ -31,8 +30,7 @@ struct DAP
 typedef struct DAP DAP;
 
 // Program Header of 64-bit ELF binaries
-struct ELF64ProgramHeader
-{
+struct ELF64ProgramHeader {
 	uint32_t TypeOfSegment;
 	uint32_t SegmentFlags;
 	uint64_t FileOffset;
@@ -45,9 +43,9 @@ struct ELF64ProgramHeader
 typedef struct ELF64ProgramHeader ELF64ProgramHeader;
 
 // 64-bit long mode paging structures
-// Right now in this very early stage of system initialization we just need present, r/w and address fields. Hence all the 4 structures are using a common struct
-struct PML4E
-{
+// Right now in this very early stage of system initialization we just need present,
+// r/w and address fields. Hence all the 4 structures are using a common struct.
+struct PML4E {
 	uint8_t Present : 1;
 	uint8_t ReadWrite : 1;
 	uint8_t UserAccess : 1;
@@ -71,7 +69,7 @@ size_t CursorX = 0;
 size_t CursorY = 0;
 const char endl[] = "\n";
 const uint8_t DEFAULT_TERMINAL_COLOR = 0x0f;
-uint16_t *InfoTable;
+uint16_t *infoTable;
 
 void ClearScreen();
 extern void PrintHex(const void *const, const size_t);
@@ -141,47 +139,40 @@ void PrintString(const char *const str)
 	}
 }
 
-size_t getNumberOfMMAPEntries()
+size_t getNumberOfMmapEntries()
 {
-	return (size_t)(*(InfoTable + 1));
+	return (size_t)(*(infoTable + 1));
 }
 
-struct ACPI3Entry *getMmapBase()
+ACPI3Entry *getMmapBase()
 {
-	uint16_t MMAPSegment = *(InfoTable + 3);
-	uint16_t MMAPOffset = *(InfoTable + 2);
-	return (struct ACPI3Entry *)((uint32_t)MMAPSegment * 16 + (uint32_t)MMAPOffset);
+	uint16_t MMAPSegment = *(infoTable + 3);
+	uint16_t MMAPOffset = *(infoTable + 2);
+	return (ACPI3Entry *)((uint32_t)MMAPSegment * 16 + (uint32_t)MMAPOffset);
 }
 
-void SortMMAPEntries()
-{
+void sortMmapEntries() {
 	// Sort the MMAP entries in ascending order of their base addresses
 	// Number of MMAP entries is in the range of 5-15 typically so a simple bubble sort is used
-
-	size_t NumberMMAPEntries = getNumberOfMMAPEntries();
-	struct ACPI3Entry *mmap = getMmapBase();
+	size_t numberMmapEntries = getNumberOfMmapEntries();
+	ACPI3Entry *mmap = getMmapBase();
 	size_t i, j;
-	for (i = 0; i < NumberMMAPEntries - 1; ++i)
-	{
+	for (i = 0; i < numberMmapEntries - 1; ++i) {
 		size_t iMin = i;
-		for (j = i + 1; j < NumberMMAPEntries; ++j)
-		{
+		for (j = i + 1; j < numberMmapEntries; ++j) {
 			uint64_t basej = *((uint64_t *)(mmap + j));
 			uint64_t baseMin = *((uint64_t *)(mmap + iMin));
-			if (basej < baseMin)
-			{
+			if (basej < baseMin) {
 				iMin = j;
 			}
 		}
-		if (iMin != i)
-		{
+		if (iMin != i) {
 			swap(mmap + i, mmap + iMin, 24);
 		}
 	}
 }
 
-void ProcessMMAPEntries()
-{
+void ProcessMmapEntries() {
 	// This function checks for any overlaps in the memory regions provided by BIOS
 	// Overlaps occur in very rare cases. Nevertheless they must be handled.
 	// If an overlap is found, two cases occur
@@ -193,92 +184,79 @@ void ProcessMMAPEntries()
 	// 3) Overlapping of two regions of different types and none of them of type ACPI3_MemType_Usable
 	//    is not handled right now.
 
-	size_t NumberMMAPEntries = getNumberOfMMAPEntries();
-	size_t ActualEntries = NumberMMAPEntries;
-	struct ACPI3Entry *mmap = getMmapBase();
-	SortMMAPEntries();
-	for (uint32_t i = 0; i < NumberMMAPEntries - 1; ++i)
-	{
-		struct ACPI3Entry *MMAPEntry1 = mmap + i;
-		struct ACPI3Entry *MMAPEntry2 = mmap + i + 1;
-		if ((MMAPEntry1->baseAddress + MMAPEntry1->Length) > MMAPEntry2->baseAddress)
-		{
-			if (MMAPEntry1->RegionType == MMAPEntry2->RegionType)
-			{
-				MMAPEntry1->Length = MMAPEntry2->baseAddress - MMAPEntry1->baseAddress;
-			}
-			else
-			{
-				if (MMAPEntry1->RegionType == ACPI3_MemType_Usable)
-				{
-					MMAPEntry1->Length = MMAPEntry2->baseAddress - MMAPEntry1->baseAddress;
-				}
-				else if (MMAPEntry2->RegionType == ACPI3_MemType_Usable)
-				{
-					MMAPEntry2->baseAddress = MMAPEntry1->baseAddress + MMAPEntry1->Length;
+	size_t numberMmapEntries = getNumberOfMmapEntries();
+	size_t actualEntries = numberMmapEntries;
+	ACPI3Entry *mmap = getMmapBase();
+	sortMmapEntries();
+	for (uint32_t i = 0; i < numberMmapEntries - 1; ++i) {
+		ACPI3Entry *mmapEntry1 = mmap + i;
+		ACPI3Entry *mmapEntry2 = mmap + i + 1;
+		if ((mmapEntry1->baseAddress + mmapEntry1->length) > mmapEntry2->baseAddress) {
+			if (mmapEntry1->regionType == mmapEntry2->regionType) {
+				mmapEntry1->length = mmapEntry2->baseAddress - mmapEntry1->baseAddress;
+			} else {
+				if (mmapEntry1->regionType == ACPI3_MemType_Usable) {
+					mmapEntry1->length = mmapEntry2->baseAddress - mmapEntry1->baseAddress;
+				} else if (mmapEntry2->regionType == ACPI3_MemType_Usable) {
+					mmapEntry2->baseAddress = mmapEntry1->baseAddress + mmapEntry1->length;
 				}
 			}
-		}
-		else if ((MMAPEntry1->baseAddress + MMAPEntry1->Length) < MMAPEntry2->baseAddress)
-		{
-			struct ACPI3Entry *NewEntry = mmap + ActualEntries;
-			NewEntry->baseAddress = MMAPEntry1->baseAddress + MMAPEntry1->Length;
-			NewEntry->Length = MMAPEntry2->baseAddress - NewEntry->baseAddress;
-			NewEntry->RegionType = ACPI3_MemType_Hole;
-			NewEntry->ExtendedAttributes = 1;
-			++(*(InfoTable + 1));
-			++ActualEntries;
+		} else if ((mmapEntry1->baseAddress + mmapEntry1->length) < mmapEntry2->baseAddress) {
+			ACPI3Entry *newEntry = mmap + actualEntries;
+			newEntry->baseAddress = mmapEntry1->baseAddress + mmapEntry1->length;
+			newEntry->length = mmapEntry2->baseAddress - newEntry->baseAddress;
+			newEntry->regionType = ACPI3_MemType_Hole;
+			newEntry->extendedAttributes = 1;
+			++(*(infoTable + 1));
+			++actualEntries;
 		}
 	}
-	SortMMAPEntries();
+	sortMmapEntries();
 }
 
-void IdentityMapFirst16MiB()
-{
+void identityMapFirst16MiB() {
+	// TODO: assumes memory at 0x110000 is free for PML4T
 	// Identity map first 16 MiB of the physical memory
-	// page_ptr right now points to PML4T at 0x110000;
-	uint64_t *page_ptr = (uint64_t *)0x110000;
+	// pagePtr right now points to PML4T at 0x110000;
+	uint64_t *pagePtr = (uint64_t *)0x110000;
 
 	// Clear 22 4KiB pages
-	memset(page_ptr, 0, 0xf0 * 4096);
+	memset(pagePtr, 0, 0xf0 * 4096);
 
 	// PML4T[0] points to PDPT at 0x111000, i.e. the first 512GiB are handled by PDPT at 0x111000
-	page_ptr[0] = (uint64_t)0x111003;
+	pagePtr[0] = (uint64_t)0x111003;
 
-	// page_ptr right now points to PDPT at 0x111000 which handles first 512GiB
-	page_ptr = (uint64_t *)0x111000;
+	// pagePtr right now points to PDPT at 0x111000 which handles first 512GiB
+	pagePtr = (uint64_t *)0x111000;
 	// PDPT[0] points to PD at 0x112000, i.e. the first 1GiB is handled by PD at 0x112000
-	page_ptr[0] = (uint64_t)0x112003;
+	pagePtr[0] = (uint64_t)0x112003;
 
 	// Each entry in PD points to PT. Each PT handles 2MiB.
 	// So we add 8 entries to PD and fill all entries in the PTs starting from 0x113000 to 0x11afff with page_frames 0x0 to 16MiB
-	uint64_t *pdentry = (uint64_t *)0x112000;
-	uint64_t *ptentry = (uint64_t *)0x113000;
-	uint64_t page_frame = (uint64_t)0x0003;
+	uint64_t *pdEntry = (uint64_t *)0x112000;
+	uint64_t *ptEntry = (uint64_t *)0x113000;
+	uint64_t pageFrame = (uint64_t)0x0003;
 	size_t i = 0, j = 0;
-	for (i = 0; i < 8; ++i)
-	{
-		pdentry[i] = (uint64_t)((uint32_t)ptentry + 3);
-		for (j = 0; j < 512; ++j, ++ptentry)
-		{
-			*(ptentry) = page_frame;
-			page_frame += 0x1000;
+	for (i = 0; i < 8; ++i) {
+		pdEntry[i] = (uint64_t)((uint32_t)ptEntry + 3);
+		for (j = 0; j < 512; ++j, ++ptEntry) {
+			*(ptEntry) = pageFrame;
+			pageFrame += 0x1000;
 		}
 	}
 }
 
-void AllocatePagingEntry(struct PML4E *entry, uint32_t address)
-{
+void allocatePagingEntry(PML4E *entry, uint32_t address) {
 	entry->Present = 1;
 	entry->ReadWrite = 1;
 	entry->PageAddress = address >> 12;
 }
 
-int Loader32Main(uint16_t *InfoTableAddress, DAP *const DAPKernel64Address, const void *const LoadModuleAddress)
+int loader32Main(uint16_t *InfoTableAddress, DAP *const dapKernel64Address, const void *const loadModuleAddress)
 {
-	InfoTable = InfoTableAddress;
+	infoTable = InfoTableAddress;
 	ClearScreen();
-	ProcessMMAPEntries();
+	ProcessMmapEntries();
 
 	// Get the max physical address and max linear address that can be handled by the CPU
 	// These details are found by using CPUID.EAX=0x80000008 instruction and has to be done from assembly
@@ -291,26 +269,26 @@ int Loader32Main(uint16_t *InfoTableAddress, DAP *const DAPKernel64Address, cons
 	PrintString("Max linear address = 0x");
 	PrintHex(&maxlinaddr, sizeof(maxlinaddr));
 	PrintString("\n");
-	*(InfoTable + 9) = (uint16_t)maxphyaddr;
-	*(InfoTable + 10) = (uint16_t)maxlinaddr;
+	*(infoTable + 9) = (uint16_t)maxphyaddr;
+	*(infoTable + 10) = (uint16_t)maxlinaddr;
 
-	DAP DAPKernel64 = *DAPKernel64Address;
+	DAP DAPKernel64 = *dapKernel64Address;
 	uint16_t KernelNumberOfSectors = DAPKernel64.NumberOfSectors;
 	uint32_t bytesOfKernelELF = (uint32_t)0x800 * (uint32_t)KernelNumberOfSectors;
-	uint64_t KernelVirtualMemSize = *((uint64_t *)(InfoTable + 0xc)); // Get size of kernel in virtual memory
+	uint64_t KernelVirtualMemSize = *((uint64_t *)(infoTable + 0xc)); // Get size of kernel in virtual memory
 
 	// Check if enough space is available to load kernel as well as the elf (i.e. length of region > (KernelVirtualMemSize + bytesOfKernelELF))
 	// We will load parsed kernel code from 2MiB physical memory (size : KernelVirtualMemSize)
 	// Kernel ELF will be loaded at 2MiB + KernelVirtualMemSize + 4KiB physical memory form where it will be parsed
 	bool enoughSpace = false;
-	size_t numberMMAPentries = getNumberOfMMAPEntries();
+	size_t numberMMAPentries = getNumberOfMmapEntries();
 	PrintString("Number of MMAP entries = 0x");
 	PrintHex(&numberMMAPentries, sizeof(numberMMAPentries));
 	PrintString("\n");
-	struct ACPI3Entry *mmap = getMmapBase();
+	ACPI3Entry *mmap = getMmapBase();
 	for (size_t i = 0; i < numberMMAPentries; ++i)
 	{
-		if ((mmap[i].baseAddress <= (uint64_t)0x100000) && (mmap[i].Length > ((uint64_t)0x201000 - mmap[i].baseAddress + (uint64_t)bytesOfKernelELF + KernelVirtualMemSize)))
+		if ((mmap[i].baseAddress <= (uint64_t)0x100000) && (mmap[i].length > ((uint64_t)0x201000 - mmap[i].baseAddress + (uint64_t)bytesOfKernelELF + KernelVirtualMemSize)))
 		{
 			enoughSpace = true;
 			break;
@@ -324,17 +302,19 @@ int Loader32Main(uint16_t *InfoTableAddress, DAP *const DAPKernel64Address, cons
 	}
 	PrintString("Loading kernel...\n");
 
-	// We will be identity mapping the first 16 MiB of the physical memory
+	// Identity map the first 16 MiB of the physical memory
 	// To see how the mapping is done refer to docs/mapping.txt
-	IdentityMapFirst16MiB();
+	identityMapFirst16MiB();
 
-	// In GDT change base address of the 16-bit segments
-	Setup16BitSegments(InfoTableAddress, LoadModuleAddress, DAPKernel64Address, *InfoTable); // InfoTable[0] = boot disk number
+	// Change base address of the 16-bit segments in GDT32
+	Setup16BitSegments(InfoTableAddress, loadModuleAddress, dapKernel64Address, *infoTable); // infoTable[0] = boot disk number
 
+	// TODO: assumes memory at 2MiB is free
 	// Enter the kernel physical memory base address in the info table
 	uint32_t KernelBase = 0x200000;
-	*((uint64_t *)(InfoTable + 0x10)) = (uint64_t)KernelBase;
+	*((uint64_t *)(infoTable + 0x10)) = (uint64_t)KernelBase;
 
+	// TODO: assumes memory from 0x80000 to 0x90000 is free
 	// We have 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in our OS ISO image is 2 KiB in size.
 	// So we can load the kernel ELF in batches of 32 sectors. Leave a gap of 4 KiB between kernel process and kernel ELF
 	uint32_t KernelELFBase = 0x201000 + (uint32_t)KernelVirtualMemSize;
@@ -344,21 +324,21 @@ int Loader32Main(uint16_t *InfoTableAddress, DAP *const DAPKernel64Address, cons
 	PrintString("KernelELFBase = 0x");
 	PrintHex(&KernelELFBase, sizeof(KernelELFBase));
 	PrintString("\n");
-	DAPKernel64Address->offset = 0x0;
-	DAPKernel64Address->segment = 0x8000;
-	DAPKernel64Address->NumberOfSectors = 32;
+	dapKernel64Address->offset = 0x0;
+	dapKernel64Address->segment = 0x8000;
+	dapKernel64Address->NumberOfSectors = 32;
 	uint16_t iters = KernelNumberOfSectors / 32;
 	memset((void *)0x80000, 0, 0x10000);
 	for (uint16_t i = 0; i < iters; ++i)
 	{
 		LoadKernelELFSectors();
 		memcopy((void *)0x80000, (void *)(KernelELFBase + i * 0x10000), 0x10000);
-		DAPKernel64Address->FirstSector += 32;
+		dapKernel64Address->FirstSector += 32;
 	}
 	// Load remaining sectors
-	DAPKernel64Address->NumberOfSectors = KernelNumberOfSectors % 32;
+	dapKernel64Address->NumberOfSectors = KernelNumberOfSectors % 32;
 	LoadKernelELFSectors();
-	memcopy((void *)0x80000, (void *)(KernelELFBase + iters * 0x10000), DAPKernel64Address->NumberOfSectors * 0x800);
+	memcopy((void *)0x80000, (void *)(KernelELFBase + iters * 0x10000), dapKernel64Address->NumberOfSectors * 0x800);
 
 	PrintString("Kernel executable loaded.\n");
 
@@ -432,40 +412,40 @@ int Loader32Main(uint16_t *InfoTableAddress, DAP *const DAPKernel64Address, cons
 						PTE *PT = (PTE *)((uint32_t)PD[PDIndex].PageAddress << 12);
 						if (!PT[PTIndex].Present)
 						{
-							AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+							allocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
 						}
 					}
 					else
 					{
-						AllocatePagingEntry(&(PD[PDIndex]), NewPageStart);
+						allocatePagingEntry(&(PD[PDIndex]), NewPageStart);
 						PTE *PT = (PTE *)NewPageStart;
 						NewPageStart += 0x1000;
-						AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+						allocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
 					}
 				}
 				else
 				{
-					AllocatePagingEntry(&(PDPT[PDPTIndex]), NewPageStart);
+					allocatePagingEntry(&(PDPT[PDPTIndex]), NewPageStart);
 					PDE *PD = (PDE *)NewPageStart;
 					NewPageStart += 0x1000;
-					AllocatePagingEntry(&(PD[PDIndex]), NewPageStart);
+					allocatePagingEntry(&(PD[PDIndex]), NewPageStart);
 					PTE *PT = (PTE *)NewPageStart;
 					NewPageStart += 0x1000;
-					AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+					allocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
 				}
 			}
 			else
 			{
-				AllocatePagingEntry(&(PML4T[PML4TIndex]), NewPageStart);
+				allocatePagingEntry(&(PML4T[PML4TIndex]), NewPageStart);
 				PDPTE *PDPT = (PDPTE *)NewPageStart;
 				NewPageStart += 0x1000;
-				AllocatePagingEntry(&(PDPT[PDPTIndex]), NewPageStart);
+				allocatePagingEntry(&(PDPT[PDPTIndex]), NewPageStart);
 				PDE *PD = (PDE *)NewPageStart;
 				NewPageStart += 0x1000;
-				AllocatePagingEntry(&(PD[PDIndex]), NewPageStart);
+				allocatePagingEntry(&(PD[PDIndex]), NewPageStart);
 				PTE *PT = (PTE *)NewPageStart;
 				NewPageStart += 0x1000;
-				AllocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+				allocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
 			}
 		}
 	}

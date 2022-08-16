@@ -30,7 +30,7 @@ bool initializePhysicalMemory() {
 	terminalPrintHex(&mmapBase, sizeof(mmapBase));
 	terminalPrintChar('\n');
 
-	size_t i, count = getNumberOfMMAPEntries();
+	size_t i, count = getNumberOfMmapEntries();
 	terminalPrintString(countStr, strlen(countStr));
 	terminalPrintHex(&count, sizeof(count));
 	terminalPrintChar('\n');
@@ -90,7 +90,7 @@ bool initializePhysicalMemory() {
 
 	// Mark areas from memory map that are not usable to in-use list
 	struct ACPI3Entry *mmap = getMmapBase();
-	const size_t n = getNumberOfMMAPEntries();
+	const size_t n = getNumberOfMmapEntries();
 	for (size_t i = 0; i < n; ++i) {
 		if (mmap[i].regionType != ACPI3_MemType_Usable) {
 			uint64_t tempLen = mmap[i].length / phyPageSize;
@@ -117,20 +117,18 @@ bool isPhysicalPageAvailable(uint64_t address, size_t numberOfPages) {
 
 // Get base address of array of MMAP entries
 struct ACPI3Entry* getMmapBase() {
-	uint16_t mmapSegment = *(infoTable + 3);
-	uint16_t mmapOffset = *(infoTable + 2);
-	return (struct ACPI3Entry*)((uint64_t)(mmapSegment<<4) + (uint64_t)mmapOffset);
+	return (struct ACPI3Entry*)(infoTable->mmapEntriesSegment << 4 + infoTable->mmapEntriesOffset);
 }
 
 // Get number of entries in the MMAP array
-size_t getNumberOfMMAPEntries() {
-	return (size_t)(*(infoTable + 1));
+size_t getNumberOfMmapEntries() {
+	return infoTable->numberOfMmapEntries;
 }
 
 // Returns physical memory size in bytes
 uint64_t getPhysicalMemorySize() {
 	struct ACPI3Entry* mmapBase = getMmapBase();
-	size_t i, count = getNumberOfMMAPEntries();
+	size_t i, count = getNumberOfMmapEntries();
 	uint64_t phyMemSize = 0;
 	for (i = 0; i < count; ++i) {
 		phyMemSize += mmapBase[i].length;
@@ -141,7 +139,7 @@ uint64_t getPhysicalMemorySize() {
 // Returns usable (conventional ACPI3_MemType_Usable) physical memory size
 uint64_t getUsablePhysicalMemorySize() {
 	struct ACPI3Entry* mmapBase = getMmapBase();
-	size_t i, number = getNumberOfMMAPEntries();
+	size_t i, number = getNumberOfMmapEntries();
 	uint64_t usableMemSize = 0;
 	for (i = 0; i < number; ++i) {
 		if (mmapBase[i].regionType == ACPI3_MemType_Usable) {
@@ -153,5 +151,5 @@ uint64_t getUsablePhysicalMemorySize() {
 
 // Returns the base address of kernel in physical memory in bytes
 uint64_t getKernelBasePhysicalMemory() {
-	return *((uint64_t*)(infoTable + 16));
+	return infoTable->kernel64Base;
 }

@@ -5,10 +5,10 @@ const char* const kernel64Loaded = "Kernel64 loaded\nRunning in 64-bit long mode
 const char* const systemInitializationFailed = "\nSystem initialization failed. Cannot boot. Halting the system\n";
 const char* const kernelPanicString = "\nKernel panic!!!\n";
 
-uint16_t *infoTable;
+InfoTable *infoTable;
 
 // First C-function to be called
-void kernelMain(uint16_t *infoTableAddress) {
+void kernelMain(InfoTable *infoTableAddress) {
 	// InfoTable is our custom structure which has some essential information about the system
 	// gained during system boot; and the information that is best found out about in real mode.
 	infoTable = infoTableAddress;

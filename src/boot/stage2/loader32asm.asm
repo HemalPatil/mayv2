@@ -9,7 +9,7 @@ LoaderStack:
 
 section .setup
 	global loader32start		; Loader execution starts here
-	extern Loader32Main
+	extern loader32Main
 loader32start:
 	cli
 	mov ebp, 0x7bf4		; Point ebp to parameters that were passed on the stack at 0x7c00
@@ -21,7 +21,7 @@ loader32start:
 	mov eax, [ebp]
 	push eax
 	mov ebx, 0xcafebabe		; Random test value in ebx
-	call Loader32Main		; Call the actual loader32 (written in C)
+	call loader32Main		; Call the actual loader32 (written in C)
 end:
 	cli			; Halt the processor
 	hlt			; Hang the proceesor by disabling interrupts

@@ -110,9 +110,9 @@ mmap_skip:
 mmap_exit:
 	mov cx, bp
 	pop bp
-	mov bx, [bp+8]
+	mov bx, [bp + 8]
 	mov es, bx
-	mov bx, [bp+6]
+	mov bx, [bp + 6]
 	mov [es:bx + 2], cx					; store the entry count in our custom table
 	mov si, mmap_done_msg			; Show mmap complete message
 	int 0x22
@@ -133,9 +133,9 @@ mmap_finish:
 	jne insuffmem_msg
 
 	; Check memory size (We need atleast 1GiB of free usable conventional memory)
-	mov bx, [bp+8]					;Custom table stored at 0x0050:0x0000
+	mov bx, [bp + 8]					; Custom table stored at 0x0050:0x0000
 	mov es, bx
-	mov bx, [bp+6]
+	mov bx, [bp + 6]
 	mov cx, [es:bx + 2]				; Get count of MMAP entries
 	mov di, [es:bx + 4]				; Get offset and segment of MMAP entries from custom table
 	mov ax, [es:bx + 6]
@@ -143,12 +143,12 @@ mmap_finish:
 	xor eax, eax			; Store length in eax
 	mov edx, 0x40000000		; Put 1GiB in edx
 memcount_loop:
-	cmp byte [es:di+16], 1		; Check memory type (should be 1 for conventional memory)
+	cmp byte [es:di + 16], 1		; Check memory type (should be 1 for conventional memory)
 	jne memcount_skip		; If not 1 then skip this entry
-	mov ebx, [es:di+12]		; Check higher 32 bits of uint64_t length
+	mov ebx, [es:di + 12]		; Check higher 32 bits of uint64_t length
 	test ebx, ebx			; If not zero then this entry is greater than 1 GiB
 	jnz greater_than_1GiB
-	mov ebx, [es:di+8]		; Check if lower 32 bits of uint64_t length
+	mov ebx, [es:di + 8]		; Check if lower 32 bits of uint64_t length
 	cmp ebx, edx			; is greater than 1GiB
 	jnb greater_than_1GiB
 	add eax, ebx			; Add the length of this region to mem count so far

@@ -14,30 +14,15 @@
 #define RSDP_Revision_2_and_above 1
 
 // ACPI 3.0 entry format (we have used extended entries of 24 bytes)
-struct ACPI3Entry
-{
+struct ACPI3Entry {
 	uint64_t baseAddress;
 	uint64_t length;
 	uint32_t regionType;
 	uint32_t extendedAttributes;
 } __attribute__((packed));
+typedef struct ACPI3Entry ACPI3Entry;
 
-struct RSDPDescriptor2
-{
-	char signature[8];
-	uint8_t checksum;
-	char oemId[6];
-	uint8_t revision;
-	uint32_t rsdtAddress;
-	uint32_t length;
-	struct ACPISDTHeader *xsdtAddress;
-	uint8_t extendedChecksum;
-	uint8_t reserved[3];
-} __attribute__((packed));
-typedef struct RSDPDescriptor2 RSDPDescriptor2;
-
-struct ACPISDTHeader
-{
+struct ACPISDTHeader {
 	// Read https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf Section 5.2.8
 	char signature[4];
 	uint32_t length;
@@ -51,15 +36,43 @@ struct ACPISDTHeader
 } __attribute__((packed));
 typedef struct ACPISDTHeader ACPISDTHeader;
 
+struct RSDPDescriptor2 {
+	char signature[8];
+	uint8_t checksum;
+	char oemId[6];
+	uint8_t revision;
+	uint32_t rsdtAddress;
+	uint32_t length;
+	ACPISDTHeader *xsdtAddress;
+	uint8_t extendedChecksum;
+	uint8_t reserved[3];
+} __attribute__((packed));
+typedef struct RSDPDescriptor2 RSDPDescriptor2;
+
+struct InfoTable {
+	uint16_t bookDiskNumber;
+	uint16_t numberOfMmapEntries;
+	uint16_t mmapEntriesOffset;
+	uint16_t mmapEntriesSegment;
+	uint16_t vesaInfoOffset;
+	uint16_t vesaInfoSegment;
+	char gdt32Descriptor[6];
+	uint16_t maxPhysicalAddress;
+	uint16_t maxLinearAddress;
+	uint64_t kernel64VirtualMemSize;
+	void* kernel64Base;
+} __attribute__((packed));
+typedef struct InfoTable InfoTable;
+
 // System information table (see docs for more info)
-extern uint16_t *infoTable;
+extern InfoTable *infoTable;
 
 // kernel.c
 // do not expose the KernelMain function to other files
 extern void kernelPanic();
 
 // acpi.c
-extern struct RSDPDescriptor2 *rsdp;
+extern RSDPDescriptor2 *rsdp;
 extern bool parseAcpi3();
 
 // terminal.c
@@ -78,8 +91,8 @@ extern bool setupHardwareInterrupts();
 extern bool apicExists();
 
 // phymemmgmt.c
-extern struct ACPI3Entry* getMmapBase();
-extern size_t getNumberOfMMAPEntries();
+extern ACPI3Entry* getMmapBase();
+extern size_t getNumberOfMmapEntries();
 extern uint64_t getPhysicalMemorySize();
 extern uint64_t getUsablePhysicalMemorySize();
 extern uint64_t getKernelBasePhysicalMemory();
