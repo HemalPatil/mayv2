@@ -1,4 +1,4 @@
-ENTRY(kernel_start);
+ENTRY(kernelStart);
 
 SECTIONS
 {

@@ -89,8 +89,7 @@ void terminalPrintChar(char c) {
 		return;
 	}
 	if (c == '\n') {
-		cursorX = 0;
-		++cursorY;
+		goto terminalPrintCharUglySkip;
 	} else {
 		const size_t index = (cursorY * vgaWidth + cursorX) * 2;
 		videoMemory[index] = c;
@@ -98,8 +97,9 @@ void terminalPrintChar(char c) {
 		++cursorX;
 	}
 	if (cursorX >= vgaWidth) {
-		cursorX = 0;
-		++cursorY;
+		terminalPrintCharUglySkip:
+			cursorX = 0;
+			++cursorY;
 	}
 	if (cursorY >= vgaHeight) {
 		terminalScroll(1);

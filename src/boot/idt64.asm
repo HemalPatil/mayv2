@@ -7,81 +7,81 @@ IST2_STACK_SIZE equ 4096	; 4 KiB stack
 
 ; IST stack 1 - custom interrupt handlers
 ; IST stack 2 - processor exception handlers
-;Reserve space for IST stacks
+; Reserve space for IST stacks
 section .ISTs
-	global IST1_stack_end
-	global IST2_stack_end
-IST1_stack:
+	global IST1_STACK_END
+	global IST2_STACK_END
+IST1_STACK:
 	times IST1_STACK_SIZE db 0
-IST1_stack_end:
-IST2_stack:
+IST1_STACK_END:
+IST2_STACK:
 	times IST2_STACK_SIZE db 0
-IST2_stack_end:
+IST2_STACK_END:
 
 section .IDT64
-	global __IDT_START
-	global __IDT_END
+	global IDT_START
+	global IDT_END
 
-__IDT_START:
+IDT_START:
 	times 128 - ($-$$) db 0		; Skip first 8 interrupts/exception
 
-DoubleFaultDescriptor:
+doubleFaultDescriptor:
 	dq 0
 	dq 0
 
 	times 224 - ($-$$) db 0		; Skip first 14 interrupts/exception
 
-PageFaultDescriptor:
+pageFaultDescriptor:
 	dq 0
 	dq 0
 
 	times 4096 - ($-$$) db 0	; Make the 64-bit IDT 4 KiB long
-__IDT_END:
+IDT_END:
 
 section .rodata:
-IDTDescriptor:
-	IDT64Limit dw 4095
-	IDT64Base dq __IDT_START
-	DefaultInterruptString db 'Default interrupt handler!', 10, 0
-	DoubleFaultString db 'Double Fault!', 10, 0
-	IDTLoading db 10, 'Loading IDT...', 10, 0
-	IDTLoaded db 'IDT loaded', 10, 0
-	InterruptsEnabled db 'Enabled interrupts', 10, 0
-	PageFaultString db 'Page Fault!', 10, 0
+idtDescriptor:
+	idt64Limit dw 4095
+	idt64Base dq IDT_START
+	defaultInterruptString db 'Default interrupt handler!', 10, 0
+	doubleFaultString db 'Double Fault!', 10, 0
+	idtLoading db 10, 'Loading IDT...', 10, 0
+	idtLoaded db 'IDT loaded', 10, 0
+	interruptsEnabled db 'Enabled interrupts', 10, 0
+	pageFaultString db 'Page Fault!', 10, 0
 
 section .text
 	extern terminalPrintString
-	global SetupIDT64
-	global EnableInterrupts
-SetupIDT64:
-	mov rdi, IDTLoading
+	global setupIdt64
+	global enableInterrupts
+setupIdt64:
+	mov rdi, idtLoading
 	mov rsi, 16
 	call terminalPrintString
-; Fill all 256 interrupt handlers with DefaultInterruptHandler
+; Fill all 256 interrupt handlers with defaultInterruptHandler
 ; Set rdx to base address of IDT and loop through all 256
 	mov r9, 0x00008e0200080000	; 64-bit code selector, descriptor type, and IST_2 index
-	mov rdx, __IDT_START
-SetupIDT64DescriptorLoop:
+	mov rdx, IDT_START
+setupIdt64DescriptorLoop:
 	mov [rdx], r9
-	mov rax, DefaultInterruptHandler
-	call FillOffsets
+	mov rax, defaultInterruptHandler
+	call fillOffsets
 	add rdx, 16
-	cmp rdx, __IDT_END
-	jle SetupIDT64DescriptorLoop
-	mov rdx, PageFaultDescriptor
-	mov rax, PageFaultHandler
-	call FillOffsets
-	mov rdx, DoubleFaultDescriptor
-	mov rax, DoubleFaultHandler
-	call FillOffsets
-	mov rdi, IDTLoaded
+	cmp rdx, IDT_END
+	jle setupIdt64DescriptorLoop
+	mov rdx, pageFaultDescriptor
+	mov rax, pageFaultHandler
+	call fillOffsets
+	mov rdx, doubleFaultDescriptor
+	mov rax, doubleFaultHandler
+	call fillOffsets
+	mov rdi, idtLoaded
 	mov rsi, 11
 	call terminalPrintString
-	mov rax, IDTDescriptor
+	mov rax, idtDescriptor
 	lidt [rax]	; load the IDT
 	ret
 
-FillOffsets:
+fillOffsets:
 	mov [rdx], ax
 	shr rax, 16
 	mov [rdx + 6], ax
@@ -89,29 +89,29 @@ FillOffsets:
 	mov [rdx + 8], eax
 	ret
 
-EnableInterrupts:
+enableInterrupts:
 	sti
-	mov rdi, InterruptsEnabled
+	mov rdi, interruptsEnabled
 	mov rsi, 19
 	call terminalPrintString
 	ret
 
-DoubleFaultHandler:
-	mov rdi, DoubleFaultString
+doubleFaultHandler:
+	mov rdi, doubleFaultString
 	mov rsi, 14
 	call terminalPrintString
 	pop r8	; Pop the 64 bit error code in thrashable register
 	iretq
 
-PageFaultHandler:
-	mov rdi, PageFaultString
+pageFaultHandler:
+	mov rdi, pageFaultString
 	mov rsi, 12
 	call terminalPrintString
 	pop r8	; Pop the 32 bit error code in thrashable register
 	iretq
 
-DefaultInterruptHandler:
-	mov rdi, DefaultInterruptString
+defaultInterruptHandler:
+	mov rdi, defaultInterruptString
 	mov rsi, 27
 	call terminalPrintString
 	pop r8	; Pop the 64 bit error code in thrashable register

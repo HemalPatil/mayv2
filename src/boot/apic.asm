@@ -1,39 +1,39 @@
 [bits 64]
 
 section .rodata
-	APICNotPresent db 'APIC not present', 10, 0
-	APICPresent db 'APIC present', 10, 0
-	CheckingAPIC db 'Checking APIC presence...', 10, 0
-	DisabledPIC db 10, 'Disabled PIC', 10, 0
+	apicNotPresent db 'APIC not present', 10, 0
+	apicPresent db 'APIC present', 10, 0
+	checkingApic db 'Checking APIC presence...', 10, 0
+	disabledPic db 10, 'Disabled PIC', 10, 0
 
 section .text
-	extern KernelPanic
+	extern kernelPanic
 	extern terminalPrintString
-	global SetupAPIC
+	global setupApic
 
-SetupAPIC:
+setupApic:
 	; Disable PIC
 	mov al, 0xff
 	out 0xa1, al
 	out 0x21, al
-	mov rdi, DisabledPIC
+	mov rdi, disabledPic
 	mov rsi, 14
 	call terminalPrintString
 	; Check APIC presence
-	mov rdi, CheckingAPIC
+	mov rdi, checkingApic
 	mov rsi, 26
 	call terminalPrintString
 	mov eax, 1
 	cpuid
 	and edx, 1 << 9
-	jnz APICPresentBlock
-	mov rdi, APICNotPresent
+	jnz apicPresentBlock
+	mov rdi, apicNotPresent
 	mov rsi, 17
 	call terminalPrintString
-	call KernelPanic
+	call kernelPanic
 	ret	; Should never be executed
-APICPresentBlock:
-	mov rdi, APICPresent
+apicPresentBlock:
+	mov rdi, apicPresent
 	mov rsi, 13
 	call terminalPrintString
 	; TODO: enable APIC

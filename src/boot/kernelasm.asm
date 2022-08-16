@@ -4,44 +4,44 @@ KERNEL_STACK_SIZE equ 65536 ; 64 KiB stack
 
 ;Reserve space for stack
 section .KERNELSTACK
-kernel_stack:
+kernelStack:
 	times KERNEL_STACK_SIZE db 0
 
 section .lowerhalf
-	extern GDTDescriptor
-	extern IDTDescriptor
-	extern __GDT_START
-	extern __TSS_START
-	global kernel_start
+	extern gdtDescriptor
+	extern idtDescriptor
+	extern GDT_START
+	extern TSS_START
+	global kernelStart
 
 ; rdi will have the address of the info table. DO NOT trash it.
 ; Execution starts here. 
 ; 32-bit code of the loader cannot jump to 64-bit address directly.
 ; Hence, we first jump to 0x80000000 and then jump to 0xffffffff80000000
 ; Currently we are in 32-bit compatibility mode since GDT64 is not loaded
-kernel_start:
+kernelStart:
 	mov ax, 0x10		; 64-bit data segment
 	mov ds, ax
 	mov es, ax
 	mov ss, ax
-	mov rsp, kernel_stack + KERNEL_STACK_SIZE
+	mov rsp, kernelStack + KERNEL_STACK_SIZE
 	xor rbp, rbp
 
 	; Setup 64-bit GDT
-	mov rax, GDTDescriptor
+	mov rax, gdtDescriptor
 	lgdt [rax]	; load new GDT
 
 	; Jump to true 64-bit long mode
-	mov rax, higher_half_start
+	mov rax, higherHalfStart
 	jmp rax
 
 section .text
-	global higher_half_start
-	extern KernelMain
-higher_half_start:
+	global higherHalfStart
+	extern kernelMain
+higherHalfStart:
 	and rdi, 0x00000000ffffffff	; rdi contains info table address, pass it as 1st parameter to KernelMain
-	call KernelMain
+	call kernelMain
 	; code beyond this should never get executed
-kernel_end:
+kernelEnd:
 	hlt
-	jmp kernel_end
+	jmp kernelEnd

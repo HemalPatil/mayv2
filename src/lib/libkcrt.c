@@ -2,12 +2,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-size_t strlen(const char* str)
-{
+size_t strlen(const char* str) {
 	size_t length = 0;
-	while(*str++)
-	{
-		length++;
+	while (*str++) {
+		++length;
 	}
 	return length;
 }
@@ -26,21 +24,22 @@ void* memcpy(void *dest, void *src, size_t n) {
 	if (dest == src) {
 		return;
 	}
-	uint64_t *d = dest;
-	uint64_t *s = src;
+	uint64_t *d8 = dest;
+	uint64_t *s8 = src;
 	size_t iters = n / sizeof(uint64_t);
 	size_t remaining = n - iters * sizeof(uint64_t);
-	bool isCopyUp = d < s;
+	bool isCopyUp = d8 < s8;
 	if (isCopyUp) {
-		for (size_t i = 0; i < iters; ++i, ++d, ++s) {
-			*d = *s;
-		}
-		uint8_t *d8 = d;
-		uint8_t *s8 = s;
-		for (size_t i = 0; i < remaining; ++i, ++d8, ++s8) {
+		for (size_t i = 0; i < iters; ++i, ++d8, ++s8) {
 			*d8 = *s8;
 		}
+		uint8_t *d = d8;
+		uint8_t *s = s8;
+		for (size_t i = 0; i < remaining; ++i, ++d, ++s) {
+			*d = *s;
+		}
 	}
+	// TODO: copy down not implemented
 }
 
 void* memset(void *address, int data, size_t length) {

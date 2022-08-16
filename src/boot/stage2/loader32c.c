@@ -12,7 +12,7 @@
 // ACPI 3.0 entry format (we have used extended entries of 24 bytes)
 struct ACPI3Entry
 {
-	uint64_t BaseAddress;
+	uint64_t baseAddress;
 	uint64_t Length;
 	uint32_t RegionType;
 	uint32_t ExtendedAttributes;
@@ -141,12 +141,12 @@ void PrintString(const char *const str)
 	}
 }
 
-size_t GetNumberOfMMAPEntries()
+size_t getNumberOfMMAPEntries()
 {
 	return (size_t)(*(InfoTable + 1));
 }
 
-struct ACPI3Entry *GetMMAPBase()
+struct ACPI3Entry *getMmapBase()
 {
 	uint16_t MMAPSegment = *(InfoTable + 3);
 	uint16_t MMAPOffset = *(InfoTable + 2);
@@ -158,8 +158,8 @@ void SortMMAPEntries()
 	// Sort the MMAP entries in ascending order of their base addresses
 	// Number of MMAP entries is in the range of 5-15 typically so a simple bubble sort is used
 
-	size_t NumberMMAPEntries = GetNumberOfMMAPEntries();
-	struct ACPI3Entry *mmap = GetMMAPBase();
+	size_t NumberMMAPEntries = getNumberOfMMAPEntries();
+	struct ACPI3Entry *mmap = getMmapBase();
 	size_t i, j;
 	for (i = 0; i < NumberMMAPEntries - 1; ++i)
 	{
@@ -193,37 +193,37 @@ void ProcessMMAPEntries()
 	// 3) Overlapping of two regions of different types and none of them of type ACPI3_MemType_Usable
 	//    is not handled right now.
 
-	size_t NumberMMAPEntries = GetNumberOfMMAPEntries();
+	size_t NumberMMAPEntries = getNumberOfMMAPEntries();
 	size_t ActualEntries = NumberMMAPEntries;
-	struct ACPI3Entry *mmap = GetMMAPBase();
+	struct ACPI3Entry *mmap = getMmapBase();
 	SortMMAPEntries();
 	for (uint32_t i = 0; i < NumberMMAPEntries - 1; ++i)
 	{
 		struct ACPI3Entry *MMAPEntry1 = mmap + i;
 		struct ACPI3Entry *MMAPEntry2 = mmap + i + 1;
-		if ((MMAPEntry1->BaseAddress + MMAPEntry1->Length) > MMAPEntry2->BaseAddress)
+		if ((MMAPEntry1->baseAddress + MMAPEntry1->Length) > MMAPEntry2->baseAddress)
 		{
 			if (MMAPEntry1->RegionType == MMAPEntry2->RegionType)
 			{
-				MMAPEntry1->Length = MMAPEntry2->BaseAddress - MMAPEntry1->BaseAddress;
+				MMAPEntry1->Length = MMAPEntry2->baseAddress - MMAPEntry1->baseAddress;
 			}
 			else
 			{
 				if (MMAPEntry1->RegionType == ACPI3_MemType_Usable)
 				{
-					MMAPEntry1->Length = MMAPEntry2->BaseAddress - MMAPEntry1->BaseAddress;
+					MMAPEntry1->Length = MMAPEntry2->baseAddress - MMAPEntry1->baseAddress;
 				}
 				else if (MMAPEntry2->RegionType == ACPI3_MemType_Usable)
 				{
-					MMAPEntry2->BaseAddress = MMAPEntry1->BaseAddress + MMAPEntry1->Length;
+					MMAPEntry2->baseAddress = MMAPEntry1->baseAddress + MMAPEntry1->Length;
 				}
 			}
 		}
-		else if ((MMAPEntry1->BaseAddress + MMAPEntry1->Length) < MMAPEntry2->BaseAddress)
+		else if ((MMAPEntry1->baseAddress + MMAPEntry1->Length) < MMAPEntry2->baseAddress)
 		{
 			struct ACPI3Entry *NewEntry = mmap + ActualEntries;
-			NewEntry->BaseAddress = MMAPEntry1->BaseAddress + MMAPEntry1->Length;
-			NewEntry->Length = MMAPEntry2->BaseAddress - NewEntry->BaseAddress;
+			NewEntry->baseAddress = MMAPEntry1->baseAddress + MMAPEntry1->Length;
+			NewEntry->Length = MMAPEntry2->baseAddress - NewEntry->baseAddress;
 			NewEntry->RegionType = ACPI3_MemType_Hole;
 			NewEntry->ExtendedAttributes = 1;
 			++(*(InfoTable + 1));
@@ -303,14 +303,14 @@ int Loader32Main(uint16_t *InfoTableAddress, DAP *const DAPKernel64Address, cons
 	// We will load parsed kernel code from 2MiB physical memory (size : KernelVirtualMemSize)
 	// Kernel ELF will be loaded at 2MiB + KernelVirtualMemSize + 4KiB physical memory form where it will be parsed
 	bool enoughSpace = false;
-	size_t numberMMAPentries = GetNumberOfMMAPEntries();
+	size_t numberMMAPentries = getNumberOfMMAPEntries();
 	PrintString("Number of MMAP entries = 0x");
 	PrintHex(&numberMMAPentries, sizeof(numberMMAPentries));
 	PrintString("\n");
-	struct ACPI3Entry *mmap = GetMMAPBase();
+	struct ACPI3Entry *mmap = getMmapBase();
 	for (size_t i = 0; i < numberMMAPentries; ++i)
 	{
-		if ((mmap[i].BaseAddress <= (uint64_t)0x100000) && (mmap[i].Length > ((uint64_t)0x201000 - mmap[i].BaseAddress + (uint64_t)bytesOfKernelELF + KernelVirtualMemSize)))
+		if ((mmap[i].baseAddress <= (uint64_t)0x100000) && (mmap[i].Length > ((uint64_t)0x201000 - mmap[i].baseAddress + (uint64_t)bytesOfKernelELF + KernelVirtualMemSize)))
 		{
 			enoughSpace = true;
 			break;

@@ -1,42 +1,42 @@
 #include <string.h>
 #include "kernel.h"
 
-const char* const Kernel64Loaded = "Kernel64 loaded\nRunning in 64-bit long mode\n";
-const char* const SystemInitializationFailed = "\nSystem initialization failed. Cannot boot. Halting the system\n";
-const char* const KernelPanicString = "\nKernel panic!!!\n";
+const char* const kernel64Loaded = "Kernel64 loaded\nRunning in 64-bit long mode\n";
+const char* const systemInitializationFailed = "\nSystem initialization failed. Cannot boot. Halting the system\n";
+const char* const kernelPanicString = "\nKernel panic!!!\n";
 
-uint16_t *InfoTable;
+uint16_t *infoTable;
 
 // First C-function to be called
-void KernelMain(uint16_t *InfoTableAddress) {
+void kernelMain(uint16_t *infoTableAddress) {
 	// InfoTable is our custom structure which has some essential information about the system
 	// gained during system boot; and the information that is best found out about in real mode.
-	InfoTable = InfoTableAddress;
+	infoTable = infoTableAddress;
 
 	terminalClearScreen();
 	terminalSetCursorPosition(0, 0);
-	terminalPrintString(Kernel64Loaded, strlen(Kernel64Loaded));
+	terminalPrintString(kernel64Loaded, strlen(kernel64Loaded));
 
 	// Do memory setup
-	if (!InitializePhysicalMemory()) {
-		KernelPanic(SystemInitializationFailed);
+	if (!initializePhysicalMemory()) {
+		kernelPanic(systemInitializationFailed);
 	}
-	return;
+	// return;
 	// if (!InitializeVirtualMemory(SystemInitializationFailed))
 	// {
 	// 	KernelPanic();
 	// }
 
 	// Initialize TSS first because ISTs in IDT require TSS
-	SetupTSS64();
-	SetupIDT64();
+	setupTss64();
+	setupIdt64();
 	
-	if (!ParseACPI3()) {
-		KernelPanic(SystemInitializationFailed);
+	if (!parseAcpi3()) {
+		kernelPanic(systemInitializationFailed);
 	}
 
 	// Disable PIC and setup APIC
-	SetupAPIC();
+	setupApic();
 
 	// Get basic interrupts and exceptions setup
 	// Initializing ACPI will generate page faults while parsing ACPI tables
@@ -51,8 +51,8 @@ void KernelMain(uint16_t *InfoTableAddress) {
 	// terminalPrintString(HelloWorld, strlen(HelloWorld));
 }
 
-void KernelPanic() {
+void kernelPanic() {
 	// TODO : improve kernel panic implementation
-	terminalPrintString(KernelPanicString, strlen(KernelPanicString));
-	HangSystem();
+	terminalPrintString(kernelPanicString, strlen(kernelPanicString));
+	hangSystem();
 }

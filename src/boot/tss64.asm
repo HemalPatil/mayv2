@@ -3,18 +3,18 @@
 ; TSS for 64 bit mode
 
 section .TSS64
-	extern __IDT_START
-	extern __IDT_END
-	extern IST1_stack_end
-	extern IST2_stack_end
-__TSS_START:
+	extern IDT_START
+	extern IDT_END
+	extern IST1_STACK_END
+	extern IST2_STACK_END
+TSS_START:
 reserved	dd 0
 rsp0		dq 0
 rsp1		dq 0
 rsp2		dq 0
 reserved1	dq 0
-IST1		dq IST1_stack_end
-IST2		dq IST2_stack_end
+IST1		dq IST1_STACK_END
+IST2		dq IST2_STACK_END
 IST3		dq 0
 IST4		dq 0
 IST5		dq 0
@@ -23,23 +23,23 @@ IST7		dq 0
 reserved2	dq 0
 reserved3	dw 0
 iomapbase	dw 0
-__TSS_END:
+TSS_END:
 
 section .rodata
-	TSSLoading db 10, 'Loading TSS...', 10, 0
-	TSSLoaded db 'TSS loaded', 10, 0
+	tssLoading db 10, 'Loading TSS...', 10, 0
+	tssLoaded db 'TSS loaded', 10, 0
 
 section .text
-	extern __GDT_START
+	extern GDT_START
 	extern terminalPrintString
-	global SetupTSS64
-SetupTSS64:
-	mov rdi, TSSLoading
+	global setupTss64
+setupTss64:
+	mov rdi, tssLoading
 	mov rsi, 16
 	call terminalPrintString
-	mov rdx, __GDT_START
+	mov rdx, GDT_START
 	add rdx, 0x1a	; point to TSS descriptor byte 2
-	mov rax, __TSS_START
+	mov rax, TSS_START
 	mov [rdx], ax	; move base[0..16] of TSS
 	shr rax, 16
 	mov [rdx + 2], al	; move base[16..23] of TSS
@@ -49,7 +49,7 @@ SetupTSS64:
 	mov [rdx + 6], eax	; move base[32..63] of TSS
 	mov ax, 0x18
 	ltr ax
-	mov rdi, TSSLoaded
+	mov rdi, tssLoaded
 	mov rsi, 11
 	call terminalPrintString
 	ret

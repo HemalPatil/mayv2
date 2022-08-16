@@ -16,22 +16,22 @@
 // ACPI 3.0 entry format (we have used extended entries of 24 bytes)
 struct ACPI3Entry
 {
-	uint64_t BaseAddress;
-	uint64_t Length;
-	uint32_t RegionType;
-	uint32_t ExtendedAttributes;
+	uint64_t baseAddress;
+	uint64_t length;
+	uint32_t regionType;
+	uint32_t extendedAttributes;
 } __attribute__((packed));
 
 struct RSDPDescriptor2
 {
 	char signature[8];
 	uint8_t checksum;
-	char OEMID[6];
+	char oemId[6];
 	uint8_t revision;
-	uint32_t RSDTAddress;
+	uint32_t rsdtAddress;
 	uint32_t length;
-	struct ACPISDTHeader *XSDTAddress;
-	uint8_t ExtendedChecksum;
+	struct ACPISDTHeader *xsdtAddress;
+	uint8_t extendedChecksum;
 	uint8_t reserved[3];
 } __attribute__((packed));
 typedef struct RSDPDescriptor2 RSDPDescriptor2;
@@ -39,28 +39,28 @@ typedef struct RSDPDescriptor2 RSDPDescriptor2;
 struct ACPISDTHeader
 {
 	// Read https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf Section 5.2.8
-	char Signature[4];
-	uint32_t Length;
-	uint8_t Revision;
-	uint8_t Checksum;
-	char OEMID[6];
-	char OEMTableID[8];
-	uint32_t OEMRevision;
-	uint32_t CreatorID;
-	uint32_t CreatorRevision;
+	char signature[4];
+	uint32_t length;
+	uint8_t revision;
+	uint8_t checksum;
+	char oemId[6];
+	char oemTableID[8];
+	uint32_t oemRevision;
+	uint32_t creatorID;
+	uint32_t creatorRevision;
 } __attribute__((packed));
 typedef struct ACPISDTHeader ACPISDTHeader;
 
 // System information table (see docs for more info)
-extern uint16_t *InfoTable;
+extern uint16_t *infoTable;
 
 // kernel.c
 // do not expose the KernelMain function to other files
-extern void KernelPanic();
+extern void kernelPanic();
 
 // acpi.c
 extern struct RSDPDescriptor2 *rsdp;
-extern bool ParseACPI3();
+extern bool parseAcpi3();
 
 // terminal.c
 extern const char* const hexPalette;
@@ -74,51 +74,51 @@ extern void terminalPrintHex(void* value, size_t size);
 extern void terminalScroll(size_t lineCount);
 
 // interrupts.c
-extern bool SetupHardwareInterrupts();
-extern bool APICExists();
+extern bool setupHardwareInterrupts();
+extern bool apicExists();
 
 // phymemmgmt.c
-extern struct ACPI3Entry* GetMMAPBase();
-extern size_t GetNumberOfMMAPEntries();
-extern uint64_t GetPhysicalMemorySize();
-extern uint64_t GetUsablePhysicalMemorySize();
-extern uint64_t GetKernelBasePhysicalMemory();
-extern bool InitializePhysicalMemory();
+extern struct ACPI3Entry* getMmapBase();
+extern size_t getNumberOfMMAPEntries();
+extern uint64_t getPhysicalMemorySize();
+extern uint64_t getUsablePhysicalMemorySize();
+extern uint64_t getKernelBasePhysicalMemory();
+extern bool initializePhysicalMemory();
 //extern void AllocatePhysicalMemoryContiguous();
 //extern void AllocatePhysicalMemory();
-extern void MarkPhysicalPagesAsUsed(uint64_t address, size_t NumberOfPages);
-extern bool IsPhysicalPageAvailable(uint64_t address, size_t NumberOfPages);
+extern void markPhysicalPagesAsUsed(uint64_t address, size_t numberOfPages);
+extern bool isPhysicalPageAvailable(uint64_t address, size_t numberOfPages);
 
 // virtualmemmgmt.c
-extern uint64_t GetKernelSize();
-extern bool InitializeVirtualMemory();
+extern uint64_t getKernelSize();
+extern bool initializeVirtualMemory();
 
 // float.c
-extern bool FPUExists();
+extern bool fpuExists();
 //extern bool InitializeFPU();
 
 // Assembly level functions
 // apic.asm
-extern void SetupAPIC();
+extern void setupApic();
 
 // kernellib.asm
-extern uint8_t GetLinearAddressLimit();
-extern uint8_t GetPhysicalAddressLimit();
-extern void HangSystem();
+extern uint8_t getLinearAddressLimit();
+extern uint8_t getPhysicalAddressLimit();
+extern void hangSystem();
 extern void outputByte(uint16_t port, uint8_t byte);
-extern RSDPDescriptor2* SearchRSDP();
+extern RSDPDescriptor2* searchRsdp();
 
 // idt64.asm
-extern void SetupIDT64();
-extern void EnableInterrupts();
+extern void setupIdt64();
+extern void enableInterrupts();
 
 // tss64.asm
-extern void SetupTSS64();
+extern void setupTss64();
 
 // Linker script symbols
-extern const uint64_t __GDT_START;
-extern const uint64_t __GDT_END;
-extern const uint64_t __IDT_START;
-extern const uint64_t __IDT_END;
-extern const uint64_t __TSS_START;
-extern const uint64_t __TSS_END;
+extern const uint64_t GDT_START;
+extern const uint64_t GDT_END;
+extern const uint64_t IDT_START;
+extern const uint64_t IDT_END;
+extern const uint64_t TSS_START;
+extern const uint64_t TSS_END;

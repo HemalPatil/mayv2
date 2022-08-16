@@ -16,11 +16,11 @@ SZ_32         equ 1 << 6
 LONG_MODE     equ 1 << 5
 
 section .GDT64
-	global __GDT_START
-	global __GDT_END
-	global GDTDescriptor
+	global GDT_START
+	global GDT_END
+	global gdtDescriptor
 
-__GDT_START:
+GDT_START:
 ; null entry
 	dq 0
 
@@ -52,9 +52,9 @@ __GDT_START:
 
 	times 4096 - ($-$$) db 0	; Make the GDT 4 KiB long
 
-__GDT_END:
+GDT_END:
 
 section .rodata:
-GDTDescriptor:
-	GDT64Limit dw 65535
-	GDT64Base dq __GDT_START
+gdtDescriptor:
+	gdt64Limit dw 65535
+	gdt64Base dq GDT_START

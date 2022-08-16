@@ -1,18 +1,15 @@
 #include "kernel.h"
 
-bool SetupHardwareInterrupts()
-{
+bool setupHardwareInterrupts() {
 	// TODO : add ioapic and hardware irq redirection
-	if(!APICExists())
-	{
+	if(!apicExists()) {
 		return false;
 	}
-
 	return true;
 }
 
-bool APICExists()
-{
+bool apicExists() {
+	// TODO: convert to NASM code in kernellib.asm
 	asm("mov $0x1, %eax\n"
 		"cpuid\n"
 		"and $0x200, %edx\n"

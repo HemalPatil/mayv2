@@ -1,7 +1,6 @@
 #include "kernel.h"
 
-bool FPUExists()
-{
+bool fpuExists() {
 	// TODO : add fpu exists implementation
 	return true;
 }
