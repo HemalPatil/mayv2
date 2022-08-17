@@ -3,20 +3,20 @@
 LOADER_STACK_SIZE equ 4096
 
 section .bss
-	global LoaderStack
-LoaderStack:
+	global loaderStack
+loaderStack:
 	resb LOADER_STACK_SIZE
 
 section .setup
-	global loader32start		; Loader execution starts here
+	global loader32Start		; Loader execution starts here
 	extern loader32Main
-loader32start:
+loader32Start:
 	cli
 	mov ebp, 0x7bf4		; Point ebp to parameters that were passed on the stack at 0x7c00
-	mov esp, LoaderStack + LOADER_STACK_SIZE		; setup LOADER32 stack
-	mov eax, [ebp+8]		; 3 parameters were passed
+	mov esp, loaderStack + LOADER_STACK_SIZE		; Setup LOADER32 stack
+	mov eax, [ebp + 8]		; 3 parameters were passed
 	push eax
-	mov eax, [ebp+4]
+	mov eax, [ebp + 4]
 	push eax
 	mov eax, [ebp]
 	push eax

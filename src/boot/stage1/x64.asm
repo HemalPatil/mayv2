@@ -4,11 +4,11 @@ jmp start
 
 times 8 - ($-$$) db 0
 
-magic_bytes db 'x64', 0
-cpuid_not_available db 'CPUID not available.', 13, 10, 0
-no_x64 db 'Processor does not support 64-bit mode.', 13, 10, 0
-cannot_boot db 'Cannot boot!', 13, 10, 0
-longmode db '64-bit long mode available', 13, 10, 13, 10, 0
+magicBytes db 'x64', 0
+cpuidNotAvailable db 'CPUID not available.', 13, 10, 0
+noX64 db 'Processor does not support 64-bit mode.', 13, 10, 0
+cannotBootMsg db 'Cannot boot!', 13, 10, 0
+longMode db '64-bit long mode available', 13, 10, 13, 10, 0
 
 start:
 	pusha
@@ -16,11 +16,11 @@ start:
 	mov ax, cs
 	mov ds, ax
 	
-check_cpuid:
+checkCpuid:
 	pushfd
 	pop eax
 	mov ecx, eax
-	xor eax, 1<<21
+	xor eax, 1 << 21
 	push eax
 	popfd
 	pushfd
@@ -28,40 +28,40 @@ check_cpuid:
 	push ecx
 	popfd
 	xor eax, ecx
-	jz no_cpuid
+	jz noCpuid
 
-check_extensions:
+checkExtensions:
 	mov eax, 0x80000000
 	cpuid
 	cmp eax, 0x80000001
-	jb no_longmode
+	jb noLongMode
 
-check_x64:
+checkX64:
 	mov eax, 0x80000001
 	cpuid
-	test edx, 1<<29
-	jz no_longmode
+	test edx, 1 << 29
+	jz noLongMode
 
-	mov si, longmode
+	mov si, longMode
 	int 0x22
 	jmp end
 
-no_cpuid:
-	mov si, cpuid_not_available
+noCpuid:
+	mov si, cpuidNotAvailable
 	int 0x22
 	jmp error
 
-no_longmode:
-	mov si, no_x64
+noLongMode:
+	mov si, noX64
 	int 0x22
 
 error:
-	mov si, cannot_boot
+	mov si, cannotBootMsg
 	int 0x22
-error_end:
+errorEnd:
 	cli
 	hlt
-	jmp error_end
+	jmp errorEnd
 	
 end:
 	pop ds

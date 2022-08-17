@@ -19,11 +19,11 @@ GDTDescriptor:
 hexspace db '0123456789ABCDEF', 0
 
 section .data
-k64load_offset dw 0
-k64load_segment dw 0
-dap_kernel_offset dw 0
-dap_kernel_segment dw 0
-disk_number dw 0
+k64LoadOffset dw 0
+k64LoadSegment dw 0
+dapKernelOffset dw 0
+dapKernelSegment dw 0
+diskNumber dw 0
 
 section .text
 	global memset
@@ -32,9 +32,9 @@ section .text
 	global swap
 	global GetPhysicalAddressLimit
 	global GetLinearAddressLimit
-	global Setup16BitSegments
+	global setup16BitSegments
 	global LoadKernelELFSectors
-	global JumpToKernel
+	global jumpToKernel64
 	extern terminalPrintChar
 
 PrintHex:
@@ -201,7 +201,7 @@ memcopyEnd:
 	pop ebp
 	ret
 
-Setup16BitSegments:
+setup16BitSegments:
 	push ebp
 	mov ebp, esp
 	pushad
@@ -230,17 +230,17 @@ Setup16BitSegments:
 	and dx, 0x000f
 	and ax, 0xfff0
 	shr ax, 4
-	mov [k64load_segment], ax
-	mov [k64load_offset], dx
+	mov [k64LoadSegment], ax
+	mov [k64LoadOffset], dx
 	mov edx, [ebp+16]	; Get DAPkernel address
 	mov eax, edx			; Separate in segment:offset address
 	and dx, 0x000f
 	and ax, 0xfff0
 	shr ax, 4
-	mov [dap_kernel_segment], ax
-	mov [dap_kernel_offset], dx
+	mov [dapKernelSegment], ax
+	mov [dapKernelOffset], dx
 	mov cx, [ebp+20]
-	mov [disk_number], cx
+	mov [diskNumber], cx
 	popad
 	mov esp, ebp
 	pop ebp
@@ -248,21 +248,21 @@ Setup16BitSegments:
 
 LoadKernelELFSectors:
 	pushad
-	mov ax, [k64load_segment]
+	mov ax, [k64LoadSegment]
 	shl eax, 16
-	mov ax, [k64load_offset]
-	mov bx, [dap_kernel_segment]
+	mov ax, [k64LoadOffset]
+	mov bx, [dapKernelSegment]
 	shl ebx, 16
-	mov bx, [dap_kernel_offset]
+	mov bx, [dapKernelOffset]
 	xor ecx, ecx
-	mov cx, [disk_number]
+	mov cx, [diskNumber]
 	mov edx, ReturnFrom16BitSegment
 	jmp word 0x20:0x0	; Jump to the k64load module
 ReturnFrom16BitSegment:
 	popad
 	ret
 
-JumpToKernel:
+jumpToKernel64:
 	push ebp
 	mov ebp, esp
 	mov eax, [ebp+8]		; Get PML4T address in eax

@@ -76,9 +76,9 @@ extern void PrintHex(const void *const, const size_t);
 extern void swap(void *const, void *const, const size_t);
 extern void memset(void *const, const uint8_t, const size_t);
 extern void memcopy(const void *const src, void const *dest, const size_t count);
-extern void Setup16BitSegments(const uint16_t *const, const void *const, const DAP *const, const uint16_t);
+extern void setup16BitSegments(const uint16_t *const, const void *const, const DAP *const, const uint16_t);
 extern void LoadKernelELFSectors();
-extern void JumpToKernel(PML4E *, uint16_t *);
+extern void jumpToKernel64(PML4E *, uint16_t *);
 extern uint8_t GetLinearAddressLimit();
 extern uint8_t GetPhysicalAddressLimit();
 
@@ -172,7 +172,7 @@ void sortMmapEntries() {
 	}
 }
 
-void ProcessMmapEntries() {
+void processMmapEntries() {
 	// This function checks for any overlaps in the memory regions provided by BIOS
 	// Overlaps occur in very rare cases. Nevertheless they must be handled.
 	// If an overlap is found, two cases occur
@@ -185,8 +185,8 @@ void ProcessMmapEntries() {
 	//    is not handled right now.
 
 	size_t numberMmapEntries = getNumberOfMmapEntries();
-	size_t actualEntries = numberMmapEntries;
 	ACPI3Entry *mmap = getMmapBase();
+	size_t actualEntries = numberMmapEntries;
 	sortMmapEntries();
 	for (uint32_t i = 0; i < numberMmapEntries - 1; ++i) {
 		ACPI3Entry *mmapEntry1 = mmap + i;
@@ -256,7 +256,7 @@ int loader32Main(uint16_t *InfoTableAddress, DAP *const dapKernel64Address, cons
 {
 	infoTable = InfoTableAddress;
 	ClearScreen();
-	ProcessMmapEntries();
+	processMmapEntries();
 
 	// Get the max physical address and max linear address that can be handled by the CPU
 	// These details are found by using CPUID.EAX=0x80000008 instruction and has to be done from assembly
@@ -307,7 +307,7 @@ int loader32Main(uint16_t *InfoTableAddress, DAP *const dapKernel64Address, cons
 	identityMapFirst16MiB();
 
 	// Change base address of the 16-bit segments in GDT32
-	Setup16BitSegments(InfoTableAddress, loadModuleAddress, dapKernel64Address, *infoTable); // infoTable[0] = boot disk number
+	setup16BitSegments(InfoTableAddress, loadModuleAddress, dapKernel64Address, *infoTable); // infoTable[0] = boot disk number
 
 	// TODO: assumes memory at 2MiB is free
 	// Enter the kernel physical memory base address in the info table
@@ -450,8 +450,7 @@ int loader32Main(uint16_t *InfoTableAddress, DAP *const dapKernel64Address, cons
 		}
 	}
 
-	JumpToKernel(PML4T, InfoTableAddress); // Jump to kernel. Code beyond this should never get executed.
-	// ClearScreen();
+	jumpToKernel64(PML4T, InfoTableAddress); // Jump to kernel. Code beyond this should never get executed.
 	PrintString("Fatal error : Cannot boot!");
 	return 1;
 }

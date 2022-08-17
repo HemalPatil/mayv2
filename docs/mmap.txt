@@ -1,9 +1,9 @@
-mmap_msg db 'Generating Memory Map',13,10,0
-mmap_done_msg db 'Memory Map complete',13,10,0
-mmap_fail_msg db 'Memory Map failed',13,10,0
+mmapMsg db 'Generating Memory Map',13,10,0
+mmapDoneMsg db 'Memory Map complete',13,10,0
+mmapFailMsg db 'Memory Map failed',13,10,0
 
 
-mov si, mmap_msg					; Generating memory map entries
+mov si, mmapMsg					; Generating memory map entries
 	int 0x22
 
 	;Set up the memory map with int 0x15 //Courtesy of osdev.org wiki article 'Detecting Memory'
@@ -17,49 +17,49 @@ mmap:
 	mov [es:di + 20], dword 1		; force a valid ACPI 3.X entry
 	mov ecx, 24						; ask for 24 bytes
 	int 0x15
-	jc short mmap_fail				; carry set on first call means "unsupported function"
+	jc short mmapFail				; carry set on first call means "unsupported function"
 	mov edx, 0x0534D4150			; Some BIOSes apparently trash this register?
 	cmp eax, edx					; on success, eax must have been reset to "SMAP"
-	jne short mmap_fail
+	jne short mmapFail
 	test ebx, ebx					; ebx = 0 implies list is only 1 entry long (worthless)
-	je short mmap_fail
-	jmp short mmap_inside
-mmap_loop:
+	je short mmapFail
+	jmp short mmapInside
+mmapLoop:
 	mov eax, 0xe820					; eax, ecx get trashed on every int 0x15 call
 	mov [es:di + 20], dword 1		; force a valid ACPI 3.X entry
 	mov ecx, 24						; ask for 24 bytes again
 	int 0x15
-	jc short mmap_exit				; carry set means "end of list already reached"
+	jc short mmapExit				; carry set means "end of list already reached"
 	mov edx, 0x0534D4150			; repair potentially trashed register
-mmap_inside:
-	jcxz mmap_skip					; skip any 0 length entries
+mmapInside:
+	jcxz mmapSkip					; skip any 0 length entries
 	cmp cl, 20						; got a 24 byte ACPI 3.X response?
-	jbe short mmap_short
+	jbe short mmapShort
 	test byte [es:di + 20], 1		; if so: is the "ignore this data" bit clear?
-	je short mmap_skip
-mmap_short:
+	je short mmapSkip
+mmapShort:
 	mov ecx, [es:di + 8]			; get lower uint32_t of memory region length
 	or ecx, [es:di + 12]			; "or" it with upper uint32_t to test for zero
-	jz mmap_skip						; if length uint64_t is 0, skip entry
+	jz mmapSkip						; if length uint64_t is 0, skip entry
 	inc bp							; got a good entry: ++count, move to next storage spot
 	add di, 24
-mmap_skip:
+mmapSkip:
 	test ebx, ebx					; if ebx resets to 0, list is complete
-	jne short mmap_loop
-mmap_exit:
+	jne short mmapLoop
+mmapExit:
 	mov bx,0x0050
 	mov es,bx
 	mov bx,0x0002
 	mov [es:bx], bp					; store the entry count in our custom table
-	mov si, mmap_done_msg			; Show mmap complete message
+	mov si, mmapDoneMsg			; Show mmap complete message
 	int 0x22
 	clc								; there is "jc" on end of list to this point, so the carry must be cleared
-	jmp mmap_finish
-mmap_fail:
-	mov si, mmap_fail_msg			; Show mmap fail message
+	jmp mmapFinish
+mmapFail:
+	mov si, mmapFailMsg			; Show mmap fail message
 	int 0x22
 	stc								; "function unsupported" error exit
-mmap_finish:
+mmapFinish:
 
 
 

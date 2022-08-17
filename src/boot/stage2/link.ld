@@ -1,4 +1,4 @@
-ENTRY(loader32start);
+ENTRY(loader32Start);
 
 SECTIONS
 {
