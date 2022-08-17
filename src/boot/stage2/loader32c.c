@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "acpi.h"
-#include "elf.h"
+#include "elf64.h"
 #include "infotable.h"
 #include "pml4t.h"
 
