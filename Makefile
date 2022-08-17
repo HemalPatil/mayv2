@@ -1,35 +1,38 @@
 # We'll be using the bash shell
-SHELL:= /bin/bash
-
-# Different flags for nasm depending on the type of output required 
-NASMBIN:= nasm -f bin -o
-NASM32:= nasm -f elf32 -o
-NASM64:= nasm -f elf64 -o
-
-# The utility that we will be using for creating the ISO image from the actual folder
-ISOMAKER:= genisoimage
-
-# Necessary flags and compiler and linker names required for generating binaries for x86
-LD32:=i686-elf-ld
-CC32:=i686-elf-gcc
-CWARNINGS:=-Wall -Wextra
-
-# Necessary flags and compiler and linker names required for generating binaries for x64
-LD64:=x86_64-elf-ld
-LD64FLAGS:=-b elf64-x86-64
-CC64:=x86_64-elf-gcc
-CC64FLAGS:=-ffreestanding -mcmodel=kernel -m64 -march=x86-64 -mno-red-zone -I/home/hemal/mayv2/src/include
+SHELL := /bin/bash
 
 # Root directories
+PROJECT := /home/hemal/mayv2
 SRCDIR := src
+INCLUDEDIR := $(SRCDIR)/include
 ISODIR := ISO
 BUILDDIR := build
 UTILITIESDIR := utilities
 
+# Different flags for nasm depending on the type of output required 
+NASMBIN := nasm -f bin -o
+NASM32 := nasm -f elf32 -o
+NASM64 := nasm -f elf64 -o
+
+# The utility that we will be using for creating the ISO image from the actual folder
+ISOMAKER := genisoimage
+
+# Necessary flags and compiler and linker names required for generating binaries for x86
+LD32 := i686-elf-ld
+CC32 := i686-elf-gcc
+CC32FLAGS := -ffreestanding -I$(INCLUDEDIR)
+CWARNINGS := -Wall -Wextra
+
+# Necessary flags and compiler and linker names required for generating binaries for x64
+LD64 := x86_64-elf-ld
+LD64FLAGS := -b elf64-x86-64
+CC64 := x86_64-elf-gcc
+CC64FLAGS := -ffreestanding -mcmodel=kernel -m64 -march=x86-64 -mno-red-zone -I$(INCLUDEDIR)
+
 # The directory structure in the above root directories
-SRC_DIRECTORIES:= $(shell find $(SRCDIR) -type d -printf "%d\t%P\n" | sort -nk1 | cut -f2-)
-ISO_DIRECTORIES:= $(addprefix $(ISODIR)/,$(shell echo "$(SRC_DIRECTORIES)" | tr a-z A-Z))
-BUILD_DIRECTORIES:= $(addprefix $(BUILDDIR)/,$(SRC_DIRECTORIES))
+SRC_DIRECTORIES := $(shell find $(SRCDIR) -type d -printf "%d\t%P\n" | sort -nk1 | cut -f2-)
+ISO_DIRECTORIES := $(addprefix $(ISODIR)/,$(shell echo "$(SRC_DIRECTORIES)" | tr a-z A-Z))
+BUILD_DIRECTORIES := $(addprefix $(BUILDDIR)/,$(SRC_DIRECTORIES))
 
 # Source files
 CFILES := $(shell find $(addprefix $(SRCDIR)/,$(SRC_DIRECTORIES)) $(UTILITIESDIR) -type f -name "*.c")
@@ -40,12 +43,13 @@ ALLSRCFILES := $(CFILES) $(CPPFILES) $(HEADERFILES) $(ASMFILES)
 
 .PHONY: all clean directories todolist
 
-# Include the rules from subdirectories recursively using stack-like structure (See implementing non-recursive make article https://evbergen.home.xs4all.nl/nonrecursive-make.html)
-dir:=$(SRCDIR)/include
+# Include the rules from subdirectories recursively using stack-like structure
+# (See implementing non-recursive make article https://evbergen.home.xs4all.nl/nonrecursive-make.html)
+dir := $(SRCDIR)/include
 include $(dir)/Rules.mk
-dir:=$(SRCDIR)/lib
+dir := $(SRCDIR)/lib
 include $(dir)/Rules.mk
-dir:=$(SRCDIR)/boot
+dir := $(SRCDIR)/boot
 include $(dir)/Rules.mk
 
 # Show all TODOs in all source files

@@ -1,154 +1,94 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-
-#define ACPI3_MemType_Usable 1
-#define ACPI3_MemType_Reserved 2
-#define ACPI3_MemType_ACPIReclaimable 3
-#define ACPI3_MemType_ACPINVS 4
-#define ACPI3_MemType_Bad 5
-#define ACPI3_MemType_Hole 10
-
-// ACPI 3.0 entry format (we have used extended entries of 24 bytes)
-struct ACPI3Entry {
-	uint64_t baseAddress;
-	uint64_t length;
-	uint32_t regionType;
-	uint32_t extendedAttributes;
-} __attribute__((packed));
-typedef struct ACPI3Entry ACPI3Entry;
+#include "acpi.h"
+#include "elf.h"
+#include "infotable.h"
+#include "pml4t.h"
 
 // Disk Address Packet for extended disk operations
 struct DAP {
-	char DAPSize;
+	char dapSize;
 	char alwayszero;
-	uint16_t NumberOfSectors;
+	uint16_t numberOfSectors;
 	uint16_t offset;
 	uint16_t segment;
-	uint64_t FirstSector;
+	uint64_t firstSector;
 } __attribute__((packed));
 typedef struct DAP DAP;
 
-// Program Header of 64-bit ELF binaries
-struct ELF64ProgramHeader {
-	uint32_t TypeOfSegment;
-	uint32_t SegmentFlags;
-	uint64_t FileOffset;
-	uint64_t VirtualMemoryAddress;
-	uint64_t Ignore;
-	uint64_t SegmentSizeInFile;
-	uint64_t SegmentSizeInMemory;
-	uint64_t Alignment;
-} __attribute__((packed));
-typedef struct ELF64ProgramHeader ELF64ProgramHeader;
-
-// 64-bit long mode paging structures
-// Right now in this very early stage of system initialization we just need present,
-// r/w and address fields. Hence all the 4 structures are using a common struct.
-struct PML4E {
-	uint8_t Present : 1;
-	uint8_t ReadWrite : 1;
-	uint8_t UserAccess : 1;
-	uint8_t PageWriteThrough : 1;
-	uint8_t CacheDisable : 1;
-	uint8_t Accessed : 1;
-	uint16_t Ignore1 : 6;
-	uint64_t PageAddress : 40;
-	uint16_t Ignore2 : 11;
-	uint8_t ExecuteDisable : 1;
-} __attribute__((packed));
-typedef struct PML4E PML4E;
-typedef struct PML4E PDPTE;
-typedef struct PML4E PDE;
-typedef struct PML4E PTE;
-
-char *const vidmem = (char *)0xb8000;
-const size_t VGAWidth = 80;
-const size_t VGAHeight = 25;
-size_t CursorX = 0;
-size_t CursorY = 0;
+char *const vidMem = (char *)0xb8000;
+const size_t vgaWidth = 80;
+const size_t vgaHeight = 25;
+size_t cursorX = 0;
+size_t cursorY = 0;
 const char endl[] = "\n";
 const uint8_t DEFAULT_TERMINAL_COLOR = 0x0f;
-uint16_t *infoTable;
+InfoTable *infoTable;
 
-void ClearScreen();
-extern void PrintHex(const void *const, const size_t);
+void clearScreen();
+extern void printHex(const void *const, const size_t);
 extern void swap(void *const, void *const, const size_t);
 extern void memset(void *const, const uint8_t, const size_t);
-extern void memcopy(const void *const src, void const *dest, const size_t count);
+extern void memcpy(const void *const src, void const *dest, const size_t count);
 extern void setup16BitSegments(const uint16_t *const, const void *const, const DAP *const, const uint16_t);
-extern void LoadKernelELFSectors();
+extern void loadKernel64ElfSectors();
 extern void jumpToKernel64(PML4E *, uint16_t *);
-extern uint8_t GetLinearAddressLimit();
-extern uint8_t GetPhysicalAddressLimit();
+extern uint8_t getLinearAddressLimit();
+extern uint8_t getPhysicalAddressLimit();
 
-void terminalPrintChar(char c, uint8_t color)
-{
-	if (CursorX >= VGAWidth || CursorY >= VGAHeight)
-	{
+void terminalPrintChar(char c, uint8_t color) {
+	if (cursorX >= vgaWidth || cursorY >= vgaHeight) {
 		return;
 	}
-	if (c == '\n')
-	{
-		goto skip;
+	if (c == '\n') {
+		goto uglySkip;
 	}
-	const size_t index = 2 * (CursorY * VGAWidth + CursorX);
-	vidmem[index] = c;
-	vidmem[index + 1] = color;
-	if (++CursorX == VGAWidth)
-	{
-	skip:
-		CursorX = 0;
-		if (++CursorY == VGAHeight)
-		{
-			CursorY = 0;
-			ClearScreen();
-		}
+	const size_t index = 2 * (cursorY * vgaWidth + cursorX);
+	vidMem[index] = c;
+	vidMem[index + 1] = color;
+	if (++cursorX == vgaWidth) {
+		uglySkip:
+			cursorX = 0;
+			if (++cursorY == vgaHeight) {
+				cursorY = 0;
+				clearScreen();
+			}
 	}
 	return;
 }
 
-void ClearScreen()
-{
-	const size_t buffersize = 2 * VGAWidth * VGAHeight;
-	for (size_t i = 0; i < buffersize; i = i + 2)
-	{
-		vidmem[i] = ' ';
-		vidmem[i + 1] = DEFAULT_TERMINAL_COLOR;
+void clearScreen() {
+	const size_t buffersize = 2 * vgaWidth * vgaHeight;
+	for (size_t i = 0; i < buffersize; i = i + 2) {
+		vidMem[i] = ' ';
+		vidMem[i + 1] = DEFAULT_TERMINAL_COLOR;
 	}
-	CursorX = CursorY = 0;
+	cursorX = cursorY = 0;
 	return;
 }
 
-size_t strlen(const char *const str)
-{
+size_t strlen(const char *const str) {
 	size_t length = 0;
-	while (str[length] != 0)
-	{
+	while (str[length] != 0) {
 		++length;
 	}
 	return length;
 }
 
-void PrintString(const char *const str)
-{
+void printString(const char *const str) {
 	size_t length = strlen(str);
-	for (size_t i = 0; i < length; ++i)
-	{
+	for (size_t i = 0; i < length; ++i) {
 		terminalPrintChar(str[i], DEFAULT_TERMINAL_COLOR);
 	}
 }
 
-size_t getNumberOfMmapEntries()
-{
-	return (size_t)(*(infoTable + 1));
+size_t getNumberOfMmapEntries() {
+	return infoTable->numberOfMmapEntries;
 }
 
-ACPI3Entry *getMmapBase()
-{
-	uint16_t MMAPSegment = *(infoTable + 3);
-	uint16_t MMAPOffset = *(infoTable + 2);
-	return (ACPI3Entry *)((uint32_t)MMAPSegment * 16 + (uint32_t)MMAPOffset);
+ACPI3Entry* getMmapBase() {
+	return (ACPI3Entry*)(infoTable->mmapEntriesSegment << 4 + infoTable->mmapEntriesOffset);
 }
 
 void sortMmapEntries() {
@@ -207,7 +147,7 @@ void processMmapEntries() {
 			newEntry->length = mmapEntry2->baseAddress - newEntry->baseAddress;
 			newEntry->regionType = ACPI3_MemType_Hole;
 			newEntry->extendedAttributes = 1;
-			++(*(infoTable + 1));
+			++(infoTable->numberOfMmapEntries);
 			++actualEntries;
 		}
 	}
@@ -247,210 +187,197 @@ void identityMapFirst16MiB() {
 }
 
 void allocatePagingEntry(PML4E *entry, uint32_t address) {
-	entry->Present = 1;
-	entry->ReadWrite = 1;
-	entry->PageAddress = address >> 12;
+	entry->present = 1;
+	entry->readWrite = 1;
+	entry->pageAddress = address >> 12;
 }
 
-int loader32Main(uint16_t *InfoTableAddress, DAP *const dapKernel64Address, const void *const loadModuleAddress)
+int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void *const loadModuleAddress)
 {
-	infoTable = InfoTableAddress;
-	ClearScreen();
+	infoTable = infoTableAddress;
+	clearScreen();
 	processMmapEntries();
 
 	// Get the max physical address and max linear address that can be handled by the CPU
 	// These details are found by using CPUID.EAX=0x80000008 instruction and has to be done from assembly
 	// Refer to Intel documentation Vol. 3 Section 4.1.4
-	uint8_t maxphyaddr = GetPhysicalAddressLimit();
-	PrintString("Max physical address = 0x");
-	PrintHex(&maxphyaddr, sizeof(maxphyaddr));
-	PrintString("\n");
-	uint8_t maxlinaddr = GetLinearAddressLimit();
-	PrintString("Max linear address = 0x");
-	PrintHex(&maxlinaddr, sizeof(maxlinaddr));
-	PrintString("\n");
-	*(infoTable + 9) = (uint16_t)maxphyaddr;
-	*(infoTable + 10) = (uint16_t)maxlinaddr;
+	uint8_t maxPhyAddr = getPhysicalAddressLimit();
+	printString("Max physical address = 0x");
+	printHex(&maxPhyAddr, sizeof(maxPhyAddr));
+	printString("\n");
+	uint8_t maxLinAddr = getLinearAddressLimit();
+	printString("Max linear address = 0x");
+	printHex(&maxLinAddr, sizeof(maxLinAddr));
+	printString("\n");
+	infoTable->maxPhysicalAddress = infoTable->maxLinearAddress = 0;
+	infoTable->maxPhysicalAddress = (uint16_t)maxPhyAddr;
+	infoTable->maxLinearAddress = (uint16_t)maxLinAddr;
 
-	DAP DAPKernel64 = *dapKernel64Address;
-	uint16_t KernelNumberOfSectors = DAPKernel64.NumberOfSectors;
-	uint32_t bytesOfKernelELF = (uint32_t)0x800 * (uint32_t)KernelNumberOfSectors;
-	uint64_t KernelVirtualMemSize = *((uint64_t *)(infoTable + 0xc)); // Get size of kernel in virtual memory
+	uint16_t kernelNumberOfSectors = dapKernel64->numberOfSectors;
+	uint32_t bytesOfKernelELF = (uint32_t)0x800 * (uint32_t)kernelNumberOfSectors;
+	uint64_t kernelVirtualMemSize = infoTable->kernel64VirtualMemSize; // Get size of kernel in virtual memory
 
-	// Check if enough space is available to load kernel as well as the elf (i.e. length of region > (KernelVirtualMemSize + bytesOfKernelELF))
-	// We will load parsed kernel code from 2MiB physical memory (size : KernelVirtualMemSize)
-	// Kernel ELF will be loaded at 2MiB + KernelVirtualMemSize + 4KiB physical memory form where it will be parsed
+	// Check if enough space is available to load kernel as well as the elf
+	// (i.e. length of region > (kernelVirtualMemSize + bytesOfKernelELF))
+	// We will load parsed kernel code from 2MiB physical memory (size : kernelVirtualMemSize)
+	// Kernel ELF will be loaded at 2MiB + kernelVirtualMemSize + 4KiB physical memory form where it will be parsed
 	bool enoughSpace = false;
-	size_t numberMMAPentries = getNumberOfMmapEntries();
-	PrintString("Number of MMAP entries = 0x");
-	PrintHex(&numberMMAPentries, sizeof(numberMMAPentries));
-	PrintString("\n");
+	size_t numberMmapEntries = getNumberOfMmapEntries();
+	printString("Number of MMAP entries = 0x");
+	printHex(&numberMmapEntries, sizeof(numberMmapEntries));
+	printString("\n");
 	ACPI3Entry *mmap = getMmapBase();
-	for (size_t i = 0; i < numberMMAPentries; ++i)
-	{
-		if ((mmap[i].baseAddress <= (uint64_t)0x100000) && (mmap[i].length > ((uint64_t)0x201000 - mmap[i].baseAddress + (uint64_t)bytesOfKernelELF + KernelVirtualMemSize)))
-		{
+	for (size_t i = 0; i < numberMmapEntries; ++i) {
+		if (
+			(mmap[i].baseAddress <= (uint64_t)0x100000) &&
+			(mmap[i].length > ((uint64_t)0x201000 - mmap[i].baseAddress + (uint64_t)bytesOfKernelELF + kernelVirtualMemSize))
+		) {
 			enoughSpace = true;
 			break;
 		}
 	}
-	if (!enoughSpace)
-	{
-		ClearScreen();
-		PrintString("\nFatal Error : System memory is fragmented too much.\nNot enough space to load kernel.\nCannot boot!");
+	if (!enoughSpace) {
+		clearScreen();
+		printString("\nFatal Error : System memory is fragmented too much.\nNot enough space to load kernel.\nCannot boot!");
 		return 1;
 	}
-	PrintString("Loading kernel...\n");
+	printString("Loading kernel...\n");
 
 	// Identity map the first 16 MiB of the physical memory
 	// To see how the mapping is done refer to docs/mapping.txt
 	identityMapFirst16MiB();
 
 	// Change base address of the 16-bit segments in GDT32
-	setup16BitSegments(InfoTableAddress, loadModuleAddress, dapKernel64Address, *infoTable); // infoTable[0] = boot disk number
+	setup16BitSegments(infoTableAddress, loadModuleAddress, dapKernel64, infoTable->bookDiskNumber);
 
 	// TODO: assumes memory at 2MiB is free
 	// Enter the kernel physical memory base address in the info table
-	uint32_t KernelBase = 0x200000;
-	*((uint64_t *)(infoTable + 0x10)) = (uint64_t)KernelBase;
+	uint32_t kernelBase = 0x200000;
+	infoTable->kernel64Base = (uint64_t)kernelBase;
 
 	// TODO: assumes memory from 0x80000 to 0x90000 is free
 	// We have 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in our OS ISO image is 2 KiB in size.
 	// So we can load the kernel ELF in batches of 32 sectors. Leave a gap of 4 KiB between kernel process and kernel ELF
-	uint32_t KernelELFBase = 0x201000 + (uint32_t)KernelVirtualMemSize;
-	PrintString("KernelVirtualMemSize = 0x");
-	PrintHex(&KernelVirtualMemSize, sizeof(KernelVirtualMemSize));
-	PrintString("\n");
-	PrintString("KernelELFBase = 0x");
-	PrintHex(&KernelELFBase, sizeof(KernelELFBase));
-	PrintString("\n");
-	dapKernel64Address->offset = 0x0;
-	dapKernel64Address->segment = 0x8000;
-	dapKernel64Address->NumberOfSectors = 32;
-	uint16_t iters = KernelNumberOfSectors / 32;
+	uint32_t kernelElfBase = 0x201000 + (uint32_t)kernelVirtualMemSize;
+	printString("KernelVirtualMemSize = 0x");
+	printHex(&kernelVirtualMemSize, sizeof(kernelVirtualMemSize));
+	printString("\n");
+	printString("KernelELFBase = 0x");
+	printHex(&kernelElfBase, sizeof(kernelElfBase));
+	printString("\n");
+	dapKernel64->offset = 0x0;
+	dapKernel64->segment = 0x8000;
+	dapKernel64->numberOfSectors = 32;
+	uint16_t iters = kernelNumberOfSectors / 32;
 	memset((void *)0x80000, 0, 0x10000);
-	for (uint16_t i = 0; i < iters; ++i)
-	{
-		LoadKernelELFSectors();
-		memcopy((void *)0x80000, (void *)(KernelELFBase + i * 0x10000), 0x10000);
-		dapKernel64Address->FirstSector += 32;
+	for (uint16_t i = 0; i < iters; ++i) {
+		loadKernel64ElfSectors();
+		memcpy((void *)0x80000, (void *)(kernelElfBase + i * 0x10000), 0x10000);
+		dapKernel64->firstSector += 32;
 	}
 	// Load remaining sectors
-	dapKernel64Address->NumberOfSectors = KernelNumberOfSectors % 32;
-	LoadKernelELFSectors();
-	memcopy((void *)0x80000, (void *)(KernelELFBase + iters * 0x10000), dapKernel64Address->NumberOfSectors * 0x800);
+	dapKernel64->numberOfSectors = kernelNumberOfSectors % 32;
+	loadKernel64ElfSectors();
+	memcpy((void *)0x80000, (void *)(kernelElfBase + iters * 0x10000), dapKernel64->numberOfSectors * 0x800);
 
-	PrintString("Kernel executable loaded.\n");
+	printString("Kernel executable loaded.\n");
 
 	// Parse the kernel executable
-	uint16_t ELFFlags = *((uint16_t *)(KernelELFBase + 4));
-	if (ELFFlags != 0x0102) // Make sure kernel executable is 64-bit in little endian format
-	{
-		PrintString("\nKernel executable corrupted! Cannot boot!");
+	uint16_t elfFlags = *((uint16_t *)(kernelElfBase + 4));
+	if (elfFlags != 0x0102) {
+		// Make sure kernel executable is 64-bit in little endian format
+		printString("\nKernel executable corrupted! Cannot boot!");
 		return 1;
 	}
-	uint32_t ProgramHeaderTable = *((uint32_t *)(KernelELFBase + 32));
-	uint16_t ProgramHeaderEntrySize = *((uint16_t *)(KernelELFBase + 54));
-	uint16_t ProgramHeaderEntryCount = *((uint16_t *)(KernelELFBase + 56));
-	if (ProgramHeaderEntrySize != sizeof(ELF64ProgramHeader))
-	{
-		PrintString("\nKernel executable corrupted! Cannot boot!");
+	uint32_t programHeaderTable = *((uint32_t *)(kernelElfBase + 32));
+	uint16_t programHeaderEntrySize = *((uint16_t *)(kernelElfBase + 54));
+	uint16_t programHeaderEntryCount = *((uint16_t *)(kernelElfBase + 56));
+	if (programHeaderEntrySize != sizeof(ELF64ProgramHeader)) {
+		printString("\nKernel executable corrupted! Cannot boot!");
 		return 1;
 	}
-	ELF64ProgramHeader *ProgramHeader = (ELF64ProgramHeader *)(KernelELFBase + ProgramHeaderTable);
-	uint32_t MemorySeekp = KernelBase;
-	PrintString("KernelBase = 0x");
-	PrintHex(&KernelBase, sizeof(KernelBase));
-	PrintString("\n");
-	PrintString("ProgramHeaderEntryCount = 0x");
-	PrintHex(&ProgramHeaderEntryCount, sizeof(ProgramHeaderEntryCount));
-	PrintString("\n");
-	PML4E *PML4T = (PML4E *)0x110000;
-	uint32_t NewPageStart = 0x11b000; // New pages that need to be made should start from this address and add 0x1000 to it.
-	for (uint16_t i = 0; i < ProgramHeaderEntryCount; ++i)
-	{
-		uint32_t SizeInMemory = (uint32_t)ProgramHeader[i].SegmentSizeInMemory;
-		PrintString("  SizeInMemory = 0x");
-		PrintHex(&SizeInMemory, sizeof(SizeInMemory));
-		PrintString("\n");
+	ELF64ProgramHeader *programHeader = (ELF64ProgramHeader *)(kernelElfBase + programHeaderTable);
+	uint32_t memorySeekp = kernelBase;
+	printString("KernelBase = 0x");
+	printHex(&kernelBase, sizeof(kernelBase));
+	printString("\n");
+	printString("ProgramHeaderEntryCount = 0x");
+	printHex(&programHeaderEntryCount, sizeof(programHeaderEntryCount));
+	printString("\n");
+	PML4E *pml4t = (PML4E *)0x110000;
+	uint32_t newPageStart = 0x11b000; // New pages that need to be made should start from this address and add 0x1000 to it.
+	for (uint16_t i = 0; i < programHeaderEntryCount; ++i) {
+		uint32_t sizeInMemory = (uint32_t)programHeader[i].segmentSizeInMemory;
+		printString("  SizeInMemory = 0x");
+		printHex(&sizeInMemory, sizeof(sizeInMemory));
+		printString("\n");
 
-		memset((void *)MemorySeekp, 0, SizeInMemory);
-		memcopy((void *)(KernelELFBase + (uint32_t)ProgramHeader[i].FileOffset), (void *)MemorySeekp, (uint32_t)ProgramHeader[i].SegmentSizeInFile);
+		memset((void *)memorySeekp, 0, sizeInMemory);
+		memcpy((void *)(kernelElfBase + (uint32_t)programHeader[i].fileOffset), (void *)memorySeekp, (uint32_t)programHeader[i].segmentSizeInFile);
 
-		// Our kernel is linked at higher half addresses. (right now it is last 2GiB of 64-bit address space, may change if linker script is changed)
+		// Kernel64 is linked at higher half addresses.
+		// Right now it is last 2GiB of 64-bit address space, may change if linker script is changed
 		// Map this section in the paging structure
-		size_t NumberOfPages = SizeInMemory / 0x1000;
-		if (SizeInMemory % 0x1000)
-		{
-			++NumberOfPages;
+		size_t numberOfPages = sizeInMemory / 0x1000;
+		if (sizeInMemory % 0x1000) {
+			++numberOfPages;
 		}
-		PrintString("  NumberOfPages = 0x");
-		PrintHex(&NumberOfPages, sizeof(NumberOfPages));
-		PrintString("\n");
-		PrintString("  VirtualMemoryAddress = 0x");
-		PrintHex(&ProgramHeader[i].VirtualMemoryAddress, sizeof(ProgramHeader[i].VirtualMemoryAddress));
-		PrintString("\n");
-		for (size_t j = 0; j < NumberOfPages; ++j, MemorySeekp += 0x1000)
-		{
-			uint64_t VirtualMemoryAddress = ProgramHeader[i].VirtualMemoryAddress + j * 0x1000;
-			VirtualMemoryAddress >>= 12;
-			uint16_t PTIndex = VirtualMemoryAddress & 0x1ff;
-			VirtualMemoryAddress >>= 9;
-			uint16_t PDIndex = VirtualMemoryAddress & 0x1ff;
-			VirtualMemoryAddress >>= 9;
-			uint16_t PDPTIndex = VirtualMemoryAddress & 0x1ff;
-			VirtualMemoryAddress >>= 9;
-			uint16_t PML4TIndex = VirtualMemoryAddress & 0x1ff;
-			if (PML4T[PML4TIndex].Present)
-			{
-				PDPTE *PDPT = (PDPTE *)((uint32_t)PML4T[PML4TIndex].PageAddress << 12);
-				if (PDPT[PDPTIndex].Present)
-				{
-					PDE *PD = (PDE *)((uint32_t)PDPT[PDPTIndex].PageAddress << 12);
-					if (PD[PDIndex].Present)
-					{
-						PTE *PT = (PTE *)((uint32_t)PD[PDIndex].PageAddress << 12);
-						if (!PT[PTIndex].Present)
-						{
-							allocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+		printString("  NumberOfPages = 0x");
+		printHex(&numberOfPages, sizeof(numberOfPages));
+		printString("\n");
+		printString("  VirtualMemoryAddress = 0x");
+		printHex(&programHeader[i].virtualMemoryAddress, sizeof(programHeader[i].virtualMemoryAddress));
+		printString("\n");
+		for (size_t j = 0; j < numberOfPages; ++j, memorySeekp += 0x1000) {
+			uint64_t virtualMemoryAddress = programHeader[i].virtualMemoryAddress + j * 0x1000;
+			virtualMemoryAddress >>= 12;
+			uint16_t ptIndex = virtualMemoryAddress & 0x1ff;
+			virtualMemoryAddress >>= 9;
+			uint16_t pdIndex = virtualMemoryAddress & 0x1ff;
+			virtualMemoryAddress >>= 9;
+			uint16_t pdptIndex = virtualMemoryAddress & 0x1ff;
+			virtualMemoryAddress >>= 9;
+			uint16_t pml4tIndex = virtualMemoryAddress & 0x1ff;
+			if (pml4t[pml4tIndex].present) {
+				PDPTE *pdpt = (PDPTE *)((uint32_t)pml4t[pml4tIndex].pageAddress << 12);
+				if (pdpt[pdptIndex].present) {
+					PDE *pd = (PDE *)((uint32_t)pdpt[pdptIndex].pageAddress << 12);
+					if (pd[pdIndex].present) {
+						PTE *pt = (PTE *)((uint32_t)pd[pdIndex].pageAddress << 12);
+						if (!pt[ptIndex].present) {
+							allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
 						}
+					} else {
+						allocatePagingEntry(&(pd[pdIndex]), newPageStart);
+						PTE *pt = (PTE *)newPageStart;
+						newPageStart += 0x1000;
+						allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
 					}
-					else
-					{
-						allocatePagingEntry(&(PD[PDIndex]), NewPageStart);
-						PTE *PT = (PTE *)NewPageStart;
-						NewPageStart += 0x1000;
-						allocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
-					}
+				} else {
+					allocatePagingEntry(&(pdpt[pdptIndex]), newPageStart);
+					PDE *pd = (PDE *)newPageStart;
+					newPageStart += 0x1000;
+					allocatePagingEntry(&(pd[pdIndex]), newPageStart);
+					PTE *pt = (PTE *)newPageStart;
+					newPageStart += 0x1000;
+					allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
 				}
-				else
-				{
-					allocatePagingEntry(&(PDPT[PDPTIndex]), NewPageStart);
-					PDE *PD = (PDE *)NewPageStart;
-					NewPageStart += 0x1000;
-					allocatePagingEntry(&(PD[PDIndex]), NewPageStart);
-					PTE *PT = (PTE *)NewPageStart;
-					NewPageStart += 0x1000;
-					allocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
-				}
-			}
-			else
-			{
-				allocatePagingEntry(&(PML4T[PML4TIndex]), NewPageStart);
-				PDPTE *PDPT = (PDPTE *)NewPageStart;
-				NewPageStart += 0x1000;
-				allocatePagingEntry(&(PDPT[PDPTIndex]), NewPageStart);
-				PDE *PD = (PDE *)NewPageStart;
-				NewPageStart += 0x1000;
-				allocatePagingEntry(&(PD[PDIndex]), NewPageStart);
-				PTE *PT = (PTE *)NewPageStart;
-				NewPageStart += 0x1000;
-				allocatePagingEntry(&(PT[PTIndex]), MemorySeekp);
+			} else {
+				allocatePagingEntry(&(pml4t[pml4tIndex]), newPageStart);
+				PDPTE *pdpt = (PDPTE *)newPageStart;
+				newPageStart += 0x1000;
+				allocatePagingEntry(&(pdpt[pdptIndex]), newPageStart);
+				PDE *pd = (PDE *)newPageStart;
+				newPageStart += 0x1000;
+				allocatePagingEntry(&(pd[pdIndex]), newPageStart);
+				PTE *pt = (PTE *)newPageStart;
+				newPageStart += 0x1000;
+				allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
 			}
 		}
 	}
 
-	jumpToKernel64(PML4T, InfoTableAddress); // Jump to kernel. Code beyond this should never get executed.
-	PrintString("Fatal error : Cannot boot!");
+	jumpToKernel64(pml4t, infoTableAddress); // Jump to kernel. Code beyond this should never get executed.
+	printString("Fatal error : Cannot boot!");
 	return 1;
 }

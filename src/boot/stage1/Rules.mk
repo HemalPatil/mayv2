@@ -1,5 +1,5 @@
-BOOT_STAGE1_INPUT:= $(shell find $(SRCDIR)/boot/stage1 -type f -name "*.asm")
-BOOT_STAGE1_OUTPUT:= $(addprefix $(ISODIR)/BOOT/STAGE1/,$(shell echo "$(patsubst %.asm,%.bin,$(notdir $(BOOT_STAGE1_INPUT)))" | tr a-z A-Z))
+BOOT_STAGE1_INPUT := $(shell find $(SRCDIR)/boot/stage1 -type f -name "*.asm")
+BOOT_STAGE1_OUTPUT := $(addprefix $(ISODIR)/BOOT/STAGE1/,$(shell echo "$(patsubst %.asm,%.bin,$(notdir $(BOOT_STAGE1_INPUT)))" | tr a-z A-Z))
 
 $(ISODIR)/BOOT/STAGE1/MMAP.BIN: $(SRCDIR)/boot/stage1/mmap.asm
 	$(NASMBIN) $@ $^

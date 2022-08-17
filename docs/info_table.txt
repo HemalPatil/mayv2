@@ -8,5 +8,6 @@
 0xc		12		d6	gdt_descriptor (6 bytes)
 0x12	18		dw	max physical address
 0x14	20		dw	max linear address
+0x16	22		dw	ignore
 0x18	24		dq	kernel actual virtual mem size (bytes) (to be calculated by format_iso utility)
 0x20	32		dq	kernel physical mem base (bytes) (to be filled in at runtime by LOADER32)

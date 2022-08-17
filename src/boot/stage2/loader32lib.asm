@@ -1,22 +1,22 @@
 [bits 32]
 
 section .rodata
-	global hexspace
-	; We are having of the copy of the initial GDT from kernel
+	global hexSpace
+	; A copy of the initial GDT from kernel is
 	; here because doing far jumps in 64-bit mode is tedious
-	; so to change the cs selector, we will load a copy of GDT from here itself
+	; so to change the cs selector, a copy of GDT will be loaded from here itself
 	; do a far jump and then just change base of GDT to a 64-bit address
-KernelGDTcopy:
-	;null entry
+kernelGdtCopy:
+	; null entry
 	dq 0
 	; 64 bit code segment
 	dq 0x00209a0000000000
 	; 64 bit data segment
 	dq 0x0020920000000000
-GDTDescriptor:
-	dw $ - KernelGDTcopy -1
-	dd KernelGDTcopy
-hexspace db '0123456789ABCDEF', 0
+gdtDescriptor:
+	dw $ - kernelGdtCopy -1
+	dd kernelGdtCopy
+hexSpace db '0123456789ABCDEF', 0
 
 section .data
 k64LoadOffset dw 0
@@ -27,42 +27,42 @@ diskNumber dw 0
 
 section .text
 	global memset
-	global memcopy
-	global PrintHex
+	global memcpy
+	global printHex
 	global swap
-	global GetPhysicalAddressLimit
-	global GetLinearAddressLimit
+	global getPhysicalAddressLimit
+	global getLinearAddressLimit
 	global setup16BitSegments
-	global LoadKernelELFSectors
+	global loadKernel64ElfSectors
 	global jumpToKernel64
 	extern terminalPrintChar
 
-PrintHex:
+printHex:
 	push ebp
 	mov ebp, esp
 	pushad
-	mov ecx, [ebp+12]
-	mov esi, [ebp+8]
+	mov ecx, [ebp + 12]
+	mov esi, [ebp + 8]
 	add esi, ecx
 	dec esi
-PrintHexLoop:
+printHexLoop:
 	push ecx
 	push esi
 	mov dl, [esi]
-	call PrintHexCore
+	call printHexCore
 	pop esi
 	dec esi
 	pop ecx
-	loop PrintHexLoop
+	loop printHexLoop
 	popad
 	mov esp, ebp
 	pop ebp
 	ret
 
-PrintHexCore:
+printHexCore:
 	pushad
 	push edx
-	mov ebx, hexspace
+	mov ebx, hexSpace
 	xor eax, eax
 	mov al, dl
 	shr al, 4
@@ -72,7 +72,7 @@ PrintHexCore:
 	call terminalPrintChar
 	add esp, 8
 	pop edx
-	mov ebx, hexspace
+	mov ebx, hexSpace
 	xor eax, eax
 	mov al, dl
 	and al, 0x0f
@@ -88,9 +88,9 @@ swap:
 	push ebp
 	mov ebp, esp
 	pushad
-	mov esi, [ebp+8]
-	mov edi, [ebp+12]
-	mov eax, [ebp+16]
+	mov esi, [ebp + 8]
+	mov edi, [ebp + 12]
+	mov eax, [ebp + 16]
 	test eax, eax
 	jz swapEnd
 	xor edx, edx
@@ -98,39 +98,39 @@ swap:
 	div ecx
 	push edx
 	test eax, eax
-	jz swapDWORDskip
+	jz swapDwordSkip
 	mov ecx, eax
-swapDWORDLoop:
+swapDwordLoop:
 	mov eax, [esi]
 	xchg eax, [edi]
 	mov [esi], eax
 	add esi, 4
 	add edi, 4
-	loop swapDWORDLoop
-swapDWORDskip:
+	loop swapDwordLoop
+swapDwordSkip:
 	pop ecx
 	test ecx, ecx
 	jz swapEnd
-swapBYTELoop:
+swapByteLoop:
 	mov al, [esi]
 	xchg al, [edi]
 	mov [esi], al
 	inc esi
 	inc edi
-	loop swapBYTELoop
+	loop swapByteLoop
 swapEnd:	
 	popad
 	mov esp, ebp
 	pop ebp
 	ret
 
-GetPhysicalAddressLimit:
+getPhysicalAddressLimit:
 	mov eax, 0x80000008
 	cpuid
 	and eax, 0xff
 	ret
 
-GetLinearAddressLimit:
+getLinearAddressLimit:
 	mov eax, 0x80000008
 	cpuid
 	shr eax, 8
@@ -150,16 +150,16 @@ memset:
 	div ecx
 	push edx
 	test eax, eax
-	jz memsetDWORDskip
+	jz memsetDwordSkip
 	push eax
 	mov ecx, 4
-memsetEAXloop:
+memsetEaxLoop:
 	shl eax, 8
 	mov al, [ebp + 12]
-	loop memsetEAXloop
+	loop memsetEaxLoop
 	pop ecx
 	rep stosd
-memsetDWORDskip:
+memsetDwordSkip:
 	pop ecx
 	test ecx, ecx
 	jz memsetEnd
@@ -171,31 +171,31 @@ memsetEnd:
 	pop ebp
 	ret
 
-memcopy:
+memcpy:
 	push ebp	; Create stack frame
 	mov ebp, esp
 	pushad
 	mov ax, ds	; Copy ds to es
 	mov es, ax
-	mov esi, [ebp+8]		; Get source pointer in ESI
-	mov edi, [ebp+12]	; Get destination pointer in EDI
-	mov eax, [ebp+16]	; Get count in EAX
+	mov esi, [ebp + 8]		; Get source pointer in ESI
+	mov edi, [ebp + 12]	; Get destination pointer in EDI
+	mov eax, [ebp + 16]	; Get count in EAX
 	test eax, eax		; If count is 0, exit
-	jz memcopyEnd
+	jz memcpyEnd
 	xor edx, edx		; Divide count by 4
 	mov ecx, 4
 	div ecx
 	push edx	; Save the remainder
 	test eax, eax	; Check if quotient is 0, if 0 then skip DWORD loop
-	jz memcopyDWORDskip
+	jz memcpyDwordSkip
 	mov ecx, eax		; copy quotient to ECX
 	rep movsd	; copy doublewords at DS:ESI to ES:EDI
-memcopyDWORDskip:
+memcpyDwordSkip:
 	pop ecx		; restore the remainder in ECX
 	test ecx, ecx	; if count is 0, exit
-	jz memcopyEnd
+	jz memcpyEnd
 	rep movsb	; copy bytes at DS:ESI to ES:EDI
-memcopyEnd:
+memcpyEnd:
 	popad	; Destory stack frame
 	mov esp, ebp
 	pop ebp
@@ -205,9 +205,9 @@ setup16BitSegments:
 	push ebp
 	mov ebp, esp
 	pushad
-	mov edx, [ebp+12]	; Get address of the load module
-	mov ebx, [ebp+8]		; Get address of the InfoTable
-	mov eax, [ebx+14]	; Get base of GDT
+	mov edx, [ebp + 12]	; Get address of the load module
+	mov ebx, [ebp + 8]		; Get address of the InfoTable
+	mov eax, [ebx + 14]	; Get base of GDT
 	mov ebx, eax
 ; CS16 is at offset 0x20
 	add ebx, 0x20
@@ -225,28 +225,28 @@ setup16BitSegments:
 	and ax, 0x00ff		; Preserve base[16..23]
 	or ax, 0x9200
 	mov [ebx + 12], ax
-	mov edx, [ebp+12]	; Get address of the load module
+	mov edx, [ebp + 12]	; Get address of the load module
 	mov eax, edx			; Separate in segment:offset address
 	and dx, 0x000f
 	and ax, 0xfff0
 	shr ax, 4
 	mov [k64LoadSegment], ax
 	mov [k64LoadOffset], dx
-	mov edx, [ebp+16]	; Get DAPkernel address
+	mov edx, [ebp + 16]	; Get DAPkernel address
 	mov eax, edx			; Separate in segment:offset address
 	and dx, 0x000f
 	and ax, 0xfff0
 	shr ax, 4
 	mov [dapKernelSegment], ax
 	mov [dapKernelOffset], dx
-	mov cx, [ebp+20]
+	mov cx, [ebp + 20]
 	mov [diskNumber], cx
 	popad
 	mov esp, ebp
 	pop ebp
 	ret
 
-LoadKernelELFSectors:
+loadKernel64ElfSectors:
 	pushad
 	mov ax, [k64LoadSegment]
 	shl eax, 16
@@ -256,30 +256,30 @@ LoadKernelELFSectors:
 	mov bx, [dapKernelOffset]
 	xor ecx, ecx
 	mov cx, [diskNumber]
-	mov edx, ReturnFrom16BitSegment
+	mov edx, returnFrom16BitSegment
 	jmp word 0x20:0x0	; Jump to the k64load module
-ReturnFrom16BitSegment:
+returnFrom16BitSegment:
 	popad
 	ret
 
 jumpToKernel64:
 	push ebp
 	mov ebp, esp
-	mov eax, [ebp+8]		; Get PML4T address in eax
+	mov eax, [ebp + 8]		; Get PML4T address in eax
 	mov cr3, eax			; Set CR3 to PML4T address
 	mov eax, cr4
-	or eax, 1<<5		; Set PAE enable bit
+	or eax, 1 << 5		; Set PAE enable bit
 	mov cr4, eax
-	mov ecx, 0xC0000080	; Copy contents of EFER MSR in eax
+	mov ecx, 0xc0000080	; Copy contents of EFER MSR in eax
 	rdmsr
-	or eax, 1<<8		; Set LM (long mode) bit
+	or eax, 1 << 8		; Set LM (long mode) bit
 	wrmsr				; Write back to EFER MSR
 	mov eax, cr0			; Enable paging
-	or eax, 1<<31
+	or eax, 1 << 31
 	mov cr0, eax
 	cli					; Disable interrupts. Although interrupts have been disabled till now, one must disable them just to be sure
-	mov edi, [ebp+12]
-	lgdt [GDTDescriptor]	; shift to kernel GDT
+	mov edi, [ebp + 12]
+	lgdt [gdtDescriptor]	; shift to kernel GDT
 	jmp 0x8:0x80000000		; 0x8 is 64-bit code segment
 	; Code beyond this should never get executed
 	mov esp, ebp
