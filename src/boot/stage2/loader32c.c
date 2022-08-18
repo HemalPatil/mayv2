@@ -93,9 +93,9 @@ void sortMmapEntries() {
 	// Sort the MMAP entries in ascending order of their base addresses
 	// Number of MMAP entries is in the range of 5-15 typically so a simple bubble sort is used
 	ACPI3Entry *mmap = getMmapBase();
-	for (size_t i = 0; i < infoTable->numberOfMmapEntries - 1; ++i) {
+	for (size_t i = 0; i < infoTable->mmapEntryCount - 1; ++i) {
 		size_t iMin = i;
-		for (size_t j = i + 1; j < infoTable->numberOfMmapEntries; ++j) {
+		for (size_t j = i + 1; j < infoTable->mmapEntryCount; ++j) {
 			uint64_t basej = *((uint64_t *)(mmap + j));
 			uint64_t baseMin = *((uint64_t *)(mmap + iMin));
 			if (basej < baseMin) {
@@ -121,9 +121,9 @@ void processMmapEntries() {
 	//    is not handled right now.
 
 	ACPI3Entry *mmap = getMmapBase();
-	size_t actualEntries = infoTable->numberOfMmapEntries;
+	size_t actualEntries = infoTable->mmapEntryCount;
 	sortMmapEntries();
-	for (size_t i = 0; i < infoTable->numberOfMmapEntries - 1; ++i) {
+	for (size_t i = 0; i < infoTable->mmapEntryCount - 1; ++i) {
 		ACPI3Entry *mmapEntry1 = mmap + i;
 		ACPI3Entry *mmapEntry2 = mmap + i + 1;
 		if ((mmapEntry1->baseAddress + mmapEntry1->length) > mmapEntry2->baseAddress) {
@@ -145,7 +145,7 @@ void processMmapEntries() {
 			++actualEntries;
 		}
 	}
-	infoTable->numberOfMmapEntries = actualEntries;
+	infoTable->mmapEntryCount = actualEntries;
 	sortMmapEntries();
 }
 
@@ -218,10 +218,10 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 	// Kernel ELF will be loaded at 2MiB + kernelVirtualMemSize + 4KiB physical memory from where it will be parsed
 	bool enoughSpace = false;
 	printString("Number of MMAP entries = 0x");
-	printHex(&infoTable->numberOfMmapEntries, sizeof(infoTable->numberOfMmapEntries));
+	printHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
 	printString("\n");
 	ACPI3Entry *mmap = getMmapBase();
-	for (size_t i = 0; i < infoTable->numberOfMmapEntries; ++i) {
+	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
 		if (
 			(mmap[i].baseAddress <= (uint64_t)0x100000) &&
 			(mmap[i].length > ((uint64_t)0x200000 - mmap[i].baseAddress + 0x1000 + (uint64_t)bytesOfKernelElf + kernelVirtualMemSize))
@@ -246,7 +246,7 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 
 	// Enter the kernel physical memory base address in the info table
 	uint32_t kernelBase = 0x200000;
-	infoTable->kernel64Base = (void *)kernelBase;
+	infoTable->kernel64Base = (uint64_t)kernelBase;
 
 	// TODO: assumes memory from 0x80000 to 0x90000 is free
 	// There is 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in the OS ISO image is 2 KiB in size.

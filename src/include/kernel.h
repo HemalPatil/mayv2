@@ -41,17 +41,20 @@ extern bool setupHardwareInterrupts();
 extern bool apicExists();
 
 // phymemmgmt.c
+extern const size_t phyPageSize;
+extern size_t phyPagesCount;
 extern uint8_t* phyMemBitmap;
 extern uint64_t phyMemBitmapSize;
-extern ACPI3Entry* getMmapBase();
-extern uint64_t getPhysicalMemorySize();
+extern uint64_t phyMemUsableSize;
+extern uint64_t phyMemTotalSize;
 extern PhyMemBitmapIndex getPhysicalPageBitmapIndex(void* address);
-extern uint64_t getUsablePhysicalMemorySize();
+extern void initMmap();
+extern void initPhysicalMemorySize();
+extern void initUsablePhysicalMemorySize();
 extern bool initializePhysicalMemory();
-//extern void AllocatePhysicalMemoryContiguous();
-//extern void AllocatePhysicalMemory();
-extern void markPhysicalPagesAsUsed(void* address, size_t numberOfPages);
 extern bool isPhysicalPageAvailable(void* address, size_t numberOfPages);
+extern void listUsedPhysicalPages();
+extern void markPhysicalPagesAsUsed(void* address, size_t numberOfPages);
 
 // virtualmemmgmt.c
 extern bool initializeVirtualMemory();

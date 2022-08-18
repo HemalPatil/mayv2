@@ -54,7 +54,7 @@ void terminalClearLine(size_t lineNumber) {
 		data <<= 8;
 		data |= 0x20;
 	}
-	uint64_t *lineAddress = videoMemory + lineNumber * vgaWidth * 2;
+	uint64_t *lineAddress = (uint64_t*)(videoMemory + lineNumber * vgaWidth * 2);
 	for (size_t i = 0; i < 20; ++i, ++lineAddress) {
 		*lineAddress = data;
 	}

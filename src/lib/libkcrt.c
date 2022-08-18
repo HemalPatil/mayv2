@@ -50,8 +50,8 @@ void* memset(void *address, int data, size_t length) {
 	uint64_t d8 = 0;
 	uint8_t d = data & 0xff;
 	for (size_t i = 0; i < 8; ++i) {
-		d8 |= d;
 		d8 <<= 8;
+		d8 |= d;
 	}
 	size_t iters = length / sizeof(uint64_t);
 	size_t remaining = length - iters * sizeof(uint64_t);

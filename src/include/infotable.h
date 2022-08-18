@@ -1,9 +1,12 @@
 #pragma once
 #include <stdint.h>
 
+// Do not convert address values to actual pointers
+// due to pointer size differences between 32 and 64 bit modes
+
 struct InfoTable {
 	uint16_t bookDiskNumber;
-	uint16_t numberOfMmapEntries;
+	uint16_t mmapEntryCount;
 	uint16_t mmapEntriesOffset;
 	uint16_t mmapEntriesSegment;
 	uint16_t vesaInfoOffset;
@@ -13,7 +16,7 @@ struct InfoTable {
 	uint16_t maxLinearAddress;
 	uint16_t ignore;
 	uint64_t kernel64VirtualMemSize;
-	void *kernel64Base;
-	void *pml4eRoot;
+	uint64_t kernel64Base;
+	uint64_t pml4eRoot;
 } __attribute__((packed));
 typedef struct InfoTable InfoTable;
