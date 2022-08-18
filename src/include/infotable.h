@@ -13,6 +13,7 @@ struct InfoTable {
 	uint16_t maxLinearAddress;
 	uint16_t ignore;
 	uint64_t kernel64VirtualMemSize;
-	void* kernel64Base;
+	void *kernel64Base;
+	void *pml4eRoot;
 } __attribute__((packed));
 typedef struct InfoTable InfoTable;

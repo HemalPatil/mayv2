@@ -11,3 +11,4 @@
 0x16	22		dw	ignore
 0x18	24		dq	kernel actual virtual mem size (bytes) (to be calculated by format_iso utility)
 0x20	32		dq	kernel physical mem base (bytes) (to be filled in at runtime by LOADER32)
+0x28	40		dq	PML4T root

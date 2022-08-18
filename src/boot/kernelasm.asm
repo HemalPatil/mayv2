@@ -39,7 +39,8 @@ section .text
 	global higherHalfStart
 	extern kernelMain
 higherHalfStart:
-	and rdi, 0x00000000ffffffff	; rdi contains info table address, pass it as 1st parameter to KernelMain
+	mov rax, 0x00000000ffffffff
+	and rdi, rax	; rdi contains info table address, pass it as 1st parameter to kernelMain
 	call kernelMain
 	; code beyond this should never get executed
 kernelEnd:

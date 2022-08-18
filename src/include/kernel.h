@@ -5,6 +5,15 @@
 #include "acpi.h"
 #include "infotable.h"
 
+#define PhyMemEntry_Free 0
+#define PhyMemEntry_Used 1
+
+struct PhyMemBitmapIndex {
+	uint32_t byteIndex;
+	uint32_t bitIndex;
+};
+typedef struct PhyMemBitmapIndex PhyMemBitmapIndex;
+
 // System information table (see docs for more info)
 extern InfoTable *infoTable;
 
@@ -32,19 +41,19 @@ extern bool setupHardwareInterrupts();
 extern bool apicExists();
 
 // phymemmgmt.c
+extern uint8_t* phyMemBitmap;
+extern uint64_t phyMemBitmapSize;
 extern ACPI3Entry* getMmapBase();
-extern size_t getNumberOfMmapEntries();
 extern uint64_t getPhysicalMemorySize();
+extern PhyMemBitmapIndex getPhysicalPageBitmapIndex(void* address);
 extern uint64_t getUsablePhysicalMemorySize();
-extern uint64_t getKernelBasePhysicalMemory();
 extern bool initializePhysicalMemory();
 //extern void AllocatePhysicalMemoryContiguous();
 //extern void AllocatePhysicalMemory();
-extern void markPhysicalPagesAsUsed(uint64_t address, size_t numberOfPages);
-extern bool isPhysicalPageAvailable(uint64_t address, size_t numberOfPages);
+extern void markPhysicalPagesAsUsed(void* address, size_t numberOfPages);
+extern bool isPhysicalPageAvailable(void* address, size_t numberOfPages);
 
 // virtualmemmgmt.c
-extern uint64_t getKernelSize();
 extern bool initializeVirtualMemory();
 
 // float.c

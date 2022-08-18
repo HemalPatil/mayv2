@@ -21,11 +21,11 @@ int64_t strcmp(const char* str1, const char* str2) {
 void* memcpy(void *dest, void *src, size_t n) {
 	// Copy in blocks of 8 because it's most efficient in 64-bit mode
 	// Copy the rest in bytes
-	// Need not worry about overlaaping regions
+	// Need not worry about overlapping regions
 	// TODO: probably can be improved by accessing at 8 byte boundaries first
 	// but it becomes really messy really fast
 	if (dest == src) {
-		return;
+		return dest;
 	}
 	uint64_t *d8 = dest;
 	uint64_t *s8 = src;
@@ -39,6 +39,7 @@ void* memcpy(void *dest, void *src, size_t n) {
 	for (size_t i = 0; i < remaining; ++i, ++d, ++s) {
 		*d = *s;
 	}
+	return dest;
 }
 
 void* memset(void *address, int data, size_t length) {

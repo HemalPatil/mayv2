@@ -6,6 +6,8 @@
 #include "infotable.h"
 #include "pml4t.h"
 
+#define PML4E_ROOT 0x110000
+
 // Disk Address Packet for extended disk operations
 struct DAP {
 	char dapSize;
@@ -28,12 +30,12 @@ InfoTable *infoTable;
 
 void clearScreen();
 extern void printHex(const void *const, const size_t);
-extern void swap(void *const, void *const, const size_t);
-extern void memset(void *const, const uint8_t, const size_t);
+extern void swap(void *const a, void *const b, const size_t);
+extern void memset(void *const dest, const uint8_t, const size_t);
 extern void memcpy(const void *const src, void const *dest, const size_t count);
-extern void setup16BitSegments(const uint16_t *const, const void *const, const DAP *const, const uint16_t);
+extern void setup16BitSegments(const InfoTable* const table, const void *const loadModule, const DAP* const dap, const uint16_t);
 extern void loadKernel64ElfSectors();
-extern void jumpToKernel64(PML4E *, uint16_t *);
+extern void jumpToKernel64(const PML4E* const pml4t, const InfoTable* const table);
 extern uint8_t getLinearAddressLimit();
 extern uint8_t getPhysicalAddressLimit();
 
@@ -83,23 +85,17 @@ void printString(const char *const str) {
 	}
 }
 
-size_t getNumberOfMmapEntries() {
-	return infoTable->numberOfMmapEntries;
-}
-
 ACPI3Entry* getMmapBase() {
-	return (ACPI3Entry*)(infoTable->mmapEntriesSegment << 4 + infoTable->mmapEntriesOffset);
+	return (ACPI3Entry*)((uint32_t)(infoTable->mmapEntriesSegment << 4) + infoTable->mmapEntriesOffset);
 }
 
 void sortMmapEntries() {
 	// Sort the MMAP entries in ascending order of their base addresses
 	// Number of MMAP entries is in the range of 5-15 typically so a simple bubble sort is used
-	size_t numberMmapEntries = getNumberOfMmapEntries();
 	ACPI3Entry *mmap = getMmapBase();
-	size_t i, j;
-	for (i = 0; i < numberMmapEntries - 1; ++i) {
+	for (size_t i = 0; i < infoTable->numberOfMmapEntries - 1; ++i) {
 		size_t iMin = i;
-		for (j = i + 1; j < numberMmapEntries; ++j) {
+		for (size_t j = i + 1; j < infoTable->numberOfMmapEntries; ++j) {
 			uint64_t basej = *((uint64_t *)(mmap + j));
 			uint64_t baseMin = *((uint64_t *)(mmap + iMin));
 			if (basej < baseMin) {
@@ -124,11 +120,10 @@ void processMmapEntries() {
 	// 3) Overlapping of two regions of different types and none of them of type ACPI3_MemType_Usable
 	//    is not handled right now.
 
-	size_t numberMmapEntries = getNumberOfMmapEntries();
 	ACPI3Entry *mmap = getMmapBase();
-	size_t actualEntries = numberMmapEntries;
+	size_t actualEntries = infoTable->numberOfMmapEntries;
 	sortMmapEntries();
-	for (uint32_t i = 0; i < numberMmapEntries - 1; ++i) {
+	for (size_t i = 0; i < infoTable->numberOfMmapEntries - 1; ++i) {
 		ACPI3Entry *mmapEntry1 = mmap + i;
 		ACPI3Entry *mmapEntry2 = mmap + i + 1;
 		if ((mmapEntry1->baseAddress + mmapEntry1->length) > mmapEntry2->baseAddress) {
@@ -147,34 +142,34 @@ void processMmapEntries() {
 			newEntry->length = mmapEntry2->baseAddress - newEntry->baseAddress;
 			newEntry->regionType = ACPI3_MemType_Hole;
 			newEntry->extendedAttributes = 1;
-			++(infoTable->numberOfMmapEntries);
 			++actualEntries;
 		}
 	}
+	infoTable->numberOfMmapEntries = actualEntries;
 	sortMmapEntries();
 }
 
 void identityMapFirst16MiB() {
-	// TODO: assumes memory at 0x110000 is free for PML4T
 	// Identity map first 16 MiB of the physical memory
 	// pagePtr right now points to PML4T at 0x110000;
-	uint64_t *pagePtr = (uint64_t *)0x110000;
+	uint64_t *pagePtr = (uint64_t *)PML4E_ROOT;
+	infoTable->pml4eRoot = pagePtr;
 
 	// Clear 22 4KiB pages
 	memset(pagePtr, 0, 0xf0 * 4096);
 
 	// PML4T[0] points to PDPT at 0x111000, i.e. the first 512GiB are handled by PDPT at 0x111000
-	pagePtr[0] = (uint64_t)0x111003;
+	pagePtr[0] = (uint64_t)(PML4E_ROOT + 0x1003);
 
 	// pagePtr right now points to PDPT at 0x111000 which handles first 512GiB
-	pagePtr = (uint64_t *)0x111000;
+	pagePtr = (uint64_t *)(PML4E_ROOT + 0x1000);
 	// PDPT[0] points to PD at 0x112000, i.e. the first 1GiB is handled by PD at 0x112000
-	pagePtr[0] = (uint64_t)0x112003;
+	pagePtr[0] = (uint64_t)(PML4E_ROOT + 0x2003);
 
 	// Each entry in PD points to PT. Each PT handles 2MiB.
-	// So we add 8 entries to PD and fill all entries in the PTs starting from 0x113000 to 0x11afff with page_frames 0x0 to 16MiB
-	uint64_t *pdEntry = (uint64_t *)0x112000;
-	uint64_t *ptEntry = (uint64_t *)0x113000;
+	// Add 8 entries to PD and fill all entries in the PTs starting from 0x113000 to 0x11afff with page_frames 0x0 to 16MiB
+	uint64_t *pdEntry = (uint64_t *)(PML4E_ROOT + 0x2000);;
+	uint64_t *ptEntry = (uint64_t *)(PML4E_ROOT + 0x3000);;
 	uint64_t pageFrame = (uint64_t)0x0003;
 	size_t i = 0, j = 0;
 	for (i = 0; i < 8; ++i) {
@@ -214,23 +209,22 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 	infoTable->maxLinearAddress = (uint16_t)maxLinAddr;
 
 	uint16_t kernelNumberOfSectors = dapKernel64->numberOfSectors;
-	uint32_t bytesOfKernelELF = (uint32_t)0x800 * (uint32_t)kernelNumberOfSectors;
+	uint32_t bytesOfKernelElf = (uint32_t)0x800 * (uint32_t)kernelNumberOfSectors;
 	uint64_t kernelVirtualMemSize = infoTable->kernel64VirtualMemSize; // Get size of kernel in virtual memory
 
-	// Check if enough space is available to load kernel as well as the elf
-	// (i.e. length of region > (kernelVirtualMemSize + bytesOfKernelELF))
-	// We will load parsed kernel code from 2MiB physical memory (size : kernelVirtualMemSize)
-	// Kernel ELF will be loaded at 2MiB + kernelVirtualMemSize + 4KiB physical memory form where it will be parsed
+	// Check if enough space is available to load kernel process, kernel ELF, and PML4T
+	// (i.e. length of region > (kernelVirtualMemSize + bytesOfKernelElf + 2MiB- baseAddress))
+	// Load parsed kernel code from 2MiB physical memory (size : kernelVirtualMemSize)
+	// Kernel ELF will be loaded at 2MiB + kernelVirtualMemSize + 4KiB physical memory from where it will be parsed
 	bool enoughSpace = false;
-	size_t numberMmapEntries = getNumberOfMmapEntries();
 	printString("Number of MMAP entries = 0x");
-	printHex(&numberMmapEntries, sizeof(numberMmapEntries));
+	printHex(&infoTable->numberOfMmapEntries, sizeof(infoTable->numberOfMmapEntries));
 	printString("\n");
 	ACPI3Entry *mmap = getMmapBase();
-	for (size_t i = 0; i < numberMmapEntries; ++i) {
+	for (size_t i = 0; i < infoTable->numberOfMmapEntries; ++i) {
 		if (
 			(mmap[i].baseAddress <= (uint64_t)0x100000) &&
-			(mmap[i].length > ((uint64_t)0x201000 - mmap[i].baseAddress + (uint64_t)bytesOfKernelELF + kernelVirtualMemSize))
+			(mmap[i].length > ((uint64_t)0x200000 - mmap[i].baseAddress + 0x1000 + (uint64_t)bytesOfKernelElf + kernelVirtualMemSize))
 		) {
 			enoughSpace = true;
 			break;
@@ -250,15 +244,14 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 	// Change base address of the 16-bit segments in GDT32
 	setup16BitSegments(infoTableAddress, loadModuleAddress, dapKernel64, infoTable->bookDiskNumber);
 
-	// TODO: assumes memory at 2MiB is free
 	// Enter the kernel physical memory base address in the info table
 	uint32_t kernelBase = 0x200000;
-	infoTable->kernel64Base = (uint64_t)kernelBase;
+	infoTable->kernel64Base = (void *)kernelBase;
 
 	// TODO: assumes memory from 0x80000 to 0x90000 is free
-	// We have 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in our OS ISO image is 2 KiB in size.
-	// So we can load the kernel ELF in batches of 32 sectors. Leave a gap of 4 KiB between kernel process and kernel ELF
-	uint32_t kernelElfBase = 0x201000 + (uint32_t)kernelVirtualMemSize;
+	// There is 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in the OS ISO image is 2 KiB in size.
+	// So the kernel ELF can be loaded in batches of 32 sectors. Leave a gap of 4 KiB between kernel process and kernel ELF
+	uint32_t kernelElfBase = 0x200000 + 0x1000 + (uint32_t)kernelVirtualMemSize;
 	printString("KernelVirtualMemSize = 0x");
 	printHex(&kernelVirtualMemSize, sizeof(kernelVirtualMemSize));
 	printString("\n");
@@ -283,30 +276,27 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 	printString("Kernel executable loaded.\n");
 
 	// Parse the kernel executable
-	uint16_t elfFlags = *((uint16_t *)(kernelElfBase + 4));
-	if (elfFlags != 0x0102) {
+	ELF64Header *elfHeader = (ELF64Header*)kernelElfBase;
+	if (elfHeader->endianness != ELF_LittleEndian || elfHeader->isX64 != ELF_Type_x64) {
 		// Make sure kernel executable is 64-bit in little endian format
-		printString("\nKernel executable corrupted! Cannot boot!");
+		printString("\nKernel executable corrupted (ELF header incorrect)! Cannot boot!");
 		return 1;
 	}
-	uint32_t programHeaderTable = *((uint32_t *)(kernelElfBase + 32));
-	uint16_t programHeaderEntrySize = *((uint16_t *)(kernelElfBase + 54));
-	uint16_t programHeaderEntryCount = *((uint16_t *)(kernelElfBase + 56));
-	if (programHeaderEntrySize != sizeof(ELF64ProgramHeader)) {
-		printString("\nKernel executable corrupted! Cannot boot!");
+	if (elfHeader->headerEntrySize != sizeof(ELF64ProgramHeader)) {
+		printString("\nKernel executable corrupted (header entry size mismatch)! Cannot boot!");
 		return 1;
 	}
-	ELF64ProgramHeader *programHeader = (ELF64ProgramHeader *)(kernelElfBase + programHeaderTable);
+	ELF64ProgramHeader *programHeader = (ELF64ProgramHeader *)(kernelElfBase + elfHeader->headerTablePosition);
 	uint32_t memorySeekp = kernelBase;
 	printString("KernelBase = 0x");
 	printHex(&kernelBase, sizeof(kernelBase));
 	printString("\n");
 	printString("ProgramHeaderEntryCount = 0x");
-	printHex(&programHeaderEntryCount, sizeof(programHeaderEntryCount));
+	printHex(&elfHeader->headerEntryCount, sizeof(elfHeader->headerEntryCount));
 	printString("\n");
-	PML4E *pml4t = (PML4E *)0x110000;
+	PML4E *pml4t = (PML4E *)PML4E_ROOT;
 	uint32_t newPageStart = 0x11b000; // New pages that need to be made should start from this address and add 0x1000 to it.
-	for (uint16_t i = 0; i < programHeaderEntryCount; ++i) {
+	for (uint16_t i = 0; i < elfHeader->headerEntryCount; ++i) {
 		uint32_t sizeInMemory = (uint32_t)programHeader[i].segmentSizeInMemory;
 		printString("  SizeInMemory = 0x");
 		printHex(&sizeInMemory, sizeof(sizeInMemory));

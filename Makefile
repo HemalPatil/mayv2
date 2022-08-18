@@ -54,7 +54,7 @@ include $(dir)/Rules.mk
 
 # Show all TODOs in all source files
 todolist:
-	-@for file in $(ALLSRCFILES); do fgrep -H -e TODO -e FIXME $$file; done; true
+	-@for file in $(ALLSRCFILES); do fgrep -Hn -e TODO -e FIXME $$file; done; true
 
 # Remove all contents of the ISO and build directories
 clean:
