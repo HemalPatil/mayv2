@@ -25,11 +25,10 @@ void kernelMain(InfoTable *infoTableAddress) {
 	if (!initializePhysicalMemory()) {
 		kernelPanic(systemInitializationFailed);
 	}
+	if (!initializeVirtualMemory()) {
+		kernelPanic(systemInitializationFailed);
+	}
 	return;
-	// if (!InitializeVirtualMemory(SystemInitializationFailed))
-	// {
-	// 	KernelPanic();
-	// }
 
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();

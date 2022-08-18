@@ -9,41 +9,42 @@ uint64_t phyMemUsableSize;
 uint64_t phyMemTotalSize;
 ACPI3Entry* mmap = 0;
 
-const char* const getPhyMemSizeStr = "Getting physical memory size...\n";
-const char* const phyMemSizeStr = "Physical memory size ";
-const char* const usableMemSizeStr = "Usable physical memory size ";
+const char* const initPhyMemStr = "Initializing physical memory management...\n";
+const char* const initPhyMemCompleteStr = "    Physical memory initialized\n";
+const char* const phyMemSizeStr = "    Total size ";
+const char* const usableMemSizeStr = "    Usable size ";
 const char* const mmapBaseStr = "MMAP Base ";
 const char* const entry = "    ";
 const char* const countStr = "Number of MMAP entries ";
 const char* const tableHeader = "    Base address         Length               Type\n";
-const char* const phyMemBitmapStr = "Physical memory bitmap location ";
+const char* const phyMemBitmapStr = "    Allocator bitmap location ";
 const char* const phyMemBitmapSizeStr = " size ";
 
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool initializePhysicalMemory() {
-	terminalPrintString(getPhyMemSizeStr, strlen(getPhyMemSizeStr));
+	terminalPrintString(initPhyMemStr, strlen(initPhyMemStr));
 
 	// Display diagnostic information about memory like MMAP entries,
 	// physical and usable memory size
 	initMmap();
-	terminalPrintString(mmapBaseStr, strlen(mmapBaseStr));
-	terminalPrintHex(&mmap, sizeof(mmap));
-	terminalPrintChar('\n');
+	// terminalPrintString(mmapBaseStr, strlen(mmapBaseStr));
+	// terminalPrintHex(&mmap, sizeof(mmap));
+	// terminalPrintChar('\n');
 
-	size_t i = 0;
-	terminalPrintString(countStr, strlen(countStr));
-	terminalPrintHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
-	terminalPrintChar('\n');
-	terminalPrintString(tableHeader, strlen(tableHeader));
-	for (i = 0; i < infoTable->mmapEntryCount; ++i) {
-		terminalPrintString(entry, strlen(entry));
-		terminalPrintHex(&(mmap[i].baseAddress), sizeof(mmap->baseAddress));
-		terminalPrintChar(' ');
-		terminalPrintHex(&(mmap[i].length), sizeof(mmap->length));
-		terminalPrintChar(' ');
-		terminalPrintHex(&(mmap[i].regionType), sizeof(mmap->regionType));
-		terminalPrintChar('\n');
-	}
+	// size_t i = 0;
+	// terminalPrintString(countStr, strlen(countStr));
+	// terminalPrintHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
+	// terminalPrintChar('\n');
+	// terminalPrintString(tableHeader, strlen(tableHeader));
+	// for (i = 0; i < infoTable->mmapEntryCount; ++i) {
+	// 	terminalPrintString(entry, strlen(entry));
+	// 	terminalPrintHex(&(mmap[i].baseAddress), sizeof(mmap->baseAddress));
+	// 	terminalPrintChar(' ');
+	// 	terminalPrintHex(&(mmap[i].length), sizeof(mmap->length));
+	// 	terminalPrintChar(' ');
+	// 	terminalPrintHex(&(mmap[i].regionType), sizeof(mmap->regionType));
+	// 	terminalPrintChar('\n');
+	// }
 
 	initPhysicalMemorySize();
 	terminalPrintString(phyMemSizeStr, strlen(phyMemSizeStr));
@@ -110,6 +111,8 @@ bool initializePhysicalMemory() {
 			markPhysicalPagesAsUsed((void*) mmap[i].baseAddress, unusuableCount);
 		}
 	}
+
+	terminalPrintString(initPhyMemCompleteStr, strlen(initPhyMemCompleteStr));
 	return true;
 }
 
