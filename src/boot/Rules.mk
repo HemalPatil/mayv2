@@ -9,19 +9,19 @@ include $(dir)/Rules.mk
 dir := $(d)/stage2
 include $(dir)/Rules.mk
 
-DIR_BOOT := $(BOOT_STAGE1_OUTPUT) $(BOOT_STAGE2_OUTPUT) $(ISODIR)/BOOT/KERNEL
+DIR_BOOT := $(BOOT_STAGE1_OUTPUT) $(BOOT_STAGE2_OUTPUT) $(ISO_DIR)/BOOT/KERNEL
 
-BOOT_ASMOBJFILES := $(patsubst $(SRCDIR)/boot/%.asm,$(BUILDDIR)/boot/%.o,$(shell find $(SRCDIR)/boot -maxdepth 1 -type f -name "*.asm"))
-BOOT_COBJFILES := $(patsubst $(SRCDIR)/boot/%.c,$(BUILDDIR)/boot/%.o,$(shell find $(SRCDIR)/boot -maxdepth 1 -type f -name "*.c"))
+BOOT_ASMOBJFILES := $(patsubst $(SRC_DIR)/boot/%.asm,$(BUILD_DIR)/boot/%.o,$(shell find $(SRC_DIR)/boot -maxdepth 1 -type f -name "*.asm"))
+BOOT_COBJFILES := $(patsubst $(SRC_DIR)/boot/%.c,$(BUILD_DIR)/boot/%.o,$(shell find $(SRC_DIR)/boot -maxdepth 1 -type f -name "*.c"))
 
-$(ISODIR)/BOOT/KERNEL: $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) $(HEADERFILES) $(SRCDIR)/boot/link.ld $(ISODIR)/LIB/libkcrt.lib
-	$(LD64) $(LD64FLAGS) -o $@ $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) $(ISODIR)/LIB/libkcrt.lib -T $(SRCDIR)/boot/link.ld -z max-page-size=0x1000
+$(ISO_DIR)/BOOT/KERNEL: $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) $(HEADER_FILES) $(SRC_DIR)/boot/link.ld $(ISO_DIR)/LIB/libkcrt.lib
+	$(LD64) $(LD64_FLAGS) -o $@ $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) $(ISO_DIR)/LIB/libkcrt.lib -T $(SRC_DIR)/boot/link.ld -z max-page-size=0x1000
 
-$(BUILDDIR)/boot/%.o: $(SRCDIR)/boot/%.asm
+$(BUILD_DIR)/boot/%.o: $(SRC_DIR)/boot/%.asm
 	$(NASM64) $@ $^
 
-$(BUILDDIR)/boot/%.o: $(SRCDIR)/boot/%.c $(HEADERFILES)
-	$(CC64) -o $@ -c $< $(CWARNINGS) $(CC64FLAGS)
+$(BUILD_DIR)/boot/%.o: $(SRC_DIR)/boot/%.c $(HEADER_FILES)
+	$(CC64) -o $@ -c $< $(C_WARNINGS) $(CC64_FLAGS)
 
 # Remove elements from directory stack
 d := $(dirstack_$(sp))

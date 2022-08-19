@@ -1,19 +1,17 @@
-BOOT_STAGE2_OUTPUT := $(ISODIR)/BOOT/STAGE2/LOADER32 $(ISODIR)/BOOT/STAGE2/ELFPARSE.BIN $(ISODIR)/BOOT/STAGE2/K64LOAD.BIN
-BOOT_STAGE2_OBJFILES := $(BUILDDIR)/boot/stage2/loader32asm.o $(BUILDDIR)/boot/stage2/loader32c.o $(BUILDDIR)/boot/stage2/loader32lib.o
+BOOT_STAGE2_OUTPUT := $(ISO_DIR)/BOOT/STAGE2/LOADER32 $(ISO_DIR)/BOOT/STAGE2/ELFPARSE.BIN $(ISO_DIR)/BOOT/STAGE2/K64LOAD.BIN
+BOOT_STAGE2_OBJFILES := $(BUILD_DIR)/boot/stage2/loader32asm.o $(BUILD_DIR)/boot/stage2/loader32c.o $(BUILD_DIR)/boot/stage2/loader32lib.o
 
-$(ISODIR)/BOOT/STAGE2/LOADER32: $(BOOT_STAGE2_OBJFILES) $(SRCDIR)/boot/stage2/link.ld
-	$(LD32) -o $@ $(BOOT_STAGE2_OBJFILES) -T $(SRCDIR)/boot/stage2/link.ld
+$(ISO_DIR)/BOOT/STAGE2/LOADER32: $(BOOT_STAGE2_OBJFILES) $(SRC_DIR)/boot/stage2/link.ld
+	$(LD32) -o $@ $(BOOT_STAGE2_OBJFILES) -T $(SRC_DIR)/boot/stage2/link.ld
 
-$(ISODIR)/BOOT/STAGE2/ELFPARSE.BIN: $(SRCDIR)/boot/stage2/elfparse.asm
-	$(NASMBIN) $@ $^
+$(ISO_DIR)/BOOT/STAGE2/ELFPARSE.BIN: $(SRC_DIR)/boot/stage2/elfparse.asm
+	$(NASM16) $@ $^
 
-$(ISODIR)/BOOT/STAGE2/K64LOAD.BIN: $(SRCDIR)/boot/stage2/k64load.asm
-	$(NASMBIN) $@ $^
+$(ISO_DIR)/BOOT/STAGE2/K64LOAD.BIN: $(SRC_DIR)/boot/stage2/k64load.asm
+	$(NASM16) $@ $^
 
-$(BUILDDIR)/boot/stage2/loader32c.o: $(SRCDIR)/boot/stage2/loader32c.c
-	$(CC32) -o $@ -c $^ $(CWARNINGS) $(CC32FLAGS)
+$(BUILD_DIR)/boot/stage2/loader32c.o: $(SRC_DIR)/boot/stage2/loader32c.c
+	$(CC32) -o $@ -c $^ $(C_WARNINGS) $(CC32_FLAGS)
 
-$(BUILDDIR)/boot/stage2/%.o: $(SRCDIR)/boot/stage2/%.asm
+$(BUILD_DIR)/boot/stage2/%.o: $(SRC_DIR)/boot/stage2/%.asm
 	$(NASM32) $@ $^
-
-$(SRCDIR)/boot/stage2/link.ld:

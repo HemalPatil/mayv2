@@ -1,15 +1,11 @@
 # ignore vscode files
 .vscode
 
-# exclude ISO and build directories, these will be created when building the project
-ISO/*
-build/*
-copyiso
+# exclude vim temp files
 *~
-utilities/format_iso
-mayv2.iso
+
+# exclude ISO and build directories created when building the project
 ISO
 build
-iso.bat
-makeiso
-mayv2cmd.lnk
+build_utilities
+*.iso
