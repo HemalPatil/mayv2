@@ -34,8 +34,8 @@ void* memcpy(void *dest, void *src, size_t n) {
 	for (size_t i = 0; i < iters; ++i, ++d8, ++s8) {
 		*d8 = *s8;
 	}
-	uint8_t *d = d8;
-	uint8_t *s = s8;
+	uint8_t *d = (uint8_t *)d8;
+	uint8_t *s = (uint8_t *)s8;
 	for (size_t i = 0; i < remaining; ++i, ++d, ++s) {
 		*d = *s;
 	}
@@ -58,7 +58,7 @@ void* memset(void *address, int data, size_t length) {
 	for (size_t i = 0; i < iters; ++i, ++a8) {
 		*a8 = d8;
 	}
-	uint8_t *a = a8;
+	uint8_t *a = (uint8_t *)a8;
 	for (size_t i = 0; i < remaining; ++i, ++a) {
 		*a = d;
 	}
