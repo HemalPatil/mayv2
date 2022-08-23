@@ -34,6 +34,7 @@ extern void terminalSetCursorPosition(size_t x, size_t y);
 extern void terminalPrintString(const char* const str, const size_t length);
 extern void terminalPrintChar(char);
 extern void terminalPrintHex(void* value, size_t size);
+extern void terminalPrintSpaces4();
 extern void terminalScroll(size_t lineCount);
 
 // interrupts.c
@@ -53,10 +54,12 @@ extern void initPhysicalMemorySize();
 extern void initUsablePhysicalMemorySize();
 extern bool initializePhysicalMemory();
 extern bool isPhysicalPageAvailable(void* address, size_t numberOfPages);
+extern void listMmapEntries();
 extern void listUsedPhysicalPages();
 extern void markPhysicalPagesAsUsed(void* address, size_t numberOfPages);
 
 // virtualmemmgmt.c
+extern const size_t virPageSize;
 extern bool initializeVirtualMemory();
 
 // float.c

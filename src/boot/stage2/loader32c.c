@@ -6,13 +6,17 @@
 #include "infotable.h"
 #include "pml4t.h"
 
-#define PML4E_ROOT 0x110000
+#define L32K64_SCRATCH_BASE 0x80000
+#define L32K64_SCRATCH_LENGTH 0x10000
+#define LOADER32_ORIGIN 0x00100000
+#define ISO_SECTOR_SIZE 2048
+#define PML4_PAGE_PRESENT_READ_WRITE 3
 
 // Disk Address Packet for extended disk operations
 struct DAP {
 	char dapSize;
 	char alwayszero;
-	uint16_t numberOfSectors;
+	uint16_t sectorCount;
 	uint16_t offset;
 	uint16_t segment;
 	uint64_t firstSector;
@@ -26,6 +30,7 @@ size_t cursorX = 0;
 size_t cursorY = 0;
 const char endl[] = "\n";
 const uint8_t DEFAULT_TERMINAL_COLOR = 0x0f;
+const uint32_t phyPageSize = 0x1000;
 InfoTable *infoTable;
 
 void clearScreen();
@@ -93,8 +98,8 @@ void sortMmapEntries() {
 	// Sort the MMAP entries in ascending order of their base addresses
 	// Number of MMAP entries is in the range of 5-15 typically so a simple bubble sort is used
 	ACPI3Entry *mmap = getMmapBase();
-	for (size_t i = 0; i < infoTable->mmapEntryCount - 1; ++i) {
-		size_t iMin = i;
+	for (int i = 0; i < infoTable->mmapEntryCount - 1; ++i) {
+		int iMin = i;
 		for (size_t j = i + 1; j < infoTable->mmapEntryCount; ++j) {
 			uint64_t basej = *((uint64_t *)(mmap + j));
 			uint64_t baseMin = *((uint64_t *)(mmap + iMin));
@@ -123,7 +128,7 @@ void processMmapEntries() {
 	ACPI3Entry *mmap = getMmapBase();
 	size_t actualEntries = infoTable->mmapEntryCount;
 	sortMmapEntries();
-	for (size_t i = 0; i < infoTable->mmapEntryCount - 1; ++i) {
+	for (int i = 0; i < infoTable->mmapEntryCount - 1; ++i) {
 		ACPI3Entry *mmapEntry1 = mmap + i;
 		ACPI3Entry *mmapEntry2 = mmap + i + 1;
 		if ((mmapEntry1->baseAddress + mmapEntry1->length) > mmapEntry2->baseAddress) {
@@ -149,34 +154,38 @@ void processMmapEntries() {
 	sortMmapEntries();
 }
 
-void identityMapFirst16MiB() {
+void identityMapFirst16MiB(uint64_t* pagePtr, size_t pml4Count) {
+	printString("PML4E root = 0x");
+	printHex(&pagePtr, sizeof(pagePtr));
+	printString("\n");
 	// Identity map first 16 MiB of the physical memory
-	// pagePtr right now points to PML4T at 0x110000;
-	uint64_t *pagePtr = (uint64_t *)PML4E_ROOT;
-	infoTable->pml4eRoot = pagePtr;
+	// 1 PML4T page - entry 0 maps first 512 GiB
+	// 1 PDPT page - entry 0 maps first 1GiB
+	// 1 PDT page - entries 0-7 map first 16 MiB
+	// 8 PT pages
+	// Use the memory after kernel ELF to identity map first 16 MiBs.
+	memset(pagePtr, 0, pml4Count * phyPageSize);
+	infoTable->pml4eRoot = (uint64_t)pagePtr;
 
-	// Clear 22 4KiB pages
-	memset(pagePtr, 0, 0xf0 * 4096);
+	// PML4T[0] points to PDPT at pml4Root + phyPageSize, i.e. handles the first 512GiB
+	pagePtr[0] = (infoTable->pml4eRoot + phyPageSize) | PML4_PAGE_PRESENT_READ_WRITE;
 
-	// PML4T[0] points to PDPT at 0x111000, i.e. the first 512GiB are handled by PDPT at 0x111000
-	pagePtr[0] = (uint64_t)(PML4E_ROOT + 0x1003);
-
-	// pagePtr right now points to PDPT at 0x111000 which handles first 512GiB
-	pagePtr = (uint64_t *)(PML4E_ROOT + 0x1000);
-	// PDPT[0] points to PD at 0x112000, i.e. the first 1GiB is handled by PD at 0x112000
-	pagePtr[0] = (uint64_t)(PML4E_ROOT + 0x2003);
+	// pagePtr right now points to PDPT which handles first 512GiB
+	pagePtr = (uint64_t *)(infoTable->pml4eRoot + phyPageSize);
+	// PDPT[0] points to PD which handles the first 1GiB
+	pagePtr[0] = (infoTable->pml4eRoot + 2 * phyPageSize) | PML4_PAGE_PRESENT_READ_WRITE;
 
 	// Each entry in PD points to PT. Each PT handles 2MiB.
-	// Add 8 entries to PD and fill all entries in the PTs starting from 0x113000 to 0x11afff with page_frames 0x0 to 16MiB
-	uint64_t *pdEntry = (uint64_t *)(PML4E_ROOT + 0x2000);;
-	uint64_t *ptEntry = (uint64_t *)(PML4E_ROOT + 0x3000);;
-	uint64_t pageFrame = (uint64_t)0x0003;
+	// Add 8 entries to PD and fill all entries in the PTs with page frames 0x0 to 16MiB
+	uint64_t *pdEntry = (uint64_t *)(infoTable->pml4eRoot + 2 * phyPageSize);
+	uint64_t *ptEntry = (uint64_t *)(infoTable->pml4eRoot + 3 * phyPageSize);
+	uint64_t pageFrame = PML4_PAGE_PRESENT_READ_WRITE;
 	size_t i = 0, j = 0;
 	for (i = 0; i < 8; ++i) {
-		pdEntry[i] = (uint64_t)((uint32_t)ptEntry + 3);
+		pdEntry[i] = (uint64_t)ptEntry | PML4_PAGE_PRESENT_READ_WRITE;
 		for (j = 0; j < 512; ++j, ++ptEntry) {
 			*(ptEntry) = pageFrame;
-			pageFrame += 0x1000;
+			pageFrame += phyPageSize;
 		}
 	}
 }
@@ -187,10 +196,13 @@ void allocatePagingEntry(PML4E *entry, uint32_t address) {
 	entry->pageAddress = address >> 12;
 }
 
-int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void *const loadModuleAddress)
-{
+int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, DAP *const dapKernel64, const void *const loadModuleAddress) {
 	infoTable = infoTableAddress;
 	clearScreen();
+	printString("Loader32 virtual memory size = 0x");
+	printHex(&loader32VirtualMemSize, sizeof(loader32VirtualMemSize));
+	printString("\n");
+
 	processMmapEntries();
 
 	// Get the max physical address and max linear address that can be handled by the CPU
@@ -208,14 +220,51 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 	infoTable->maxPhysicalAddress = (uint16_t)maxPhyAddr;
 	infoTable->maxLinearAddress = (uint16_t)maxLinAddr;
 
-	uint16_t kernelNumberOfSectors = dapKernel64->numberOfSectors;
-	uint32_t bytesOfKernelElf = (uint32_t)0x800 * (uint32_t)kernelNumberOfSectors;
-	uint64_t kernelVirtualMemSize = infoTable->kernel64VirtualMemSize; // Get size of kernel in virtual memory
+	uint32_t kernelElfSize = ISO_SECTOR_SIZE * dapKernel64->sectorCount;
+	uint64_t kernelVirtualMemSize = 0;
 
-	// Check if enough space is available to load kernel process, kernel ELF, and PML4T
-	// (i.e. length of region > (kernelVirtualMemSize + bytesOfKernelElf + 2MiB- baseAddress))
-	// Load parsed kernel code from 2MiB physical memory (size : kernelVirtualMemSize)
-	// Kernel ELF will be loaded at 2MiB + kernelVirtualMemSize + 4KiB physical memory from where it will be parsed
+	// Change base address of the 16-bit segments in GDT32
+	setup16BitSegments(infoTableAddress, loadModuleAddress, dapKernel64, infoTable->bootDiskNumber);
+
+	// Load first 32 sectors of kernel ELF and find its virtual memory size
+	uint32_t sectorBlockCount = L32K64_SCRATCH_LENGTH / ISO_SECTOR_SIZE;
+	dapKernel64->offset = 0x0;
+	dapKernel64->segment = L32K64_SCRATCH_BASE >> 4;
+	dapKernel64->sectorCount = sectorBlockCount;
+	memset((void*)L32K64_SCRATCH_BASE, 0, L32K64_SCRATCH_LENGTH);
+	loadKernel64ElfSectors();
+	ELF64Header *elfHeader = (ELF64Header*)L32K64_SCRATCH_BASE;
+	if (
+		*((uint32_t*)(&elfHeader->signature)) != ELF_Signature ||
+		elfHeader->endianness != ELF_LittleEndian ||
+		elfHeader->isX64 != ELF_Type_x64
+	) {
+		printString("\nKernel executable corrupted (ELF header incorrect)! Cannot boot!");
+		return 1;
+	}
+	if (elfHeader->headerEntrySize != sizeof(ELF64ProgramHeader)) {
+		printString("\nKernel executable corrupted (header entry size mismatch)! Cannot boot!");
+		return 1;
+	}
+	ELF64ProgramHeader *programHeader = (ELF64ProgramHeader *)((uint32_t)elfHeader + (uint32_t)elfHeader->headerTablePosition);
+	for (uint16_t i = 0; i < elfHeader->headerEntryCount; ++i) {
+		if (programHeader[i].segmentType != ELF_SegmentType_Load) {
+			continue;
+		}
+		// Align size to 4KiB page boundary
+		uint64_t size = (programHeader[i].segmentSizeInMemory >> 12) * phyPageSize;
+		if (size != programHeader[i].segmentSizeInMemory) {
+			size += phyPageSize;
+		}
+		kernelVirtualMemSize += size;
+	}
+	printString("KernelVirtualMemSize = 0x");
+	printHex(&kernelVirtualMemSize, sizeof(kernelVirtualMemSize));
+	printString("\n");
+
+	// Check if enough space is available to load kernel process, kernel ELF
+	// (i.e. base address < (LOADER32_ORIGIN + loader 32 size)
+	// and length of region > (kernelVirtualMemSize + kernelElfSize))
 	bool enoughSpace = false;
 	printString("Number of MMAP entries = 0x");
 	printHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
@@ -223,8 +272,8 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 	ACPI3Entry *mmap = getMmapBase();
 	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
 		if (
-			(mmap[i].baseAddress <= (uint64_t)0x100000) &&
-			(mmap[i].length > ((uint64_t)0x200000 - mmap[i].baseAddress + 0x1000 + (uint64_t)bytesOfKernelElf + kernelVirtualMemSize))
+			(mmap[i].baseAddress <= ((uint64_t)LOADER32_ORIGIN + loader32VirtualMemSize)) &&
+			(mmap[i].length >= (kernelElfSize + kernelVirtualMemSize))
 		) {
 			enoughSpace = true;
 			break;
@@ -237,56 +286,43 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 	}
 	printString("Loading kernel...\n");
 
-	// Identity map the first 16 MiB of the physical memory
-	// To see how the mapping is done refer to docs/mapping.txt
-	identityMapFirst16MiB();
-
-	// Change base address of the 16-bit segments in GDT32
-	setup16BitSegments(infoTableAddress, loadModuleAddress, dapKernel64, infoTable->bookDiskNumber);
-
 	// Enter the kernel physical memory base address in the info table
-	uint32_t kernelBase = 0x200000;
-	infoTable->kernel64Base = (uint64_t)kernelBase;
-
-	// TODO: assumes memory from 0x80000 to 0x90000 is free
-	// There is 64 KiB free in physical memory from 0x80000 to 0x90000. The sector in the OS ISO image is 2 KiB in size.
-	// So the kernel ELF can be loaded in batches of 32 sectors. Leave a gap of 4 KiB between kernel process and kernel ELF
-	uint32_t kernelElfBase = 0x200000 + 0x1000 + (uint32_t)kernelVirtualMemSize;
-	printString("KernelVirtualMemSize = 0x");
-	printHex(&kernelVirtualMemSize, sizeof(kernelVirtualMemSize));
-	printString("\n");
+	uint32_t kernelBase = LOADER32_ORIGIN + loader32VirtualMemSize;
+	infoTable->kernel64PhyMemBase = (uint64_t)kernelBase;
+	uint32_t kernelElfBase = kernelBase + (uint32_t)kernelVirtualMemSize;
 	printString("KernelELFBase = 0x");
 	printHex(&kernelElfBase, sizeof(kernelElfBase));
 	printString("\n");
-	dapKernel64->offset = 0x0;
-	dapKernel64->segment = 0x8000;
-	dapKernel64->numberOfSectors = 32;
-	uint16_t iters = kernelNumberOfSectors / 32;
-	memset((void *)0x80000, 0, 0x10000);
+	printString("KernelELFSize = 0x");
+	printHex(&kernelElfSize, sizeof(kernelElfSize));
+	printString("\n");
+
+	// First 32 sectors of kernel are already loaded. Copy them to ELF base.
+	memcpy((void*)L32K64_SCRATCH_BASE, (void*)kernelElfBase, L32K64_SCRATCH_LENGTH);
+
+	// Copy rest of the kernel ELF
+	uint16_t iters = dapKernel64->sectorCount / sectorBlockCount - 1;
+	dapKernel64->firstSector = sectorBlockCount;
+	memset((void*)L32K64_SCRATCH_BASE, 0, L32K64_SCRATCH_LENGTH);
 	for (uint16_t i = 0; i < iters; ++i) {
 		loadKernel64ElfSectors();
-		memcpy((void *)0x80000, (void *)(kernelElfBase + i * 0x10000), 0x10000);
-		dapKernel64->firstSector += 32;
+		memcpy((void*)L32K64_SCRATCH_BASE, (void *)(kernelElfBase + i * L32K64_SCRATCH_LENGTH), L32K64_SCRATCH_LENGTH);
+		dapKernel64->firstSector += sectorBlockCount;
 	}
 	// Load remaining sectors
-	dapKernel64->numberOfSectors = kernelNumberOfSectors % 32;
+	dapKernel64->sectorCount = dapKernel64->sectorCount % sectorBlockCount;
 	loadKernel64ElfSectors();
-	memcpy((void *)0x80000, (void *)(kernelElfBase + iters * 0x10000), dapKernel64->numberOfSectors * 0x800);
+	memcpy((void *)L32K64_SCRATCH_BASE, (void *)(kernelElfBase + iters * L32K64_SCRATCH_LENGTH), dapKernel64->sectorCount * ISO_SECTOR_SIZE);
 
 	printString("Kernel executable loaded.\n");
 
-	// Parse the kernel executable
-	ELF64Header *elfHeader = (ELF64Header*)kernelElfBase;
-	if (elfHeader->endianness != ELF_LittleEndian || elfHeader->isX64 != ELF_Type_x64) {
-		// Make sure kernel executable is 64-bit in little endian format
-		printString("\nKernel executable corrupted (ELF header incorrect)! Cannot boot!");
-		return 1;
+	size_t pml4Count = 11;
+	// Align PML4 root to 4 KiB boundary
+	infoTable->pml4eRoot = ((kernelElfBase + kernelElfSize) >> 12) * phyPageSize;
+	if (infoTable->pml4eRoot != kernelElfBase + kernelElfSize) {
+		infoTable->pml4eRoot += phyPageSize;
 	}
-	if (elfHeader->headerEntrySize != sizeof(ELF64ProgramHeader)) {
-		printString("\nKernel executable corrupted (header entry size mismatch)! Cannot boot!");
-		return 1;
-	}
-	ELF64ProgramHeader *programHeader = (ELF64ProgramHeader *)(kernelElfBase + elfHeader->headerTablePosition);
+	identityMapFirst16MiB((uint64_t*)infoTable->pml4eRoot, pml4Count);
 	uint32_t memorySeekp = kernelBase;
 	printString("KernelBase = 0x");
 	printHex(&kernelBase, sizeof(kernelBase));
@@ -294,9 +330,15 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 	printString("ProgramHeaderEntryCount = 0x");
 	printHex(&elfHeader->headerEntryCount, sizeof(elfHeader->headerEntryCount));
 	printString("\n");
-	PML4E *pml4t = (PML4E *)PML4E_ROOT;
-	uint32_t newPageStart = 0x11b000; // New pages that need to be made should start from this address and add 0x1000 to it.
+	PML4E *pml4t = (PML4E *)infoTable->pml4eRoot;
+	// New pages that need to be made should start from this address and add phyPageSize to it.
+	uint32_t newPageStart = infoTable->pml4eRoot + pml4Count * phyPageSize;
+	elfHeader = (ELF64Header*)kernelElfBase;
+	programHeader = (ELF64ProgramHeader*)(kernelElfBase + (uint32_t)elfHeader->headerTablePosition);
 	for (uint16_t i = 0; i < elfHeader->headerEntryCount; ++i) {
+		if (programHeader[i].segmentType != ELF_SegmentType_Load) {
+			continue;
+		}
 		uint32_t sizeInMemory = (uint32_t)programHeader[i].segmentSizeInMemory;
 		printString("  SizeInMemory = 0x");
 		printHex(&sizeInMemory, sizeof(sizeInMemory));
@@ -308,18 +350,18 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 		// Kernel64 is linked at higher half addresses.
 		// Right now it is last 2GiB of 64-bit address space, may change if linker script is changed
 		// Map this section in the paging structure
-		size_t numberOfPages = sizeInMemory / 0x1000;
-		if (sizeInMemory % 0x1000) {
-			++numberOfPages;
+		size_t pageCount = sizeInMemory / phyPageSize;
+		if (sizeInMemory - pageCount * phyPageSize) {
+			++pageCount;
 		}
-		printString("  NumberOfPages = 0x");
-		printHex(&numberOfPages, sizeof(numberOfPages));
+		printString("  PageCount = 0x");
+		printHex(&pageCount, sizeof(pageCount));
 		printString("\n");
 		printString("  VirtualMemoryAddress = 0x");
 		printHex(&programHeader[i].virtualMemoryAddress, sizeof(programHeader[i].virtualMemoryAddress));
 		printString("\n");
-		for (size_t j = 0; j < numberOfPages; ++j, memorySeekp += 0x1000) {
-			uint64_t virtualMemoryAddress = programHeader[i].virtualMemoryAddress + j * 0x1000;
+		for (size_t j = 0; j < pageCount; ++j, memorySeekp += phyPageSize) {
+			uint64_t virtualMemoryAddress = programHeader[i].virtualMemoryAddress + j * phyPageSize;
 			virtualMemoryAddress >>= 12;
 			uint16_t ptIndex = virtualMemoryAddress & 0x1ff;
 			virtualMemoryAddress >>= 9;
@@ -340,32 +382,33 @@ int loader32Main(InfoTable *infoTableAddress, DAP *const dapKernel64, const void
 					} else {
 						allocatePagingEntry(&(pd[pdIndex]), newPageStart);
 						PTE *pt = (PTE *)newPageStart;
-						newPageStart += 0x1000;
+						newPageStart += phyPageSize;
 						allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
 					}
 				} else {
 					allocatePagingEntry(&(pdpt[pdptIndex]), newPageStart);
 					PDE *pd = (PDE *)newPageStart;
-					newPageStart += 0x1000;
+					newPageStart += phyPageSize;
 					allocatePagingEntry(&(pd[pdIndex]), newPageStart);
 					PTE *pt = (PTE *)newPageStart;
-					newPageStart += 0x1000;
+					newPageStart += phyPageSize;
 					allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
 				}
 			} else {
 				allocatePagingEntry(&(pml4t[pml4tIndex]), newPageStart);
 				PDPTE *pdpt = (PDPTE *)newPageStart;
-				newPageStart += 0x1000;
+				newPageStart += phyPageSize;
 				allocatePagingEntry(&(pdpt[pdptIndex]), newPageStart);
 				PDE *pd = (PDE *)newPageStart;
-				newPageStart += 0x1000;
+				newPageStart += phyPageSize;
 				allocatePagingEntry(&(pd[pdIndex]), newPageStart);
 				PTE *pt = (PTE *)newPageStart;
-				newPageStart += 0x1000;
+				newPageStart += phyPageSize;
 				allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
 			}
 		}
 	}
+	asm("cli\nhlt");
 
 	jumpToKernel64(pml4t, infoTableAddress); // Jump to kernel. Code beyond this should never get executed.
 	printString("Fatal error : Cannot boot!");

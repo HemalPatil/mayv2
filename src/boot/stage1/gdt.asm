@@ -5,7 +5,7 @@ jmp start
 times 8 - ($-$$) db 0
 
 magicBytes db 'GDT', 0
-gdtMsg db 'Setting up GDT', 13, 10, 13, 10, 0
+gdtMsg db 'Setting up GDT32', 13, 10, 13, 10, 0
 
 TSS:
 	previousTss dd 0
@@ -105,7 +105,7 @@ start:
 	mov bx, [bp + 6]
 	add bx, 12
 	mov word [es:bx], 47				; 6 entries as of now (null, cs32, ds32, tss, cs16, ds16)
-	mov dword [es:bx + 2], 0x00010000		; our GDT is at 0x00010000 to 0x00020000
+	mov dword [es:bx + 2], 0x00010000		; GDT is at 0x00010000 to 0x00020000
 
 	pop ds
 	popa

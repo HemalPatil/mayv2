@@ -280,6 +280,7 @@ jumpToKernel64:
 	cli					; Disable interrupts. Although interrupts have been disabled till now, one must disable them just to be sure
 	mov edi, [ebp + 12]
 	lgdt [gdtDescriptor]	; shift to kernel GDT
+	; Jump to lower half entry point of the kernel
 	jmp 0x8:0x80000000		; 0x8 is 64-bit code segment
 	; Code beyond this should never get executed
 	mov esp, ebp

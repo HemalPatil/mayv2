@@ -10,15 +10,15 @@ uint64_t phyMemTotalSize;
 ACPI3Entry* mmap = 0;
 
 const char* const initPhyMemStr = "Initializing physical memory management...\n";
-const char* const initPhyMemCompleteStr = "    Physical memory initialized\n";
+const char* const initPhyMemCompleteStr = "    Physical memory management initialized\n";
 const char* const phyMemSizeStr = "    Total size ";
 const char* const usableMemSizeStr = "    Usable size ";
 const char* const mmapBaseStr = "MMAP Base ";
-const char* const entry = "    ";
 const char* const countStr = "Number of MMAP entries ";
 const char* const tableHeader = "    Base address         Length               Type\n";
 const char* const phyMemBitmapStr = "    Allocator bitmap location ";
 const char* const phyMemBitmapSizeStr = " size ";
+const char* const rangeOfUsed = "Range of used memory\n";
 
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool initializePhysicalMemory() {
@@ -27,24 +27,6 @@ bool initializePhysicalMemory() {
 	// Display diagnostic information about memory like MMAP entries,
 	// physical and usable memory size
 	initMmap();
-	// terminalPrintString(mmapBaseStr, strlen(mmapBaseStr));
-	// terminalPrintHex(&mmap, sizeof(mmap));
-	// terminalPrintChar('\n');
-
-	// size_t i = 0;
-	// terminalPrintString(countStr, strlen(countStr));
-	// terminalPrintHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
-	// terminalPrintChar('\n');
-	// terminalPrintString(tableHeader, strlen(tableHeader));
-	// for (i = 0; i < infoTable->mmapEntryCount; ++i) {
-	// 	terminalPrintString(entry, strlen(entry));
-	// 	terminalPrintHex(&(mmap[i].baseAddress), sizeof(mmap->baseAddress));
-	// 	terminalPrintChar(' ');
-	// 	terminalPrintHex(&(mmap[i].length), sizeof(mmap->length));
-	// 	terminalPrintChar(' ');
-	// 	terminalPrintHex(&(mmap[i].regionType), sizeof(mmap->regionType));
-	// 	terminalPrintChar('\n');
-	// }
 
 	initPhysicalMemorySize();
 	terminalPrintString(phyMemSizeStr, strlen(phyMemSizeStr));
@@ -56,10 +38,9 @@ bool initializePhysicalMemory() {
 	terminalPrintHex(&phyMemUsableSize, sizeof(phyMemUsableSize));
 	terminalPrintChar('\n');
 
+	// Any chunk of memory is left towards the end
+	// that doesn't fit in phyPageSize is ignored
 	phyPagesCount = phyMemTotalSize / phyPageSize;
-	if (phyMemTotalSize % phyPageSize) {
-		++phyPagesCount;
-	}
 
 	// Right now the memory has important structures in 1st MiB; will be marked used and system
 	// 1MiB + 64KiB was occupied by loader32
@@ -69,7 +50,7 @@ bool initializePhysicalMemory() {
 	// Create bitmap right after kernel process
 	// Virtual memory manager will take of marking PML4 entries as used during its initialization
 	// NOTE: bitmap is at 4KiB boundary not exactly 4KiB after
-	phyMemBitmap = (uint8_t*)((((uint64_t)infoTable->kernel64Base) + infoTable->kernel64VirtualMemSize) & 0xfffffffffffff000);
+	phyMemBitmap = (uint8_t*)((((uint64_t)infoTable->kernel64PhyMemBase) + 0) & 0xfffffffffffff000);
 	terminalPrintString(phyMemBitmapStr, strlen(phyMemBitmapStr));
 	terminalPrintHex(&phyMemBitmap, sizeof(phyMemBitmap));
 	phyMemBitmapSize = phyPagesCount / 8;
@@ -83,8 +64,8 @@ bool initializePhysicalMemory() {
 
 	// Mark kernel process as used
 	// All the kernel sections are aligned at 4KiB in the linker
-	size_t kernelBitmapSize = infoTable->kernel64VirtualMemSize / phyPageSize;
-	markPhysicalPagesAsUsed((void*) infoTable->kernel64Base, kernelBitmapSize);
+	size_t kernelBitmapSize = 0 / phyPageSize;
+	markPhysicalPagesAsUsed((void*) infoTable->kernel64PhyMemBase, kernelBitmapSize);
 
 	// Mark the phyMemBitmap itself as used
 	size_t numberOfPagesUsedByBitmap = phyMemBitmapSize / phyPageSize;
@@ -144,8 +125,31 @@ void markPhysicalPagesAsUsed(void* address, size_t pageCount) {
 	}
 }
 
+// Debug helper to list all MMAP entries
+void listMmapEntries() {
+	terminalPrintString(mmapBaseStr, strlen(mmapBaseStr));
+	terminalPrintHex(&mmap, sizeof(mmap));
+	terminalPrintChar('\n');
+
+	size_t i = 0;
+	terminalPrintString(countStr, strlen(countStr));
+	terminalPrintHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
+	terminalPrintChar('\n');
+	terminalPrintString(tableHeader, strlen(tableHeader));
+	for (i = 0; i < infoTable->mmapEntryCount; ++i) {
+		terminalPrintSpaces4();
+		terminalPrintHex(&(mmap[i].baseAddress), sizeof(mmap->baseAddress));
+		terminalPrintChar(' ');
+		terminalPrintHex(&(mmap[i].length), sizeof(mmap->length));
+		terminalPrintChar(' ');
+		terminalPrintHex(&(mmap[i].regionType), sizeof(mmap->regionType));
+		terminalPrintChar('\n');
+	}
+}
+
 // Debug helper to list all physical pages marked as used
 void listUsedPhysicalPages() {
+	terminalPrintString(rangeOfUsed, strlen(rangeOfUsed));
 	uint64_t lastUsed = 0, length = 0;
 	bool ongoingAvailable = false;
 	for (uint64_t i = 0; i < phyMemTotalSize; i += phyPageSize) {
@@ -154,6 +158,7 @@ void listUsedPhysicalPages() {
 				continue;
 			} else {
 				lastUsed = i - length;
+				terminalPrintSpaces4();
 				terminalPrintHex(&lastUsed, sizeof(lastUsed));
 				terminalPrintHex(&length, sizeof(length));
 				terminalPrintChar('\n');
@@ -173,7 +178,7 @@ void listUsedPhysicalPages() {
 	}
 }
 
-// returns true if all the physical pages starting at given address are free, false if even one page is allocated
+// Returns true if all the physical pages starting at given address are free, false if even one page is allocated
 bool isPhysicalPageAvailable(void* address, size_t pageCount) {
 	uint64_t addr = (uint64_t) address;
 	if (addr >= phyMemTotalSize) {
