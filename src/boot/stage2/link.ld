@@ -1,7 +1,7 @@
 ENTRY(loader32Start);
 
 SECTIONS {
-	. = 0x100000;
+	. = 0x00100000;
 	.setup : ALIGN(0x1000) {
 		*(.setup);
 	}

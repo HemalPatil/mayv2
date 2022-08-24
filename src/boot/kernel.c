@@ -5,29 +5,40 @@ const char* const infoTableStr = "InfoTable located at ";
 const char* const kernel64Loaded = "Kernel64 loaded\nRunning in 64-bit long mode\n";
 const char* const systemInitializationFailed = "\nSystem initialization failed. Cannot boot. Halting the system\n";
 const char* const kernelPanicString = "\nKernel panic!!!\n";
+const char* const k64SizeStr = "Kernel virtual memory size ";
+const char* const usableMem = "Usable memory start ";
 
+uint64_t kernelVirtualMemorySize = 0;
 InfoTable *infoTable;
 
 // First C-function to be called
-void kernelMain(InfoTable *infoTableAddress) {
+void kernelMain(InfoTable *infoTableAddress, uint64_t k64Size, uint64_t usableMemoryStart) {
 	terminalClearScreen();
 	terminalSetCursorPosition(0, 0);
 	terminalPrintString(kernel64Loaded, strlen(kernel64Loaded));
 
-	// InfoTable is our custom structure which has some essential information about the system
-	// gained during system boot; and the information that is best found out about in real mode.
 	infoTable = infoTableAddress;
 	terminalPrintString(infoTableStr, strlen(infoTableStr));
 	terminalPrintHex(&infoTable, sizeof(infoTable));
 	terminalPrintChar('\n');
+	kernelVirtualMemorySize = k64Size;
+	terminalPrintString(k64SizeStr, strlen(k64SizeStr));
+	terminalPrintHex(&kernelVirtualMemorySize, sizeof(kernelVirtualMemorySize));
+	terminalPrintChar('\n');
+	terminalPrintString(usableMem, strlen(usableMem));
+	terminalPrintHex(&usableMemoryStart, sizeof(usableMemoryStart));
+	terminalPrintChar('\n');
 
 	// Do memory setup
-	if (!initializePhysicalMemory()) {
+	if (!initializePhysicalMemory(usableMemoryStart)) {
 		kernelPanic(systemInitializationFailed);
 	}
+	listUsedPhysicalPages();
+	return;
 	if (!initializeVirtualMemory()) {
 		kernelPanic(systemInitializationFailed);
 	}
+	listUsedPhysicalPages();
 	return;
 
 	// Initialize TSS first because ISTs in IDT require TSS

@@ -1,11 +1,21 @@
 #include <iostream>
 #include <fstream>
-#include <string.h>
-#include <math.h>
-#include <stdint.h>
-using namespace std;
+#include <cstring>
+#include <cmath>
+#include <cstdint>
 
-#define ISO_SECTOR_SIZE 0x800
+#define BOOTLOADER_PADDING 32
+#define DAP_SIZE 16
+#define ELFPARSE_ORIGIN 0x00020000
+#define FILE_NAME_OFFSET 33
+#define FILE_NAME_SIZE_OFFSET 32
+#define ISO_SECTOR_SIZE 2048
+#define L32K64_SCRATCH_BASE 0x80000
+#define RECORD_SIZE_OFFSET 10
+#define ROOT_DIRECTORY_OFFSET 156
+#define SECTOR_LOCATION_OFFSET 2
+
+using namespace std;
 
 const int moduleCount = 9; // Number of modules that are required by the kernel to bootstrap
 
@@ -16,14 +26,14 @@ bool findRecord(const char *directory, const int dirSize, const char *recordName
 	// Check if we are past the directory extent or all records have been traversed
 	while ((dirSeekg < dirSize) && (*((char *)(directory + dirSeekg)) > 0)) {
 		int dirRecordSize = *((char *)(directory + dirSeekg)); // Get the size of the record in the directory extent
-		int fileNameSize = *((char *)(directory + dirSeekg + 32)); // Get length of the file name
-		char *fileName = new char[fileNameSize + 1]; // Copy the record name in a buffer
-		memcpy(fileName, directory + dirSeekg + 33, fileNameSize);
+		int fileNameSize = *((char *)(directory + dirSeekg + FILE_NAME_SIZE_OFFSET)); // Get length of the file name
+		char *fileName = new char[fileNameSize + 1];
+		memcpy(fileName, directory + dirSeekg + FILE_NAME_OFFSET, fileNameSize);
 		fileName[fileNameSize] = 0;
 		if (strcmp(fileName, recordName) == 0) {
 			// Return parameters like file size and sector
-			recordSector = *((int *)(directory + dirSeekg + 2));
-			recordSize = *((int *)(directory + dirSeekg + 10));
+			recordSector = *((int *)(directory + dirSeekg + SECTOR_LOCATION_OFFSET));
+			recordSize = *((int *)(directory + dirSeekg + RECORD_SIZE_OFFSET));
 			recordFound = true;
 			break;
 		}
@@ -56,12 +66,15 @@ int main(int argc, char *argv[]) {
 	char primaryVolumeDescriptor[] = { 0x01, 'C', 'D', '0', '0', '1', 0x01, 0x00 };
 	bool volumeDescriptorFound = false;
 	int rootDirectorySize = 0, rootDirectorySector = 0;
+
+	// Find primary volume descriptor whose first 8 bytes match the signature in primaryVolumeDescriptor
 	while (!volumeDescriptorFound && !isoFile.eof()) {
 		isoFile.seekg(volumeDescriptorAddress, ios::beg);
 		isoFile.read(sector, ISO_SECTOR_SIZE);
 		if (equal(primaryVolumeDescriptor, primaryVolumeDescriptor + 7, sector)) {
-			rootDirectorySector = *((int *)(sector + 158)); // Get root directory extent sector and size
-			rootDirectorySize = *((int *)(sector + 166));
+			// Get root directory extent sector and size
+			rootDirectorySector = *((int *)(sector + ROOT_DIRECTORY_OFFSET + SECTOR_LOCATION_OFFSET));
+			rootDirectorySize = *((int *)(sector + ROOT_DIRECTORY_OFFSET + RECORD_SIZE_OFFSET));
 			volumeDescriptorFound = true;
 		} else {
 			volumeDescriptorAddress += ISO_SECTOR_SIZE; // If not found, move on to next sector in the ISO file
@@ -117,7 +130,7 @@ int main(int argc, char *argv[]) {
 	if (!findRecord(stage1Dir, stage1DirSize, "BOOTLOAD.BIN;1", bootBinSector, bootBinSize)) {
 		delete[] stage1Dir;
 		isoFile.close();
-		cerr << "BOOTLOAD.BIN file not found!" << endl;
+		cerr << "BOOTLOAD.BIN not found!" << endl;
 		return 1;
 	}
 	char *stage2Dir = new char[stage2DirSize];
@@ -135,7 +148,7 @@ int main(int argc, char *argv[]) {
 		"KERNEL.;1"
 	};
 	int coreFileSectors[moduleCount], coreFileSizes[moduleCount], coreFileSegments[moduleCount];
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 5; ++i) {
 		if (!findRecord(stage1Dir, stage1DirSize, coreFiles[i], coreFileSectors[i], coreFileSizes[i])) {
 			delete[] stage1Dir;
 			isoFile.close();
@@ -143,7 +156,7 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 	}
-	for (int i = 5; i < 8; i++) {
+	for (int i = 5; i < 8; ++i) {
 		if (!findRecord(stage2Dir, stage2DirSize, coreFiles[i], coreFileSectors[i], coreFileSizes[i])) {
 			delete[] stage2Dir;
 			isoFile.close();
@@ -157,21 +170,24 @@ int main(int argc, char *argv[]) {
 	coreFileSegments[0] = 0x0080;
 	coreFileSectors[8] = kernel64Sector;
 	coreFileSizes[8] = kernel64Size;
-	for (int i = 1; i < moduleCount; i++) {
+	for (int i = 1; i < moduleCount; ++i) {
 		coreFileSegments[i] = coreFileSegments[i - 1] + ceil((double)coreFileSizes[i - 1] / 16);
 	}
-	int bootBinSeekp = bootBinSector * ISO_SECTOR_SIZE + 32; // Skip first 32 bytes (contains int 0x22 routine)
-	for (int i = 0; i < moduleCount; i++) {
+	int bootBinSeekp = bootBinSector * ISO_SECTOR_SIZE + BOOTLOADER_PADDING; // Skip first 32 bytes (contains int 0x22 routine)
+	for (int i = 0; i < moduleCount; ++i) {
 		isoFile.seekp(bootBinSeekp + 2, ios::beg); // Skip first 2 bytes of each DAP
 		uint16_t sectorCount = ceil((double)coreFileSizes[i] / ISO_SECTOR_SIZE); // DAP number of sectors to load
 		isoFile.write((char *)&sectorCount, 2);
 		uint16_t dapOffset = 0x0000; // Offset at which data is loaded is always 0x00
 		isoFile.write((char *)&dapOffset, 2);
 		if (strcmp(coreFiles[i], "ELFPARSE.BIN;1") == 0) {
-			uint16_t elfParseSegment = 0x2000;
+			// FIXME: assumes memory from 0x20000 will be free in memory to load ELFPARSE.BIN
+			uint16_t elfParseSegment = ELFPARSE_ORIGIN >> 4;
 			isoFile.write((char *)&elfParseSegment, 2);
 		} else if (strcmp(coreFiles[i], "LOADER32.;1") == 0 || strcmp(coreFiles[i], "KERNEL.;1") == 0) {
-			uint16_t loader32ElfSegment = 0x8000;
+			// Memory from 0x80000 to 0x90000 is assumed to be free
+			// mmap.asm will assert this during boot
+			uint16_t loader32ElfSegment = L32K64_SCRATCH_BASE >> 4;
 			isoFile.write((char *)&loader32ElfSegment, 2);
 		} else {
 			isoFile.write((char *)&(coreFileSegments[i]), 2); // Segment at which data is loaded
@@ -179,25 +195,6 @@ int main(int argc, char *argv[]) {
 		isoFile.write((char *)&(coreFileSectors[i]), 4); // First sector of the file to be loaded
 		bootBinSeekp += 16;
 	}
-
-	char *kernel = new char[kernel64Size];
-	isoFile.seekg(kernel64Sector * ISO_SECTOR_SIZE, ios::beg);
-	isoFile.read(kernel, kernel64Size);
-	uint32_t programHeader = *((uint32_t *)(kernel + 32));
-	uint16_t entrySize = *((uint16_t *)(kernel + 54));
-	uint16_t entryCount = *((uint16_t *)(kernel + 56));
-	uint64_t totalVirtualSize = 0;
-	for (uint16_t i = 0; i < entryCount; i++) {
-		uint32_t sectionType = *((uint32_t *)(kernel + programHeader + i * entrySize));
-		if (sectionType == 1) {
-			uint64_t virtualMemSize = *((uint64_t *)(kernel + programHeader + i * entrySize + 40));
-			totalVirtualSize += ceil((double)virtualMemSize / 0x1000) * 0x1000; // Sections will be at 4KiB page boundary
-		}
-	}
-	// Save the totalVirtualSize in BOOTLOAD.BIN after all the DAPs of the modules
-	isoFile.seekp(bootBinSector * ISO_SECTOR_SIZE + 32 + moduleCount * 16, ios::beg);
-	isoFile.write((char *)&totalVirtualSize, 8);
-	delete[] kernel;
 
 	cout << "ISO formatted" << endl;
 

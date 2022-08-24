@@ -5,13 +5,21 @@
 
 ; Bootloader is loaded from an El-Torito standard "no emulation" boot CD
 
-jmp 0x07c0:start	; Ensure cs=0x07c0
+BOOTLOADER_PADDING equ 32
+BOOTLOADER_SEGMENT equ 0x07c0
+BOOTLOADER_STACK_SIZE equ 0x0c00
+DAP_OFFSET equ 4
+DAP_SEGMENT equ 6
+ELFPARSE_ORIGIN equ 0x00020000
+ISO_SECTOR_SIZE equ 2048
+
+jmp BOOTLOADER_SEGMENT:start	; Ensure cs=0x07c0
 
 times 8 - ($-$$) db 0
 printString:
 	pusha
 	mov ah, 0x0e				; Setup teletype mode
-	cld						; Clear direction flag so that we move towards higher addresses
+	cld						; Clear direction flag to move towards higher addresses
 printStringLoop:
 	lodsb					; load character from string at ds:si
 	cmp al, 0				; Check if C-style null character
@@ -22,7 +30,7 @@ printStringEnd:
 	popa
 	iret					; Return from interrupt
 
-times 32 - ($-$$) db 0
+times BOOTLOADER_PADDING - ($-$$) db 0
 
 dapX64:						; Disk address packet (DAP)
 	db 0x10						; Size of DAP (always 0x10)
@@ -96,8 +104,6 @@ dapKernel64Elf:
 	dw 0x0000
 	dq 0x00000000
 
-kernelActualVirtualMemorySize dq 0
-
 ; Magic bytes
 x64Magic db 'x64', 0
 mmapMagic db 'MMAP'
@@ -120,7 +126,7 @@ returnX64 db 'returned form x64.bin', 13, 10, 0
 
 start:
 	cli						; Disable interrupts
-	mov ax, 0x07c0	; Right now DS == CS
+	mov ax, BOOTLOADER_SEGMENT	; Right now DS == CS
 	mov ds, ax		; Setup DS
 	mov ax, [infoTableSegment]
 	mov es, ax
@@ -129,28 +135,22 @@ start:
 	xor dh, dh
 	mov [es:bx], dx			; Store the disk number from which this bootloader was loaded in our custom table
 
-	xor ax, ax							; Setup int 0x22
+	; Setup int 0x22. Each interrupt vector is 4 bytes long.
+	; Word[0] is offset and word[1] is code segment.
+	xor ax, ax
 	mov es, ax
-	mov word [es:136], printString		; Offset in the current segment
-	mov word [es:138], cs				; Code segment is current code segment
+	mov word [es:(0x22 * 4)], printString
+	mov word [es:(0x22 * 4 + 2)], cs
 
-	mov ax, 0x0700						; Set up 3 KiB stack space before bootloader
-	mov ss, ax							; starting from 0x7000 to 0x7c00
-	mov sp, 0x0c00
+	; Set up 3 KiB stack space before bootloader starting from 0x7000 to 0x7c00
+	mov ax, (BOOTLOADER_SEGMENT - (BOOTLOADER_STACK_SIZE >> 4))
+	mov ss, ax
+	mov sp, BOOTLOADER_STACK_SIZE
 
 	mov ax, 0x0003				; Set 80x25 text mode
 	int 0x10
 
 	mov si, helloMsg					; Show hello world message on screen
-
-	mov bx, [infoTableSegment]		; Store kernelActualVirtualMemorySize in Info Table
-	mov es, bx
-	mov bx, [infoTableOffset]
-	add bx, 0x18
-	mov eax, [kernelActualVirtualMemorySize]
-	mov [es:bx], eax
-	mov eax, [kernelActualVirtualMemorySize + 4]
-	mov [es:bx + 4], eax
 
 	mov ah, 0x41						; Check disk extensions
 	int 0x13
@@ -169,15 +169,15 @@ retryLoop:
 	pusha
 	int 0x13							; Load data from disk
 	popa
-	mov ax, [si + 6]					; Get segment
+	mov ax, [si + DAP_SEGMENT]					; Get segment
 	mov es, ax
-	mov bx, [si + 4]					; Get offset
+	mov bx, [si + DAP_OFFSET]					; Get offset
 	mov eax, [es:bx + 8]					; Get magic bytes from loaded data at offset 8
 	mov ebx, [di]
-	cmp ebx, 'L32E'						; Check if it is our loader32.elf file
+	cmp ebx, [loader32ElfMagic]						; Check if it is loader32
 	jne loadCoreFilesCont1
-	mov bx, [si + 4]
-	mov eax, [es:bx]						; First 4 bytes of an elf are magic bytes 0x7f, 'ELF'
+	mov bx, [si + DAP_OFFSET]
+	mov eax, [es:bx]						; First 4 bytes of an ELF are magic bytes 0x7f, 'ELF'
 	mov ebx, 0x464C457F					; Put those magic bytes in ebx in little endian
 loadCoreFilesCont1:
 	cmp eax, ebx							; Compare magic bytes
@@ -191,31 +191,31 @@ loadCoreFilesCont:
 	add di, 4
 	loop loadCoreFilesLoop
 
-	call far [dapX64 + 4]
+	call far [dapX64 + DAP_OFFSET]
 	
 	push dword [infoTableOffset]
-	call far [dapMmap + 4]				; Generate memory map
+	call far [dapMmap + DAP_OFFSET]				; Generate memory map
 
 	; push dword [infoTableOffset]
-	; call far [dapVidModes+4]			; Get list of all video modes
+	; call far [dapVidModes + DAP_OFFSET]			; Get list of all video modes
 	
-	call far [dapA20Enable + 4]			; Enable the A20 line to access above 1MiB
+	call far [dapA20Enable + DAP_OFFSET]			; Enable the A20 line to access above 1MiB
 
 	push dword [infoTableOffset]
-	call far [dapGdt + 4]				; Setup GDT
+	call far [dapGdt + DAP_OFFSET]				; Setup GDT
 
-	mov sp, 0x0c00
+	mov sp, BOOTLOADER_STACK_SIZE
 
 	xor eax, eax
-	mov ax, [dapKernel64Load + 6] 		; Calculate address of kernel64load module
+	mov ax, [dapKernel64Load + DAP_SEGMENT] 		; Calculate address of kernel64load module
 	shl eax, 4				; Pass it as argument to elfparser
 	xor ebx, ebx
-	mov bx, [dapKernel64Load + 4]		; which in turn will pass it to the loader32
+	mov bx, [dapKernel64Load + DAP_OFFSET]		; which in turn will pass it to the loader32
 	add eax, ebx
 	push eax
 
-	xor eax, eax		; Pass address of the DAP of kernel64elf to loader32
-	mov ax, ds		; through elfparse32
+	xor eax, eax		; Pass address of the DAP of kernel64 to loader32
+	mov ax, ds			; through elfparse32
 	shl eax, 4
 	xor ebx, ebx
 	mov bx, dapKernel64Elf
@@ -231,7 +231,7 @@ loadCoreFilesCont:
 	push eax
 
 	mov bx, [infoTableSegment]		; Load the GDT in GDTR
-	mov es, bx				; GDT descriptor is at offset 12 in our custom table
+	mov es, bx				; GDT descriptor is at offset 12 in InfoTable
 	mov bx, [infoTableOffset]
 	add bx, 12
 	lgdt [es:bx]
@@ -248,8 +248,8 @@ loadCoreFilesCont:
 	mov fs, ax
 	mov gs, ax
 	mov ss, ax
-	mov eax, 0xDEADBEEF		; Just a random check
-	jmp dword 0x0008:0x00020000	; Jump to loader32 ELF parser and bye-bye real mode
+	; Jump to loader32 ELF parser and bye-bye real mode
+	jmp dword 0x0008:ELFPARSE_ORIGIN
 
 	mov si, loader32JumpFailed		; This should never get executed
 	int 0x22
@@ -271,4 +271,4 @@ end:
 	hlt							; Halt the processor
 	jmp end						; Jump to end again just in case if the processor resumes its operation
 
-times 2048 - ($-$$) db 0
+times ISO_SECTOR_SIZE - ($-$$) db 0

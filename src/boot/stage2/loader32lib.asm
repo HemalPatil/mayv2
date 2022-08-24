@@ -1,5 +1,7 @@
 [bits 32]
 
+K64_LOWERHALF_ORIGIN equ 0x80000000
+
 section .rodata
 	global hexSpace
 	; A copy of the initial GDT from kernel is
@@ -277,10 +279,13 @@ jumpToKernel64:
 	mov eax, cr0			; Enable paging
 	or eax, 1 << 31
 	mov cr0, eax
-	cli					; Disable interrupts. Although interrupts have been disabled till now, one must disable them just to be sure
-	mov edi, [ebp + 12]
+	cli
+	mov edi, [ebp + 12]	; Load edi/rdi with info table address, which is the first parameter passed to kernelMain
+	mov esi, [ebp + 16]	; Load esi/rsi with kernel virtual memory size
+	mov edx, [ebp + 20]	; Load edx/rdx with usable memory address right after PML4 pages
 	lgdt [gdtDescriptor]	; shift to kernel GDT
-	jmp 0x8:0x80000000		; 0x8 is 64-bit code segment
+	; Jump to lower half entry point of the kernel
+	jmp 0x8:K64_LOWERHALF_ORIGIN
 	; Code beyond this should never get executed
 	mov esp, ebp
 	pop ebp

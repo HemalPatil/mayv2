@@ -2,6 +2,13 @@
 [org 0x0000]
 jmp start
 
+INFOTABLE_MMAP_ENTRIES_OFFSET equ 4
+INFOTABLE_MMAP_ENTRIES_SEGMENT equ 6
+L32K64_SCRATCH_BASE equ 0x80000
+K64_SCRATCH_LENGH equ 0x10000
+MMAP_ENTRIES_OFFSET equ 0
+MMAP_ENTRIES_SEGMENT equ 0x0060
+
 times 8 - ($-$$) db 0
 
 magicBytes db 'MMAP'
@@ -27,17 +34,19 @@ start:
 	mov si, mmapMsg					; Generating memory map entries
 	int 0x22
 
+	; Store address of MMAP entries in InfoTable
 	mov ax, [bp + 8]
 	mov es, ax
 	mov bx, [bp + 6]
-	mov word [es:bx + 4], 0x0000				; Store address of MMAP entries as second enttry in our custom table
-	mov word [es:bx + 6], 0x0060				; in segment:offset little endian format
+	mov word [es:bx + INFOTABLE_MMAP_ENTRIES_OFFSET], MMAP_ENTRIES_OFFSET
+	mov word [es:bx + INFOTABLE_MMAP_ENTRIES_SEGMENT], MMAP_ENTRIES_SEGMENT
 
 	push bp
-	
-	; Set up the memory map with int 0x15 //Courtesy of osdev.org wiki article 'Detecting Memory'
+
+	; Set up the memory map with int 0x15
+	; Courtesy of https://wiki.osdev.org/Detecting_Memory_(x86)
 mmap:
-	mov bx, 0x0060
+	mov bx, MMAP_ENTRIES_SEGMENT
 	mov es, bx
 	xor ebx, ebx					; ebx must be 0 to start
 	xor bp, bp						; keep an entry count in bp
@@ -83,7 +92,7 @@ mmapShort:
 	mov [num1High], eax
 	xor eax, eax
 	mov [num2High], eax
-	mov dword [num2Low], 0x80000
+	mov dword [num2Low], L32K64_SCRATCH_BASE
 	pop eax
 	call cmpUint64
 	ja mmapValidEntry
@@ -95,7 +104,7 @@ mmapShort:
 	call addUint64
 	xor eax, eax
 	mov [num2High], eax
-	mov eax, 0x90000
+	mov eax, L32K64_SCRATCH_BASE + K64_SCRATCH_LENGH
 	mov [num2Low], eax
 	pop eax
 	call cmpUint64
@@ -113,7 +122,7 @@ mmapExit:
 	mov bx, [bp + 8]
 	mov es, bx
 	mov bx, [bp + 6]
-	mov [es:bx + 2], cx					; store the entry count in our custom table
+	mov [es:bx + 2], cx					; store the entry count in InfoTable
 	mov si, mmapDoneMsg			; Show mmap complete message
 	int 0x22
 	clc								; there is "jc" on end of list to this point, so the carry must be cleared
@@ -132,12 +141,14 @@ mmapFinish:
 	cmp word [valid], 1
 	jne insufficientMemory
 
-	; Check memory size (We need atleast 1GiB of free usable conventional memory)
+	; Check memory size (atleast 1GiB of free usable conventional memory is required)
 	mov bx, [bp + 8]					; Custom table stored at 0x0050:0x0000
 	mov es, bx
 	mov bx, [bp + 6]
+	xor eax, eax
+	xor ecx, ecx
 	mov cx, [es:bx + 2]				; Get count of MMAP entries
-	mov di, [es:bx + 4]				; Get offset and segment of MMAP entries from custom table
+	mov di, [es:bx + 4]				; Get offset and segment of MMAP entries from InfoTable
 	mov ax, [es:bx + 6]
 	mov es, ax
 	xor eax, eax			; Store length in eax

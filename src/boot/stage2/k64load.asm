@@ -3,6 +3,9 @@
 
 jmp start
 
+BOOTLOADER_SEGMENT equ 0x07c0
+BOOTLOADER_STACK_SIZE equ 0x0c00
+
 times 8 - ($-$$) db 0
 
 magicBytes db 'K64L'
@@ -62,11 +65,11 @@ bit16Real:
 	cli
 	mov ax, cs	; Make ds = cs
 	mov ds, ax
-	mov ax, 0x0700	; Setup to the stack same as the one we used in bootload.asm
+	mov ax, (BOOTLOADER_SEGMENT - (BOOTLOADER_STACK_SIZE >> 4))	; Setup to the stack same as the one used in bootload.asm
 	mov ss, ax
 	xor esp, esp
-	mov sp, 0x0c00
-	push ds		; We need to store the ds since it will be required later
+	mov sp, BOOTLOADER_STACK_SIZE
+	push ds		; Store the ds since it will be required later
 	xor edx, edx
 	mov dl, [diskNumber]	; Load the boot disk number
 	xor esi, esi

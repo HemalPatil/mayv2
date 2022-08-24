@@ -1,12 +1,12 @@
 ENTRY(kernelStart);
 
 SECTIONS {
-	. = 0x80000000;
+	. = 0x80000000; /* lowerhalf origin */
 	.lowerhalf : ALIGN(0x1000) {
 		*(.lowerhalf);
 	}
 
-	. = 0xffffffff80000000;
+	. = 0xffffffff80000000; /* higherhalf origin */
 	.GDT64 : ALIGN(0x1000) {
 		*(.GDT64);
 	}

@@ -1,5 +1,5 @@
-#include <string.h>
 #include "kernel.h"
+#include "string.h"
 
 const size_t phyPageSize = 0x1000;
 size_t phyPagesCount = 0;
@@ -10,41 +10,25 @@ uint64_t phyMemTotalSize;
 ACPI3Entry* mmap = 0;
 
 const char* const initPhyMemStr = "Initializing physical memory management...\n";
-const char* const initPhyMemCompleteStr = "    Physical memory initialized\n";
+const char* const initPhyMemCompleteStr = "    Physical memory management initialized\n";
 const char* const phyMemSizeStr = "    Total size ";
 const char* const usableMemSizeStr = "    Usable size ";
 const char* const mmapBaseStr = "MMAP Base ";
-const char* const entry = "    ";
 const char* const countStr = "Number of MMAP entries ";
 const char* const tableHeader = "    Base address         Length               Type\n";
 const char* const phyMemBitmapStr = "    Allocator bitmap location ";
 const char* const phyMemBitmapSizeStr = " size ";
+const char* const rangeOfUsed = "Range of used memory\n";
+
+const uint64_t mib1 = 0x100000;
 
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
-bool initializePhysicalMemory() {
+bool initializePhysicalMemory(uint64_t usableMemoryStart) {
 	terminalPrintString(initPhyMemStr, strlen(initPhyMemStr));
 
 	// Display diagnostic information about memory like MMAP entries,
 	// physical and usable memory size
 	initMmap();
-	// terminalPrintString(mmapBaseStr, strlen(mmapBaseStr));
-	// terminalPrintHex(&mmap, sizeof(mmap));
-	// terminalPrintChar('\n');
-
-	// size_t i = 0;
-	// terminalPrintString(countStr, strlen(countStr));
-	// terminalPrintHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
-	// terminalPrintChar('\n');
-	// terminalPrintString(tableHeader, strlen(tableHeader));
-	// for (i = 0; i < infoTable->mmapEntryCount; ++i) {
-	// 	terminalPrintString(entry, strlen(entry));
-	// 	terminalPrintHex(&(mmap[i].baseAddress), sizeof(mmap->baseAddress));
-	// 	terminalPrintChar(' ');
-	// 	terminalPrintHex(&(mmap[i].length), sizeof(mmap->length));
-	// 	terminalPrintChar(' ');
-	// 	terminalPrintHex(&(mmap[i].regionType), sizeof(mmap->regionType));
-	// 	terminalPrintChar('\n');
-	// }
 
 	initPhysicalMemorySize();
 	terminalPrintString(phyMemSizeStr, strlen(phyMemSizeStr));
@@ -56,20 +40,16 @@ bool initializePhysicalMemory() {
 	terminalPrintHex(&phyMemUsableSize, sizeof(phyMemUsableSize));
 	terminalPrintChar('\n');
 
+	// Any chunk of memory left towards the end
+	// that doesn't fit in phyPageSize is ignored
 	phyPagesCount = phyMemTotalSize / phyPageSize;
-	if (phyMemTotalSize % phyPageSize) {
-		++phyPagesCount;
-	}
 
-	// Right now the memory has important structures in 1st MiB; will be marked used and system
-	// 1MiB + 64KiB was occupied by loader32
-	// Unknown number of pages are being occupied by PML4T starting from 1MiB + 64KiB
-	// Kernel process is at 2MiB + kernelVirtualMemSize; must be marked used and system
-	// Kernel ELF located from 2MiB + 4KiB buffer + kernelVirtualMemSize which can be overwritten
-	// Create bitmap right after kernel process
+	// The memory has important structures in 1st MiB; will be marked used and system
+	// Kernel process must be marked used and system
+	// Unknown number (at least 11) of pages are being occupied by PML4T starting from infoTable->pml4eRoot
+	// Create bitmap right after PML4 entries
 	// Virtual memory manager will take of marking PML4 entries as used during its initialization
-	// NOTE: bitmap is at 4KiB boundary not exactly 4KiB after
-	phyMemBitmap = (uint8_t*)((((uint64_t)infoTable->kernel64Base) + infoTable->kernel64VirtualMemSize) & 0xfffffffffffff000);
+	phyMemBitmap = (uint8_t*)usableMemoryStart;
 	terminalPrintString(phyMemBitmapStr, strlen(phyMemBitmapStr));
 	terminalPrintHex(&phyMemBitmap, sizeof(phyMemBitmap));
 	phyMemBitmapSize = phyPagesCount / 8;
@@ -78,37 +58,39 @@ bool initializePhysicalMemory() {
 	terminalPrintChar('\n');
 	memset(phyMemBitmap, 0, phyMemBitmapSize);
 
-	// Mark 1MiB + 64KiB as used
-	memset(phyMemBitmap, 0xff, (0x100000 + 0x10000) / phyPageSize / 8);
+	// Mark first 1MiB as used
+	memset(phyMemBitmap, 0xff, mib1 / phyPageSize / 8);
 
 	// Mark kernel process as used
 	// All the kernel sections are aligned at 4KiB in the linker
-	size_t kernelBitmapSize = infoTable->kernel64VirtualMemSize / phyPageSize;
-	markPhysicalPagesAsUsed((void*) infoTable->kernel64Base, kernelBitmapSize);
+	markPhysicalPagesAsUsed((void*) infoTable->kernel64PhyMemBase, kernelVirtualMemorySize / phyPageSize);
 
 	// Mark the phyMemBitmap itself as used
-	size_t numberOfPagesUsedByBitmap = phyMemBitmapSize / phyPageSize;
-	if (phyMemBitmapSize - numberOfPagesUsedByBitmap * phyPageSize) {
-		++numberOfPagesUsedByBitmap;
+	size_t bitmapPageCount = phyMemBitmapSize / phyPageSize;
+	if (phyMemBitmapSize - bitmapPageCount * phyPageSize) {
+		++bitmapPageCount;
 	}
-	markPhysicalPagesAsUsed(phyMemBitmap, numberOfPagesUsedByBitmap);
+	markPhysicalPagesAsUsed(phyMemBitmap, bitmapPageCount);
 
 	// Mark all the unusable areas above 1MiB in MMAP as used
-	uint64_t mib1 = 0x100000;
 	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
 		if (mmap[i].regionType == ACPI3_MemType_Usable) {
 			continue;
 		}
-		if (mmap[i].baseAddress + mmap[i].length < mib1) {
+		if (mmap[i].base + mmap[i].length < mib1) {
 			continue;
-		} else if (mmap[i].baseAddress < mib1 && mmap[i].baseAddress + mmap[i].length > mib1) {
-			// TODO: handle case
-		} else if (mmap[i].baseAddress > mib1) {
+		} else if (mmap[i].base < mib1 && mmap[i].base + mmap[i].length > mib1) {
+			size_t unusuableCount = (mmap[i].base + mmap[i].length - mib1) / phyPageSize;
+			if (mmap[i].length - unusuableCount * phyPageSize > 0) {
+				++unusuableCount;
+			}
+			markPhysicalPagesAsUsed((void*) mmap[i].base, unusuableCount);
+		} else if (mmap[i].base > mib1) {
 			size_t unusuableCount = mmap[i].length / phyPageSize;
 			if (mmap[i].length - unusuableCount * phyPageSize > 0) {
 				++unusuableCount;
 			}
-			markPhysicalPagesAsUsed((void*) mmap[i].baseAddress, unusuableCount);
+			markPhysicalPagesAsUsed((void*) mmap[i].base, unusuableCount);
 		}
 	}
 
@@ -138,14 +120,35 @@ void markPhysicalPagesAsUsed(void* address, size_t pageCount) {
 	}
 	for (size_t i = 0; i < pageCount; ++i) {
 		PhyMemBitmapIndex index = getPhysicalPageBitmapIndex((void*)(addr + i * phyPageSize));
-		uint8_t currentBitmap = phyMemBitmap[index.byteIndex];
-		currentBitmap |= (1 << index.bitIndex);
-		phyMemBitmap[index.byteIndex] |= currentBitmap;
+		phyMemBitmap[index.byteIndex] |= (1 << index.bitIndex);
+	}
+}
+
+// Debug helper to list all MMAP entries
+void listMmapEntries() {
+	terminalPrintString(mmapBaseStr, strlen(mmapBaseStr));
+	terminalPrintHex(&mmap, sizeof(mmap));
+	terminalPrintChar('\n');
+
+	size_t i = 0;
+	terminalPrintString(countStr, strlen(countStr));
+	terminalPrintHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
+	terminalPrintChar('\n');
+	terminalPrintString(tableHeader, strlen(tableHeader));
+	for (i = 0; i < infoTable->mmapEntryCount; ++i) {
+		terminalPrintSpaces4();
+		terminalPrintHex(&(mmap[i].base), sizeof(mmap->base));
+		terminalPrintChar(' ');
+		terminalPrintHex(&(mmap[i].length), sizeof(mmap->length));
+		terminalPrintChar(' ');
+		terminalPrintHex(&(mmap[i].regionType), sizeof(mmap->regionType));
+		terminalPrintChar('\n');
 	}
 }
 
 // Debug helper to list all physical pages marked as used
 void listUsedPhysicalPages() {
+	terminalPrintString(rangeOfUsed, strlen(rangeOfUsed));
 	uint64_t lastUsed = 0, length = 0;
 	bool ongoingAvailable = false;
 	for (uint64_t i = 0; i < phyMemTotalSize; i += phyPageSize) {
@@ -154,6 +157,7 @@ void listUsedPhysicalPages() {
 				continue;
 			} else {
 				lastUsed = i - length;
+				terminalPrintSpaces4();
 				terminalPrintHex(&lastUsed, sizeof(lastUsed));
 				terminalPrintHex(&length, sizeof(length));
 				terminalPrintChar('\n');
@@ -173,7 +177,7 @@ void listUsedPhysicalPages() {
 	}
 }
 
-// returns true if all the physical pages starting at given address are free, false if even one page is allocated
+// Returns true if all the physical pages starting at given address are free, false if even one page is allocated
 bool isPhysicalPageAvailable(void* address, size_t pageCount) {
 	uint64_t addr = (uint64_t) address;
 	if (addr >= phyMemTotalSize) {
@@ -193,7 +197,7 @@ void initMmap() {
 	mmap = (ACPI3Entry*)((uint64_t)(infoTable->mmapEntriesSegment << 4) + infoTable->mmapEntriesOffset);
 }
 
-// Initialized physical memory total size in bytes
+// Initializes physical memory total size in bytes
 void initPhysicalMemorySize() {
 	phyMemTotalSize = 0;
 	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {

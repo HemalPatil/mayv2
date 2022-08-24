@@ -43,7 +43,7 @@ void* memcpy(void *dest, void *src, size_t n) {
 }
 
 void* memset(void *address, int data, size_t length) {
-	// Set in blocks of 8 bytes first because it's mosst efficient in 64-bit mode
+	// Set in blocks of 8 bytes first because it's most efficient in 64-bit mode
 	// Set the rest in bytes
 	// TODO: probably can be improved by copying at 8 byte boundaries first
 	uint64_t *a8 = address;

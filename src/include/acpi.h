@@ -13,7 +13,7 @@
 
 // ACPI 3.0 entry format (we have used extended entries of 24 bytes)
 struct ACPI3Entry {
-	uint64_t baseAddress;
+	uint64_t base;
 	uint64_t length;
 	uint32_t regionType;
 	uint32_t extendedAttributes;

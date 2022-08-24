@@ -1,0 +1,52 @@
+#!/bin/bash
+
+SED_HEX_OR_NUMBER_REGEX='\([[:digit:]]\+\|0x[0-9A-Fa-f]\+\)'
+
+# Configure bootloader padding
+BOOTLOADER_PADDING=32
+sed -i "s/\#define BOOTLOADER_PADDING $SED_HEX_OR_NUMBER_REGEX/\#define BOOTLOADER_PADDING $BOOTLOADER_PADDING/" utilities/format_iso.cpp
+sed -i "s/BOOTLOADER_PADDING equ $SED_HEX_OR_NUMBER_REGEX/BOOTLOADER_PADDING equ $BOOTLOADER_PADDING/" src/boot/stage1/bootload.asm
+
+# Configure bootloader segment
+BOOTLOADER_SEGMENT=0x07c0
+sed -i "s/BOOTLOADER_SEGMENT equ $SED_HEX_OR_NUMBER_REGEX/BOOTLOADER_SEGMENT equ $BOOTLOADER_SEGMENT/" src/boot/stage1/bootload.asm
+sed -i "s/BOOTLOADER_SEGMENT equ $SED_HEX_OR_NUMBER_REGEX/BOOTLOADER_SEGMENT equ $BOOTLOADER_SEGMENT/" src/boot/stage2/elfparse.asm
+sed -i "s/BOOTLOADER_SEGMENT equ $SED_HEX_OR_NUMBER_REGEX/BOOTLOADER_SEGMENT equ $BOOTLOADER_SEGMENT/" src/boot/stage2/k64load.asm
+
+# Configure bootloader stack size
+BOOTLOADER_STACK_SIZE=0x0c00
+sed -i "s/BOOTLOADER_STACK_SIZE equ $SED_HEX_OR_NUMBER_REGEX/BOOTLOADER_STACK_SIZE equ $BOOTLOADER_STACK_SIZE/" src/boot/stage1/bootload.asm
+sed -i "s/BOOTLOADER_STACK_SIZE equ $SED_HEX_OR_NUMBER_REGEX/BOOTLOADER_STACK_SIZE equ $BOOTLOADER_STACK_SIZE/" src/boot/stage2/k64load.asm
+
+# Configure ISO sector size
+ISO_SECTOR_SIZE=2048
+sed -i "s/\#define ISO_SECTOR_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define ISO_SECTOR_SIZE $ISO_SECTOR_SIZE/" utilities/format_iso.cpp
+sed -i "s/\#define ISO_SECTOR_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define ISO_SECTOR_SIZE $ISO_SECTOR_SIZE/" src/boot/stage2/loader32c.c
+sed -i "s/ISO_SECTOR_SIZE equ $SED_HEX_OR_NUMBER_REGEX/ISO_SECTOR_SIZE equ $ISO_SECTOR_SIZE/" src/boot/stage1/bootload.asm
+
+# Configure ELF parser origin
+ELFPARSE_ORIGIN=0x00020000
+sed -i "s/\#define ELFPARSE_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define ELFPARSE_ORIGIN $ELFPARSE_ORIGIN/" utilities/format_iso.cpp
+sed -i "s/ELFPARSE_ORIGIN equ $SED_HEX_OR_NUMBER_REGEX/ELFPARSE_ORIGIN equ $ELFPARSE_ORIGIN/" src/boot/stage1/bootload.asm
+sed -i "2s/\[org $SED_HEX_OR_NUMBER_REGEX\]/\[org $ELFPARSE_ORIGIN\]/" src/boot/stage2/elfparse.asm
+
+# Configure loader32 origin
+LOADER32_ORIGIN=0x00100000
+sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX;/\. = $LOADER32_ORIGIN;/" src/boot/stage2/link.ld
+sed -i "s/\#define LOADER32_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define LOADER32_ORIGIN $LOADER32_ORIGIN/" src/boot/stage2/loader32c.c
+sed -i "s/LOADER32_ORIGIN equ $SED_HEX_OR_NUMBER_REGEX/LOADER32_ORIGIN equ $LOADER32_ORIGIN/" src/boot/stage2/elfparse.asm
+
+# Configure the scratch memory base where kernel is loaded from
+L32K64_SCRATCH_BASE=0x80000
+sed -i "s/\#define L32K64_SCRATCH_BASE $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_BASE $L32K64_SCRATCH_BASE/" utilities/format_iso.cpp
+sed -i "s/\#define L32K64_SCRATCH_BASE $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_BASE $L32K64_SCRATCH_BASE/" src/boot/stage2/loader32c.c
+sed -i "s/L32K64_SCRATCH_BASE equ $SED_HEX_OR_NUMBER_REGEX/L32K64_SCRATCH_BASE equ $L32K64_SCRATCH_BASE/" src/boot/stage2/elfparse.asm
+
+# Configure kernel lowerhalf origin
+K64_LOWERHALF_ORIGIN=0x80000000
+sed -i "s/K64_LOWERHALF_ORIGIN equ $SED_HEX_OR_NUMBER_REGEX/K64_LOWERHALF_ORIGIN equ $K64_LOWERHALF_ORIGIN/" src/boot/stage2/loader32lib.asm
+sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* lowerhalf origin \*\//\. = $K64_LOWERHALF_ORIGIN; \/\* lowerhalf origin \*\//" src/boot/link.ld
+
+# Configure kernel higherhalf origin
+K64_HIGHERHALF_ORIGIN=0xffffffff80000000
+sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* higherhalf origin \*\//\. = $K64_HIGHERHALF_ORIGIN; \/\* higherhalf origin \*\//" src/boot/link.ld
