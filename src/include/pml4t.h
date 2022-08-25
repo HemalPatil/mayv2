@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdint.h>
 
 // 64-bit long mode paging structures

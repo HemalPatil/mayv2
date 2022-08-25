@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdint.h>
 
 // Do not convert address values to actual pointers

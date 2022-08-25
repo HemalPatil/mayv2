@@ -1,4 +1,6 @@
 #pragma once
+
+#include <stdbool.h>
 #include <stdint.h>
 
 #define ACPI3_MemType_Usable 1
@@ -46,3 +48,7 @@ struct RSDPDescriptor2 {
 	uint8_t reserved[3];
 } __attribute__((packed));
 typedef struct RSDPDescriptor2 RSDPDescriptor2;
+
+extern RSDPDescriptor2 *rsdp;
+
+extern bool parseAcpi3();

@@ -1,7 +1,7 @@
+#include <io.h>
+#include <kernel.h>
 #include <string.h>
-#include "kernel.h"
-
-#define DEFAULT_TERMINAL_COLOUR = 0x0f
+#include <terminal.h>
 
 // TODO : This is a temporary file. The functions from this file need to be shifted to drivers/terminal after some higher level
 // functions are established
@@ -21,8 +21,9 @@ static const size_t vgaWidth = 80;
 static const size_t vgaHeight = 25;
 static const size_t videoMemSize = vgaWidth * vgaHeight * 2;
 static size_t cursorX = 0, cursorY = 0;
-static uint8_t currentTextColour = 0x0f;
-static uint8_t currentTerminalColour = 0x0f;
+static uint8_t currentTextColour = DEFAULT_TERMINAL_COLOUR & 0xf;
+static uint8_t currentBgColour = DEFAULT_TERMINAL_COLOUR >> 4;
+static uint8_t currentTerminalColour = DEFAULT_TERMINAL_COLOUR;
 static uint16_t cursorPort = 0x3d4;
 static uint16_t cursorPortIndex = 0x3d5;
 
@@ -33,6 +34,16 @@ const char* const spaces4 = "    ";
 bool isTerminalMode() {
 	// FIXME: Add functionality to actually check if the mode is the assumed one
 	return vgaMode80x25;
+}
+
+void terminalSetBgColour(uint8_t colour) {
+	currentBgColour = colour;
+	currentTerminalColour = currentBgColour << 4 | currentTextColour;
+}
+
+void terminalSetTextColour(uint8_t colour) {
+	currentTextColour = colour;
+	currentTerminalColour = currentBgColour << 4 | currentTextColour;
 }
 
 // Clears the terminal screen
@@ -51,7 +62,7 @@ void terminalClearLine(size_t lineNumber) {
 	uint64_t data = 0;
 	for (size_t i = 0; i < 4; ++i) {
 		data <<= 8;
-		data |= currentTextColour;
+		data |= currentTerminalColour;
 		data <<= 8;
 		data |= 0x20;
 	}
@@ -94,7 +105,7 @@ void terminalPrintChar(char c) {
 	} else {
 		const size_t index = (cursorY * vgaWidth + cursorX) * 2;
 		videoMemory[index] = c;
-		videoMemory[index + 1] = currentTextColour;
+		videoMemory[index + 1] = currentTerminalColour;
 		++cursorX;
 	}
 	if (cursorX >= vgaWidth) {

@@ -36,11 +36,16 @@ sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX;/\. = $LOADER32_ORIGIN;/" src/boot/stage
 sed -i "s/\#define LOADER32_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define LOADER32_ORIGIN $LOADER32_ORIGIN/" src/boot/stage2/loader32c.c
 sed -i "s/LOADER32_ORIGIN equ $SED_HEX_OR_NUMBER_REGEX/LOADER32_ORIGIN equ $LOADER32_ORIGIN/" src/boot/stage2/elfparse.asm
 
-# Configure the scratch memory base where kernel is loaded from
+# Configure the scratch memory base where kernel and loader32 is loaded from
 L32K64_SCRATCH_BASE=0x80000
 sed -i "s/\#define L32K64_SCRATCH_BASE $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_BASE $L32K64_SCRATCH_BASE/" utilities/format_iso.cpp
 sed -i "s/\#define L32K64_SCRATCH_BASE $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_BASE $L32K64_SCRATCH_BASE/" src/boot/stage2/loader32c.c
 sed -i "s/L32K64_SCRATCH_BASE equ $SED_HEX_OR_NUMBER_REGEX/L32K64_SCRATCH_BASE equ $L32K64_SCRATCH_BASE/" src/boot/stage2/elfparse.asm
+
+# Configure the scratch memory length where kernel and loader32 is loaded from
+L32K64_SCRATCH_LENGTH=0x10000
+sed -i "s/\#define L32K64_SCRATCH_LENGTH $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_LENGTH $L32K64_SCRATCH_LENGTH/" src/boot/stage2/loader32c.c
+sed -i "s/L32K64_SCRATCH_LENGTH equ $SED_HEX_OR_NUMBER_REGEX/L32K64_SCRATCH_LENGTH equ $L32K64_SCRATCH_LENGTH/" src/boot/stage1/mmap.asm
 
 # Configure kernel lowerhalf origin
 K64_LOWERHALF_ORIGIN=0x80000000
@@ -50,3 +55,4 @@ sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* lowerhalf origin \*\//\. = $K64_LO
 # Configure kernel higherhalf origin
 K64_HIGHERHALF_ORIGIN=0xffffffff80000000
 sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* higherhalf origin \*\//\. = $K64_HIGHERHALF_ORIGIN; \/\* higherhalf origin \*\//" src/boot/link.ld
+sed -i "s/\#define K64_HIGHERHALF_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define K64_HIGHERHALF_ORIGIN $K64_HIGHERHALF_ORIGIN/" src/include/kernel.h

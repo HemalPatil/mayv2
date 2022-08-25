@@ -1,4 +1,4 @@
-#include "kernel.h"
+#include <kernel.h>
 
 bool fpuExists() {
 	// TODO : add fpu exists implementation

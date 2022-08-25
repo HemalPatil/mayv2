@@ -1,10 +1,10 @@
+#include <acpi.h>
+#include <elf64.h>
+#include <infotable.h>
+#include <pml4t.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include "acpi.h"
-#include "elf64.h"
-#include "infotable.h"
-#include "pml4t.h"
 
 #define L32K64_SCRATCH_BASE 0x80000
 #define L32K64_SCRATCH_LENGTH 0x10000
@@ -41,7 +41,7 @@ extern void memset(void *const dest, const uint8_t, const size_t);
 extern void memcpy(const void *const src, void const *dest, const size_t count);
 extern void setup16BitSegments(const InfoTable* const table, const void *const loadModule, const DAP* const dap, const uint16_t);
 extern void loadKernel64ElfSectors();
-extern void jumpToKernel64(const PML4E* const pml4t, const InfoTable* const table, const uint32_t kernelVirtualMemSize, const uint32_t usableMemoryStart);
+extern void jumpToKernel64(const PML4E* const pml4t, const InfoTable* const table, const uint32_t kernelElfBase, const uint32_t usableMemoryStart);
 extern uint8_t getLinearAddressLimit();
 extern uint8_t getPhysicalAddressLimit();
 
@@ -410,7 +410,8 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 		}
 	}
 
-	jumpToKernel64(pml4t, infoTableAddress, kernelVirtualMemSize, newPageStart); // Jump to kernel. Code beyond this should never get executed.
+	// Jump to kernel. Code beyond this should never get executed.
+	jumpToKernel64(pml4t, infoTableAddress, kernelElfBase, newPageStart);
 	printString("Fatal error : Cannot boot!");
 	return 1;
 }

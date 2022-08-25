@@ -1,5 +1,6 @@
-#include "kernel.h"
+#include <kernel.h>
 #include <string.h>
+#include <terminal.h>
 
 RSDPDescriptor2 *rsdp = 0;
 

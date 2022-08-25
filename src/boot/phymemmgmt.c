@@ -1,5 +1,7 @@
-#include "kernel.h"
-#include "string.h"
+#include <phymemmgmt.h>
+#include <kernel.h>
+#include <string.h>
+#include <terminal.h>
 
 const size_t phyPageSize = 0x1000;
 size_t phyPagesCount = 0;
