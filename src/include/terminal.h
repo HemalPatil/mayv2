@@ -32,6 +32,7 @@ extern void terminalClearScreen();
 extern void terminalSetCursorPosition(size_t x, size_t y);
 extern void terminalPrintString(const char* const str, const size_t length);
 extern void terminalPrintChar(char);
+extern void terminalPrintDecimal(int64_t value);
 extern void terminalPrintHex(void* value, size_t size);
 extern void terminalPrintSpaces4();
 extern void terminalScroll(size_t lineCount);

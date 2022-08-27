@@ -42,7 +42,8 @@ higherHalfStart:
 	mov rax, 0x00000000ffffffff
 	and rdi, rax	; rdi contains info table address, pass it as 1st parameter to kernelMain
 	and rsi, rax	; rsi contains kernel ELF base, 2nd parameter
-	and rdx, rax	; rdx contains usable memory address right after PML4 entries
+	and rdx, rax	; rdx contains kernel ELF size, 3rd parameter
+	and rcx, rax	; rcx contains usable memory address right after PML4 entries, 4th parameter
 	call kernelMain
 	; code beyond this should never get executed
 kernelEnd:

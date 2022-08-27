@@ -15,7 +15,7 @@ BOOT_ASMOBJFILES := $(patsubst $(SRC_DIR)/boot/%.asm,$(BUILD_DIR)/boot/%.o,$(she
 BOOT_COBJFILES := $(patsubst $(SRC_DIR)/boot/%.c,$(BUILD_DIR)/boot/%.o,$(shell find $(SRC_DIR)/boot -maxdepth 1 -type f -name "*.c"))
 
 $(ISO_DIR)/BOOT/KERNEL: $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) $(HEADER_FILES) $(SRC_DIR)/boot/link.ld $(BUILD_DIR)/lib/libkcrt.lib
-	$(CC64) $(CC64_FLAGS) -o $@ $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) $(ISO_DIR)/LIB/libkcrt.lib -T $(SRC_DIR)/boot/link.ld -z max-page-size=0x1000
+	$(CC64) $(CC64_FLAGS) -o $@ $(BOOT_ASMOBJFILES) $(BOOT_COBJFILES) $(BUILD_DIR)/lib/libkcrt.lib -T $(SRC_DIR)/boot/link.ld -z max-page-size=0x1000
 
 $(BUILD_DIR)/boot/%.o: $(SRC_DIR)/boot/%.asm
 	$(NASM64) $@ $^

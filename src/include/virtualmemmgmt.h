@@ -1,8 +1,16 @@
 #pragma once
 
+#include <elf64.h>
 #include <stddef.h>
 #include <stdint.h>
 
-extern const size_t virPageSize;
+struct VirtualMemNode {
+	void *base;
+	uint64_t pageCount;
+	struct VirtualMemNode *next;
+	struct VirtualMemNode *previous;
+};
+typedef struct VirtualMemNode VirtualMemNode;
 
-extern bool initializeVirtualMemory(uint64_t higherHalfUsableStart);
+extern void* getMappedPhysicalAddress(void* virtualAddress);
+extern bool initializeVirtualMemory(void* kernelElfBase, uint64_t kernelElfSize, ELF64ProgramHeader* programHeader);

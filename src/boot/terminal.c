@@ -87,7 +87,7 @@ void terminalSetCursorPosition(size_t x, size_t y) {
 }
 
 void terminalScroll(size_t lineCount) {
-	// TODO: hide scrolled data somewhere so we can use pgUp and pgDown
+	// TODO: hide scrolled data somewhere for pgUp and pgDown
 	size_t count = lineCount * vgaWidth * 2;
 	terminalPrintHex(&count, sizeof(count));
 	memcpy(videoMemory, videoMemory + count, videoMemSize - count);
@@ -95,7 +95,6 @@ void terminalScroll(size_t lineCount) {
 }
 
 void terminalPrintChar(char c) {
-	// TODO: Add text scroll. Newline behaviour needs to be better.
 	if (!isTerminalMode() || cursorX >= vgaWidth || cursorY >= vgaHeight) {
 		cursorX = cursorY = 0;
 		return;
@@ -135,6 +134,27 @@ void terminalPrintString(const char *str, const size_t length) {
 
 void terminalPrintSpaces4() {
 	terminalPrintString(spaces4, 4);
+}
+
+void terminalPrintDecimal(int64_t value) {
+	if (value == 0) {
+		terminalPrintChar('0');
+		return;
+	}
+	if (value < 0) {
+		terminalPrintChar('-');
+	}
+	uint8_t digits[24] = { 0 };
+	uint64_t v = value < 0 ? -value : value;
+	size_t digitCount = 0;
+	while (v > 0) {
+		digits[digitCount] = v % 10;
+		v /= 10;
+		++digitCount;
+	}
+	for (int i = digitCount - 1; i >= 0; --i) {
+		terminalPrintChar(hexPalette[digits[i]]);
+	}
 }
 
 void terminalPrintHex(void* value, size_t size) {

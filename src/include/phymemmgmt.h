@@ -1,5 +1,6 @@
 #pragma once
 
+#include <acpi.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -7,26 +8,39 @@
 #define PhyMemEntry_Free 0
 #define PhyMemEntry_Used 1
 
-struct PhyMemBitmapIndex {
-	uint32_t byteIndex;
-	uint32_t bitIndex;
+#define L32_IDENTITY_MAP_SIZE 32
+#define PHY_MEM_BUDDY_MAX_ORDER 10
+
+struct PhyMemBuddyBitmapIndex {
+	size_t byte;
+	size_t bit;
 };
-typedef struct PhyMemBitmapIndex PhyMemBitmapIndex;
+typedef struct PhyMemBuddyBitmapIndex PhyMemBuddyBitmapIndex;
 
-extern const size_t phyPageSize;
+extern const size_t pageSize;
+extern const size_t pageSizeShift;
 
-extern size_t phyPagesCount;
-extern uint8_t* phyMemBitmap;
-extern uint64_t phyMemBitmapSize;
-extern uint64_t phyMemUsableSize;
-extern uint64_t phyMemTotalSize;
+extern ACPI3Entry *mmap;
+extern uint64_t pageAddressMasks[PHY_MEM_BUDDY_MAX_ORDER];
+extern uint8_t* phyMemBuddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER];
+extern size_t phyMemBuddySizes[PHY_MEM_BUDDY_MAX_ORDER];
+extern size_t phyMemPagesAvailableCount;
+extern size_t phyMemPagesTotalCount;
+extern size_t phyMemTotalSize;
+extern size_t phyMemUsableSize;
 
-extern PhyMemBitmapIndex getPhysicalPageBitmapIndex(void* address);
+extern bool arePhysicalBuddiesOfType(void* address, size_t buddyLevel, size_t buddyCount, uint8_t type);
+extern PhyMemBuddyBitmapIndex getPhysicalPageBuddyBitmapIndex(void* address, size_t buddyLevel);
 extern void initMmap();
 extern void initPhysicalMemorySize();
 extern void initUsablePhysicalMemorySize();
-extern bool initializePhysicalMemory(uint64_t usableMemoryStart);
-extern bool isPhysicalPageAvailable(void* address, size_t numberOfPages);
+extern bool initializePhysicalMemory(
+	void* usableMemoryStart,
+	size_t kernelVirtualMemorySize,
+	void* kernelElfBase,
+	size_t kernelElfSize,
+	size_t *phyMemBuddyPagesCount
+);
 extern void listMmapEntries();
-extern void listUsedPhysicalPages();
-extern void markPhysicalPagesAsUsed(void* address, size_t numberOfPages);
+extern void listUsedPhysicalBuddies(size_t buddyLevel);
+extern void markPhysicalPages(void* address, size_t pageCount, uint8_t type);

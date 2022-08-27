@@ -282,7 +282,8 @@ jumpToKernel64:
 	cli
 	mov edi, [ebp + 12]	; Load edi/rdi with info table address, which is the first parameter passed to kernelMain
 	mov esi, [ebp + 16]	; Load esi/rsi with kernel ELF base
-	mov edx, [ebp + 20]	; Load edx/rdx with usable memory address right after PML4 pages
+	mov edx, [ebp + 20]	; Load edx/rdx with kernel ELF size
+	mov ecx, [ebp + 24]	; Load edx/rdx with usable memory address right after PML4 pages
 	lgdt [gdtDescriptor]	; shift to kernel GDT
 	; Jump to lower half entry point of the kernel
 	jmp 0x8:K64_LOWERHALF_ORIGIN

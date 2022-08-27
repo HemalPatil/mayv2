@@ -40,12 +40,20 @@ sed -i "s/LOADER32_ORIGIN equ $SED_HEX_OR_NUMBER_REGEX/LOADER32_ORIGIN equ $LOAD
 L32K64_SCRATCH_BASE=0x80000
 sed -i "s/\#define L32K64_SCRATCH_BASE $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_BASE $L32K64_SCRATCH_BASE/" utilities/format_iso.cpp
 sed -i "s/\#define L32K64_SCRATCH_BASE $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_BASE $L32K64_SCRATCH_BASE/" src/boot/stage2/loader32c.c
+sed -i "s/\#define L32K64_SCRATCH_BASE $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_BASE $L32K64_SCRATCH_BASE/" src/include/kernel.h
 sed -i "s/L32K64_SCRATCH_BASE equ $SED_HEX_OR_NUMBER_REGEX/L32K64_SCRATCH_BASE equ $L32K64_SCRATCH_BASE/" src/boot/stage2/elfparse.asm
 
 # Configure the scratch memory length where kernel and loader32 is loaded from
 L32K64_SCRATCH_LENGTH=0x10000
 sed -i "s/\#define L32K64_SCRATCH_LENGTH $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_LENGTH $L32K64_SCRATCH_LENGTH/" src/boot/stage2/loader32c.c
+sed -i "s/\#define L32K64_SCRATCH_LENGTH $SED_HEX_OR_NUMBER_REGEX/\#define L32K64_SCRATCH_LENGTH $L32K64_SCRATCH_LENGTH/" src/include/kernel.h
 sed -i "s/L32K64_SCRATCH_LENGTH equ $SED_HEX_OR_NUMBER_REGEX/L32K64_SCRATCH_LENGTH equ $L32K64_SCRATCH_LENGTH/" src/boot/stage1/mmap.asm
+
+# Configure the size of physical memory in MiBs that loader32 will identity map for kernel's initial setup
+# Should never exceed 256MiB
+L32_IDENTITY_MAP_SIZE=32
+sed -i "s/\#define L32_IDENTITY_MAP_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define L32_IDENTITY_MAP_SIZE $L32_IDENTITY_MAP_SIZE/" src/boot/stage2/loader32c.c
+sed -i "s/\#define L32_IDENTITY_MAP_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define L32_IDENTITY_MAP_SIZE $L32_IDENTITY_MAP_SIZE/" src/include/phymemmgmt.h
 
 # Configure kernel lowerhalf origin
 K64_LOWERHALF_ORIGIN=0x80000000
