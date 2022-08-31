@@ -133,7 +133,7 @@ start:
 	mov [driveNumber], dl	; Store the disk number from which this bootloader was loaded
 	mov bx, [infoTableOffset]
 	xor dh, dh
-	mov [es:bx], dx			; Store the disk number from which this bootloader was loaded in our custom table
+	mov [es:bx], dx			; Store the disk number from which this bootloader was loaded in InfoTable
 
 	; Setup int 0x22. Each interrupt vector is 4 bytes long.
 	; Word[0] is offset and word[1] is code segment.

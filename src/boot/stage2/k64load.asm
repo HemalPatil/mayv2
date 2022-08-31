@@ -38,9 +38,9 @@ start:
 	mov [pmodeCr0], eax	; and disable paging and protected mode
 	and eax, 0x7ffffffe
 	mov cr0, eax
-	jmp far [k64LoadOffset]	; Do far jump to address stored in segment:offset (little endian)
-								; at k64LoadOffset, so that we shift from 16-bit protected mode
-								; to 16-bit real mode
+	; Do far jump to address stored in segment:offset (little endian)
+	; at k64LoadOffset, to shift from 16-bit protected mode to 16-bit real mode
+	jmp far [k64LoadOffset]
 
 returnTo32BitProtected:
 	mov eax, cr0		; Enable protected mode

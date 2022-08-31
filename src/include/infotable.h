@@ -16,7 +16,7 @@ struct InfoTable {
 	uint16_t maxPhysicalAddress;
 	uint16_t maxLinearAddress;
 	uint16_t ignore;
-	uint64_t pml4eRoot;
-	uint64_t kernel64PhyMemBase;
+	uint64_t kernelPhyMemBase;
+	uint64_t pml4eRootPhysicalAddress;
 } __attribute__((packed));
 typedef struct InfoTable InfoTable;

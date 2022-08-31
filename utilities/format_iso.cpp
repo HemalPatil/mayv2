@@ -21,7 +21,7 @@ bool findRecord(const char *directory, const int dirSize, const char *recordName
 	bool recordFound = false;
 	// Skip first 0x44 bytes, they are directory records for current and parent directory
 	int dirSeekg = 0x44;
-	// Check if we are past the directory extent or all records have been traversed
+	// Check if dirSeekg is past the directory extent or all records have been traversed
 	while ((dirSeekg < dirSize) && (*((char *)(directory + dirSeekg)) > 0)) {
 		int dirRecordSize = *((char *)(directory + dirSeekg)); // Get the size of the record in the directory extent
 		int fileNameSize = *((char *)(directory + dirSeekg + FILE_NAME_SIZE_OFFSET)); // Get length of the file name

@@ -11,7 +11,6 @@
 #define L32K64_SCRATCH_LENGTH 0x10000
 #define LOADER32_ORIGIN 0x00100000
 #define ISO_SECTOR_SIZE 2048
-#define PAGE_INDEX_MASK 0x1ff
 #define PML4_PAGE_PRESENT_READ_WRITE 3
 
 // Disk Address Packet for extended disk operations
@@ -35,6 +34,8 @@ const uint8_t DEFAULT_TERMINAL_COLOR = 0x0f;
 const uint8_t pageSizeShift = 12;
 const uint64_t pageSize = 1 << pageSizeShift;
 const uint64_t pageSizeMask = ~(((uint64_t)1 << pageSizeShift) - 1);
+const size_t virtualPageIndexShift = 9;
+const uint64_t virtualPageIndexMask = ((uint64_t)1 << virtualPageIndexShift) - 1;
 InfoTable *infoTable;
 
 void clearScreen();
@@ -47,9 +48,9 @@ extern void loadKernel64ElfSectors();
 extern void jumpToKernel64(
 	const PML4E* const pml4t,
 	const InfoTable* const table,
-	const uint32_t kernelElfBase,
+	const uint32_t programHeader,
 	const uint32_t kernelElfSize,
-	const uint32_t usableMemoryStart
+	const uint32_t usablePhyMemStart
 );
 extern uint8_t getLinearAddressLimit();
 extern uint8_t getPhysicalAddressLimit();
@@ -58,19 +59,17 @@ void terminalPrintChar(char c, uint8_t color) {
 	if (cursorX >= vgaWidth || cursorY >= vgaHeight) {
 		return;
 	}
-	if (c == '\n') {
-		goto uglySkip;
+	if (c != '\n') {
+		const size_t index = 2 * (cursorY * vgaWidth + cursorX);
+		vidMem[index] = c;
+		vidMem[index + 1] = color;
 	}
-	const size_t index = 2 * (cursorY * vgaWidth + cursorX);
-	vidMem[index] = c;
-	vidMem[index + 1] = color;
-	if (++cursorX == vgaWidth) {
-		uglySkip:
-			cursorX = 0;
-			if (++cursorY == vgaHeight) {
-				cursorY = 0;
-				clearScreen();
-			}
+	if (++cursorX == vgaWidth || c == '\n') {
+		cursorX = 0;
+		if (++cursorY == vgaHeight) {
+			cursorY = 0;
+			clearScreen();
+		}
 	}
 	return;
 }
@@ -129,10 +128,10 @@ void processMmapEntries() {
 	// If an overlap is found, two cases occur
 	// 1) Both regions are of same type
 	//		- Change the length of the one entry to match the base of next entry
-	// 2) Regions are of different types and one of them is of type ACPI3_MemType_Usable
+	// 2) Regions are of different types and one of them is of type ACPI3_MEM_TYPE_USABLE
 	//		- Change the length of the first entry if it is usable
 	//		- Change the base of the second entry if it is usable
-	// 3) Overlapping of two regions of different types and none of them of type ACPI3_MemType_Usable
+	// 3) Overlapping of two regions of different types and none of them of type ACPI3_MEM_TYPE_USABLE
 	//    is not handled right now.
 
 	ACPI3Entry *mmap = getMmapBase();
@@ -145,9 +144,9 @@ void processMmapEntries() {
 			if (mmapEntry1->regionType == mmapEntry2->regionType) {
 				mmapEntry1->length = mmapEntry2->base - mmapEntry1->base;
 			} else {
-				if (mmapEntry1->regionType == ACPI3_MemType_Usable) {
+				if (mmapEntry1->regionType == ACPI3_MEM_TYPE_USABLE) {
 					mmapEntry1->length = mmapEntry2->base - mmapEntry1->base;
-				} else if (mmapEntry2->regionType == ACPI3_MemType_Usable) {
+				} else if (mmapEntry2->regionType == ACPI3_MEM_TYPE_USABLE) {
 					mmapEntry2->base = mmapEntry1->base + mmapEntry1->length;
 				}
 			}
@@ -155,7 +154,7 @@ void processMmapEntries() {
 			ACPI3Entry *newEntry = mmap + actualEntries;
 			newEntry->base = mmapEntry1->base + mmapEntry1->length;
 			newEntry->length = mmapEntry2->base - newEntry->base;
-			newEntry->regionType = ACPI3_MemType_Hole;
+			newEntry->regionType = ACPI3_MEM_TYPE_HOLE;
 			newEntry->extendedAttributes = 1;
 			++actualEntries;
 		}
@@ -178,18 +177,18 @@ void identityMapMemory(uint64_t* pagePtr) {
 	memset(pagePtr, 0, (3 + L32_IDENTITY_MAP_SIZE / 2) * pageSize);
 
 	// PML4T[0] points to PDPT at pml4Root + pageSize, i.e. handles the first 512GiB
-	pagePtr[0] = (infoTable->pml4eRoot + pageSize) | PML4_PAGE_PRESENT_READ_WRITE;
+	pagePtr[0] = (infoTable->pml4eRootPhysicalAddress + pageSize) | PML4_PAGE_PRESENT_READ_WRITE;
 
 	// pagePtr right now points to PDPT which handles first 512GiB
-	pagePtr = (uint64_t *)(uint32_t)(infoTable->pml4eRoot + pageSize);
+	pagePtr = (uint64_t *)(uint32_t)(infoTable->pml4eRootPhysicalAddress + pageSize);
 	// PDPT[0] points to PD which handles the first 1GiB
-	pagePtr[0] = (infoTable->pml4eRoot + 2 * pageSize) | PML4_PAGE_PRESENT_READ_WRITE;
+	pagePtr[0] = (infoTable->pml4eRootPhysicalAddress + 2 * pageSize) | PML4_PAGE_PRESENT_READ_WRITE;
 
 	// Each entry in PD points to PT. Each PT handles 2MiB.
 	// Add L32_IDENTITY_MAP_SIZE / 2 entries to PD
 	// and fill all entries in the PTs with page frames 0x0 to L32_IDENTITY_MAP_SIZE MiB
-	uint64_t *pdEntry = (uint64_t *)(uint32_t)(infoTable->pml4eRoot + 2 * pageSize);
-	uint64_t *ptEntry = (uint64_t *)(uint32_t)(infoTable->pml4eRoot + 3 * pageSize);
+	uint64_t *pdEntry = (uint64_t *)(uint32_t)(infoTable->pml4eRootPhysicalAddress + 2 * pageSize);
+	uint64_t *ptEntry = (uint64_t *)(uint32_t)(infoTable->pml4eRootPhysicalAddress + 3 * pageSize);
 	uint64_t pageFrame = 0x0 | PML4_PAGE_PRESENT_READ_WRITE;
 	size_t i = 0, j = 0;
 	for (i = 0; i < L32_IDENTITY_MAP_SIZE / 2; ++i) {
@@ -204,7 +203,7 @@ void identityMapMemory(uint64_t* pagePtr) {
 void allocatePagingEntry(PML4E *entry, uint32_t address) {
 	entry->present = 1;
 	entry->readWrite = 1;
-	entry->pageAddress = address >> pageSizeShift;
+	entry->physicalAddress = address >> pageSizeShift;
 }
 
 int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, DAP *const dapKernel64, const void *const loadModuleAddress) {
@@ -247,9 +246,9 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 	loadKernel64ElfSectors();
 	ELF64Header *elfHeader = (ELF64Header*)L32K64_SCRATCH_BASE;
 	if (
-		*((uint32_t*)(&elfHeader->signature)) != ELF_Signature ||
-		elfHeader->endianness != ELF_LittleEndian ||
-		elfHeader->isX64 != ELF_Type_x64
+		*((uint32_t*)(&elfHeader->signature)) != ELF_SIGNATURE ||
+		elfHeader->endianness != ELF_LITTLE_ENDIAN ||
+		elfHeader->isX64 != ELF_TYPE_64
 	) {
 		printString("\nKernel executable corrupted (ELF header incorrect)! Cannot boot!");
 		return 1;
@@ -260,7 +259,7 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 	}
 	ELF64ProgramHeader *programHeader = (ELF64ProgramHeader *)((uint32_t)elfHeader + (uint32_t)elfHeader->headerTablePosition);
 	for (uint16_t i = 0; i < elfHeader->headerEntryCount; ++i) {
-		if (programHeader[i].segmentType != ELF_SegmentType_Load) {
+		if (programHeader[i].segmentType != ELF_SEGMENT_TYPE_LOAD) {
 			continue;
 		}
 		// Align size to 4KiB page boundary
@@ -300,7 +299,7 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 
 	// Enter the kernel physical memory base address in the info table
 	uint32_t kernelBase = LOADER32_ORIGIN + loader32VirtualMemSize;
-	infoTable->kernel64PhyMemBase = (uint64_t)kernelBase;
+	infoTable->kernelPhyMemBase = (uint64_t)kernelBase;
 	uint32_t kernelElfBase = kernelBase + (uint32_t)kernelVirtualMemSize;
 	printString("KernelELFBase = 0x");
 	printHex(&kernelElfBase, sizeof(kernelElfBase));
@@ -330,11 +329,11 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 
 	size_t pml4Count = 3 + L32_IDENTITY_MAP_SIZE / 2; // Look at identityMapMemory comments to understand how this is calculated
 	// Align PML4 root to 4 KiB boundary
-	infoTable->pml4eRoot = (kernelElfBase + kernelElfSize) & pageSizeMask;
-	if (infoTable->pml4eRoot != kernelElfBase + kernelElfSize) {
-		infoTable->pml4eRoot += pageSize;
+	infoTable->pml4eRootPhysicalAddress = (kernelElfBase + kernelElfSize) & pageSizeMask;
+	if (infoTable->pml4eRootPhysicalAddress != kernelElfBase + kernelElfSize) {
+		infoTable->pml4eRootPhysicalAddress += pageSize;
 	}
-	identityMapMemory((uint64_t*)(uint32_t)infoTable->pml4eRoot);
+	identityMapMemory((uint64_t*)(uint32_t)infoTable->pml4eRootPhysicalAddress);
 	uint32_t memorySeekp = kernelBase;
 	printString("KernelBase = 0x");
 	printHex(&kernelBase, sizeof(kernelBase));
@@ -342,13 +341,13 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 	printString("ProgramHeaderEntryCount = 0x");
 	printHex(&elfHeader->headerEntryCount, sizeof(elfHeader->headerEntryCount));
 	printString("\n");
-	PML4E *pml4t = (PML4E *)(uint32_t)infoTable->pml4eRoot;
+	PML4E *pml4t = (PML4E *)(uint32_t)infoTable->pml4eRootPhysicalAddress;
 	// New pages that need to be made should start from this address and add pageSize to it.
-	uint32_t newPageStart = infoTable->pml4eRoot + pml4Count * pageSize;
+	uint32_t newPageStart = infoTable->pml4eRootPhysicalAddress + pml4Count * pageSize;
 	elfHeader = (ELF64Header*)kernelElfBase;
 	programHeader = (ELF64ProgramHeader*)(kernelElfBase + (uint32_t)elfHeader->headerTablePosition);
 	for (uint16_t i = 0; i < elfHeader->headerEntryCount; ++i) {
-		if (programHeader[i].segmentType != ELF_SegmentType_Load) {
+		if (programHeader[i].segmentType != ELF_SEGMENT_TYPE_LOAD) {
 			continue;
 		}
 		uint32_t sizeInMemory = (uint32_t)programHeader[i].segmentSizeInMemory;
@@ -369,25 +368,25 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 		printString("  PageCount = 0x");
 		printHex(&pageCount, sizeof(pageCount));
 		printString("\n");
-		printString("  VirtualMemoryAddress = 0x");
-		printHex(&programHeader[i].virtualMemoryAddress, sizeof(programHeader[i].virtualMemoryAddress));
+		printString("  VirtualAddress = 0x");
+		printHex(&programHeader[i].virtualAddress, sizeof(programHeader[i].virtualAddress));
 		printString("\n");
 		for (size_t j = 0; j < pageCount; ++j, memorySeekp += pageSize) {
-			uint64_t virtualMemoryAddress = programHeader[i].virtualMemoryAddress + j * pageSize;
-			virtualMemoryAddress >>= pageSizeShift;
-			uint16_t ptIndex = virtualMemoryAddress & PAGE_INDEX_MASK;
-			virtualMemoryAddress >>= 9;
-			uint16_t pdIndex = virtualMemoryAddress & PAGE_INDEX_MASK;
-			virtualMemoryAddress >>= 9;
-			uint16_t pdptIndex = virtualMemoryAddress & PAGE_INDEX_MASK;
-			virtualMemoryAddress >>= 9;
-			uint16_t pml4tIndex = virtualMemoryAddress & PAGE_INDEX_MASK;
+			uint64_t virtualAddress = programHeader[i].virtualAddress + j * pageSize;
+			virtualAddress >>= pageSizeShift;
+			size_t ptIndex = virtualAddress & virtualPageIndexMask;
+			virtualAddress >>= virtualPageIndexShift;
+			size_t pdIndex = virtualAddress & virtualPageIndexMask;
+			virtualAddress >>= virtualPageIndexShift;
+			size_t pdptIndex = virtualAddress & virtualPageIndexMask;
+			virtualAddress >>= virtualPageIndexShift;
+			size_t pml4tIndex = virtualAddress & virtualPageIndexMask;
 			if (pml4t[pml4tIndex].present) {
-				PDPTE *pdpt = (PDPTE *)((uint32_t)pml4t[pml4tIndex].pageAddress << pageSizeShift);
+				PDPTE *pdpt = (PDPTE *)((uint32_t)pml4t[pml4tIndex].physicalAddress << pageSizeShift);
 				if (pdpt[pdptIndex].present) {
-					PDE *pd = (PDE *)((uint32_t)pdpt[pdptIndex].pageAddress << pageSizeShift);
+					PDE *pd = (PDE *)((uint32_t)pdpt[pdptIndex].physicalAddress << pageSizeShift);
 					if (pd[pdIndex].present) {
-						PTE *pt = (PTE *)((uint32_t)pd[pdIndex].pageAddress << pageSizeShift);
+						PTE *pt = (PTE *)((uint32_t)pd[pdIndex].physicalAddress << pageSizeShift);
 						if (!pt[ptIndex].present) {
 							allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
 						}
@@ -422,7 +421,7 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 	}
 
 	// Jump to kernel. Code beyond this should never get executed.
-	jumpToKernel64(pml4t, infoTableAddress, kernelElfBase, kernelElfSize, newPageStart);
+	jumpToKernel64(pml4t, infoTableAddress, (uint32_t)programHeader, elfHeader->headerEntryCount, newPageStart);
 	printString("Fatal error : Cannot boot!");
 	return 1;
 }

@@ -1,10 +1,10 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
-// 64-bit long mode paging structures
-// Right now in this very early stage of system initialization we just need present,
-// r/w and address fields. Hence all the 4 structures are using a common struct.
+#define PML4_ENTRY_COUNT 512
+
 struct PML4E {
 	uint8_t present : 1;
 	uint8_t readWrite : 1;
@@ -13,7 +13,7 @@ struct PML4E {
 	uint8_t cacheDisable : 1;
 	uint8_t accessed : 1;
 	uint16_t ignore1 : 6;
-	uint64_t pageAddress : 40;
+	uint64_t physicalAddress : 40;
 	uint16_t ignore2 : 11;
 	uint8_t executeDisable : 1;
 } __attribute__((packed));

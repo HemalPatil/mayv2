@@ -4,15 +4,15 @@
 
 // Program Header of 64-bit ELF binaries
 
-#define ELF_Signature 0x464c457f
+#define ELF_SIGNATURE 0x464c457f
 
-#define ELF_Type_x32 1
-#define ELF_Type_x64 2
+#define ELF_TYPE_32 1
+#define ELF_TYPE_64 2
 
-#define ELF_SegmentType_Load 1
+#define ELF_SEGMENT_TYPE_LOAD 1
 
-#define ELF_LittleEndian 1
-#define ELF_BigEndian 2
+#define ELF_LITTLE_ENDIAN 1
+#define ELF_BIG_ENDIAN 2
 
 struct ELF64Header {
 	char signature[4];
@@ -41,7 +41,7 @@ struct ELF64ProgramHeader {
 	uint32_t segmentType;
 	uint32_t segmentFlags;
 	uint64_t fileOffset;
-	uint64_t virtualMemoryAddress;
+	uint64_t virtualAddress;
 	uint64_t ignore;
 	uint64_t segmentSizeInFile;
 	uint64_t segmentSizeInMemory;

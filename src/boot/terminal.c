@@ -14,7 +14,7 @@
 
 static bool vgaMode80x25 = true;
 
-// Our terminal is always in VGA 80x25 16 bit colour mode
+// Terminal is always in VGA 80x25 16 bit colour mode
 // This mode is initialized by the LOADER32
 static char *const videoMemory = (char *)0xb8000;
 static const size_t vgaWidth = 80;
@@ -89,9 +89,10 @@ void terminalSetCursorPosition(size_t x, size_t y) {
 void terminalScroll(size_t lineCount) {
 	// TODO: hide scrolled data somewhere for pgUp and pgDown
 	size_t count = lineCount * vgaWidth * 2;
-	terminalPrintHex(&count, sizeof(count));
 	memcpy(videoMemory, videoMemory + count, videoMemSize - count);
-	terminalClearLine(vgaHeight - 1);
+	for (size_t i = 0; i < lineCount; ++i) {
+		terminalClearLine(vgaHeight - i - 1);
+	}
 }
 
 void terminalPrintChar(char c) {
@@ -99,18 +100,15 @@ void terminalPrintChar(char c) {
 		cursorX = cursorY = 0;
 		return;
 	}
-	if (c == '\n') {
-		goto terminalPrintCharUglySkip;
-	} else {
+	if (c != '\n') {
 		const size_t index = (cursorY * vgaWidth + cursorX) * 2;
 		videoMemory[index] = c;
 		videoMemory[index + 1] = currentTerminalColour;
 		++cursorX;
 	}
-	if (cursorX >= vgaWidth) {
-		terminalPrintCharUglySkip:
-			cursorX = 0;
-			++cursorY;
+	if (cursorX >= vgaWidth || c== '\n') {
+		cursorX = 0;
+		++cursorY;
 	}
 	if (cursorY >= vgaHeight) {
 		terminalScroll(1);
@@ -122,8 +120,8 @@ void terminalPrintChar(char c) {
 
 // Prints a string of given length to the terminal
 void terminalPrintString(const char *str, const size_t length) {
-	// We are printing only length number of characters to
-	// the terminal to avoid buffer overrun which may be caused by no null char at end of string
+	// Print only length number of characters to the terminal to avoid a potential buffer overrun
+	// that can be caused by no null char at end of string
 	if (!isTerminalMode()) {
 		return;
 	}

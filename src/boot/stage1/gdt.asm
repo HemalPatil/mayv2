@@ -89,7 +89,7 @@ start:
 	mov [es:bx + 7], al				; tss base[24..31]
 
 	; The base for cs16 and ds16 protected mode segments need to be changed from LOADER32
-	; since we don't know as of yet where the code is loaded
+	; since the location is not yet known
 ; segment selector 0x20
 	add bx, 8							; 16-bit code segment for jump to real mode back to set videomode
 	mov dword [es:bx], 0xffff			; cs limit[0..15](low), base[0..15](high)
@@ -100,7 +100,7 @@ start:
 	mov dword [es:bx], 0xffff			; ds limit[0..15](low), base[0..15](high)
 	mov dword [es:bx + 4], 0x9200		; ds base[16..23](low8), access flags, lim[16..19], flags, base[24..31](high)
 
-	mov bx, [bp + 8]					; GDT descriptor is in our custom table at offset 12
+	mov bx, [bp + 8]					; GDT descriptor is in InfoTable at offset 12
 	mov es, bx
 	mov bx, [bp + 6]
 	add bx, 12

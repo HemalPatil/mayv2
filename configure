@@ -56,11 +56,14 @@ sed -i "s/\#define L32_IDENTITY_MAP_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define L32_I
 sed -i "s/\#define L32_IDENTITY_MAP_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define L32_IDENTITY_MAP_SIZE $L32_IDENTITY_MAP_SIZE/" src/include/phymemmgmt.h
 
 # Configure kernel lowerhalf origin
-K64_LOWERHALF_ORIGIN=0x80000000
-sed -i "s/K64_LOWERHALF_ORIGIN equ $SED_HEX_OR_NUMBER_REGEX/K64_LOWERHALF_ORIGIN equ $K64_LOWERHALF_ORIGIN/" src/boot/stage2/loader32lib.asm
-sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* lowerhalf origin \*\//\. = $K64_LOWERHALF_ORIGIN; \/\* lowerhalf origin \*\//" src/boot/link.ld
+# Should always fit in first 2GiB - 4GiB of virtual address space to allow jumping into x64 32-bit compatibility mode
+KERNEL_LOWERHALF_ORIGIN=0x80000000
+sed -i "s/KERNEL_LOWERHALF_ORIGIN equ $SED_HEX_OR_NUMBER_REGEX/KERNEL_LOWERHALF_ORIGIN equ $KERNEL_LOWERHALF_ORIGIN/" src/boot/stage2/loader32lib.asm
+sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* lowerhalf origin \*\//\. = $KERNEL_LOWERHALF_ORIGIN; \/\* lowerhalf origin \*\//" src/boot/link.ld
+sed -i "s/\#define KERNEL_LOWERHALF_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define KERNEL_LOWERHALF_ORIGIN $KERNEL_LOWERHALF_ORIGIN/" src/include/kernel.h
 
 # Configure kernel higherhalf origin
-K64_HIGHERHALF_ORIGIN=0xffffffff80000000
-sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* higherhalf origin \*\//\. = $K64_HIGHERHALF_ORIGIN; \/\* higherhalf origin \*\//" src/boot/link.ld
-sed -i "s/\#define K64_HIGHERHALF_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define K64_HIGHERHALF_ORIGIN $K64_HIGHERHALF_ORIGIN/" src/include/kernel.h
+# Should always fit in the last 4 GiB of virtual address space to allow mcmodel=kernel during linking
+KERNEL_HIGHERHALF_ORIGIN=0xffffffff80000000
+sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* higherhalf origin \*\//\. = $KERNEL_HIGHERHALF_ORIGIN; \/\* higherhalf origin \*\//" src/boot/link.ld
+sed -i "s/\#define KERNEL_HIGHERHALF_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define KERNEL_HIGHERHALF_ORIGIN $KERNEL_HIGHERHALF_ORIGIN/" src/include/kernel.h

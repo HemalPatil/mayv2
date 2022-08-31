@@ -3,17 +3,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define ACPI3_MemType_Usable 1
-#define ACPI3_MemType_Reserved 2
-#define ACPI3_MemType_ACPIReclaimable 3
-#define ACPI3_MemType_ACPINVS 4
-#define ACPI3_MemType_Bad 5
-#define ACPI3_MemType_Hole 10
+#define ACPI3_MEM_TYPE_USABLE 1
+#define ACPI3_MEM_TYPE_RESERVED 2
+#define ACPI3_MEM_TYPE_RECLAIMABLE 3
+#define ACPI3_MEM_TYPE_ACPINVS 4
+#define ACPI3_MEM_TYPE_BAD 5
+#define ACPI3_MEM_TYPE_HOLE 10
 
-#define RSDP_Revision_1 0
-#define RSDP_Revision_2_and_above 1
+#define RSDP_REVISION_1 0
+#define RSDP_REVISION_2_AND_ABOVE 1
 
-// ACPI 3.0 entry format (we have used extended entries of 24 bytes)
 struct ACPI3Entry {
 	uint64_t base;
 	uint64_t length;

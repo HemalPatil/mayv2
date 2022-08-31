@@ -46,7 +46,7 @@ bool parseAcpi3() {
 	terminalPrintHex(&rsdp, sizeof(&rsdp));
 	terminalPrintChar('\n');
 
-	if (rsdp->revision <= RSDP_Revision_2_and_above) {
+	if (rsdp->revision <= RSDP_REVISION_2_AND_ABOVE) {
 		terminalPrintString(oldAcpi, strlen(oldAcpi));
 		return false;
 	}

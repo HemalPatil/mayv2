@@ -1,5 +1,6 @@
-#include <phymemmgmt.h>
+#include <commonstrings.h>
 #include <kernel.h>
+#include <phymemmgmt.h>
 #include <string.h>
 #include <terminal.h>
 
@@ -7,8 +8,9 @@ const size_t pageSizeShift = 12;
 const size_t pageSize = 1 << pageSizeShift;
 
 ACPI3Entry* mmap = 0;
-uint64_t pageAddressMasks[PHY_MEM_BUDDY_MAX_ORDER] = {0};
 uint8_t* phyMemBuddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
+size_t phyMemBuddyBitmapSizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
+uint64_t phyMemBuddyMasks[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 size_t phyMemBuddySizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 size_t phyMemPagesAvailableCount = 0;
 size_t phyMemPagesTotalCount = 0;
@@ -16,29 +18,25 @@ uint64_t phyMemTotalSize = 0;
 uint64_t phyMemUsableSize = 0;
 
 const char* const initPhyMemStr = "Initializing physical memory management...\n";
-const char* const initPhyMemCompleteStr = "    Physical memory management initialized\n";
-const char* const phyMemSizeStr = "    Total size ";
-const char* const usableMemSizeStr = "    Usable size ";
+const char* const initPhyMemCompleteStr = "Physical memory management initialized\n\n";
+const char* const phyMemSizeStr = "Total physical memory ";
+const char* const usableMemSizeStr = "Usable physical memory ";
 const char* const mmapBaseStr = "MMAP Base ";
 const char* const countStr = "Number of MMAP entries ";
-const char* const tableHeader = "    Base address         Length               Type\n";
-const char* const phyMemBitmapStr = "    Allocator bitmap location ";
-const char* const phyMemBitmapSizeStr = " size ";
+const char* const tableHeader = "Base address         Length               Type\n";
 const char* const rangeOfUsed = "Range of used physical memory\n";
 const char* const invalidBuddyAccess = "Invalid physical memory buddy bitmap access for address ";
-const char* const buddyStr = " buddy level ";
+const char* const buddyStr = " buddy order ";
+const char* const creatingBuddy = "Creating buddy bitmaps...";
 const char* const buddyAddrStr = "Buddy system levels\n";
 const char* const levelStr = "Level ";
 const char* const availCountStr = "Pages available ";
 
-const uint64_t mib1 = 0x100000;
-
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool initializePhysicalMemory(
-	void* usableMemoryStart,
-	size_t kernelVirtualMemorySize,
-	void* kernelElfBase,
-	size_t kernelElfSize,
+	void* usablePhyMemStart,
+	size_t kernelLowerHalfSize,
+	size_t kernelHigherHalfSize,
 	size_t *phyMemBuddyPagesCount
 ) {
 	terminalPrintString(initPhyMemStr, strlen(initPhyMemStr));
@@ -48,11 +46,13 @@ bool initializePhysicalMemory(
 	initMmap();
 
 	initPhysicalMemorySize();
+	terminalPrintSpaces4();
 	terminalPrintString(phyMemSizeStr, strlen(phyMemSizeStr));
 	terminalPrintHex(&phyMemTotalSize, sizeof(phyMemTotalSize));
 	terminalPrintChar('\n');
 
 	initUsablePhysicalMemorySize();
+	terminalPrintSpaces4();
 	terminalPrintString(usableMemSizeStr, strlen(usableMemSizeStr));
 	terminalPrintHex(&phyMemUsableSize, sizeof(phyMemUsableSize));
 	terminalPrintChar('\n');
@@ -62,115 +62,203 @@ bool initializePhysicalMemory(
 
 	// The memory has important structures in 1st MiB; will be marked used and system
 	// Kernel process must be marked used and system
-	// Unknown number (at least 11) of pages are being occupied by PML4T starting from infoTable->pml4eRoot
-	// Create buddy bitmap right after PML4 entries
-	// Virtual memory manager will take of marking PML4 entries as used during its initialization
+	// Unknown number (at least 11) of pages are being occupied by PML4T starting from infoTable->pml4eRootPhysicalAddress
+	// Create buddy bitmap right after PML4T
+	// Virtual memory manager will take of marking PML4T as used during its initialization
 	*phyMemBuddyPagesCount = 0;
 	uint64_t totalBytesRequired = 0;
-	uint64_t previousLevelBytesRequired = 0;
 	terminalPrintSpaces4();
-	terminalPrintString(buddyAddrStr, strlen(buddyAddrStr));
+	terminalPrintString(creatingBuddy, strlen(creatingBuddy));
 	for (size_t i = 0; i < PHY_MEM_BUDDY_MAX_ORDER; ++i) {
 		phyMemBuddySizes[i] = 1 << i;
-		pageAddressMasks[i] = ~(phyMemBuddySizes[i] * pageSize - 1);
+		phyMemBuddyMasks[i] = ~(phyMemBuddySizes[i] * pageSize - 1);
 		uint64_t currentLevelBitsRequired = phyMemPagesTotalCount / phyMemBuddySizes[i];
 		uint64_t currentLevelBytesRequired = currentLevelBitsRequired / 8;
 		if (currentLevelBitsRequired != currentLevelBytesRequired * 8) {
 			++currentLevelBytesRequired;
 		}
 		totalBytesRequired += currentLevelBytesRequired;
-		phyMemBuddyBitmaps[i] = (i == 0 ? (uint8_t*)usableMemoryStart : phyMemBuddyBitmaps[i - 1]) + previousLevelBytesRequired;
-		previousLevelBytesRequired = currentLevelBytesRequired;
+		phyMemBuddyBitmaps[i] = (i == 0 ? (uint8_t*)usablePhyMemStart : phyMemBuddyBitmaps[i - 1]) + phyMemBuddyBitmapSizes[i - 1];
+		phyMemBuddyBitmapSizes[i] = currentLevelBytesRequired;
 	}
 	*phyMemBuddyPagesCount = totalBytesRequired / pageSize;
 	if (*phyMemBuddyPagesCount * pageSize != totalBytesRequired) {
 		++(*phyMemBuddyPagesCount);
 	}
 	memset(phyMemBuddyBitmaps[0], 0, *phyMemBuddyPagesCount * pageSize);
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
 
-	markPhysicalPages(0, 33, PhyMemEntry_Used);
-
-	// Mark 0x0-0x80000 and 0x90000-1MiB as used
-	markPhysicalPages(0, L32K64_SCRATCH_BASE / pageSize, PhyMemEntry_Used);
+	// Mark 0x0-L32K64_SCRATCH_BASE and (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH)-1MiB as used
+	markPhysicalPages(0, L32K64_SCRATCH_BASE / pageSize, PHY_MEM_USED);
 	markPhysicalPages(
 		(void*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH),
-		(mib1 - (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH)) / pageSize,
-		PhyMemEntry_Used
+		(0x100000 - (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH)) / pageSize,
+		PHY_MEM_USED
 	);
 
-	// Mark kernel process as used
+	// Mark pages used by higher half of kernel process as used
 	// All the kernel sections are aligned at 4KiB in the linker
-	markPhysicalPages((void*)infoTable->kernel64PhyMemBase, kernelVirtualMemorySize / pageSize, PhyMemEntry_Used);
+	markPhysicalPages((void*)(infoTable->kernelPhyMemBase + kernelLowerHalfSize), kernelHigherHalfSize / pageSize, PHY_MEM_USED);
 
-	// Mark kernel ELF as used for now
-	// It will be freed during virtual memory initialization
-	markPhysicalPages(kernelElfBase, kernelElfSize / pageSize, PhyMemEntry_Used);
-
-	// Mark the phyMemBuddyBitmaps itself as used
-	markPhysicalPages(phyMemBuddyBitmaps[0], *phyMemBuddyPagesCount, PhyMemEntry_Used);
+	// Mark the phyMemBuddyBitmaps themselves as used
+	markPhysicalPages(phyMemBuddyBitmaps[0], *phyMemBuddyPagesCount, PHY_MEM_USED);
 
 	// Mark all the unusable areas in MMAP as used
 	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
-		if (mmap[i].regionType == ACPI3_MemType_Usable) {
+		if (mmap[i].regionType == ACPI3_MEM_TYPE_USABLE) {
 			continue;
 		}
 		size_t unusuableCount = mmap[i].length / pageSize;
 		if (mmap[i].length != unusuableCount * pageSize) {
 			++unusuableCount;
 		}
-		markPhysicalPages((void*) mmap[i].base, unusuableCount, PhyMemEntry_Used);
+		markPhysicalPages((void*) mmap[i].base, unusuableCount, PHY_MEM_USED);
 	}
 
 	terminalPrintString(initPhyMemCompleteStr, strlen(initPhyMemCompleteStr));
 	return true;
 }
 
-PhyMemBuddyBitmapIndex getPhysicalPageBuddyBitmapIndex(void* address, size_t buddyLevel) {
+// Returns the closest size match physical buddy
+// If wastage in a buddy is more than 25% of its size then returns a smaller size buddy
+// Actual number of pages assigned is returned in allocatedCount
+// Returns INVALID_ADDRESS and allocatedCount = 0 if request count is greater than currently available pages
+PhysicalPageRequestResult requestPhysicalPages(size_t count, uint8_t flags) {
+	PhysicalPageRequestResult result;
+	result.address = INVALID_ADDRESS;
+	result.allocatedCount = 0;
+	// FIXME: handle requests for sizes > 2MiB i.e. 512 count
+	// FIXME: handle contiguous allocation
+	if (
+		count == 0 ||
+		count > phyMemPagesAvailableCount ||
+		count > phyMemBuddySizes[PHY_MEM_BUDDY_MAX_ORDER - 1] ||
+		flags & PHY_MEM_ALLOCATE_CONTIGUOUS
+	) {
+		return result;
+	}
+	size_t closestLevel;
+	for (closestLevel = 0; closestLevel < PHY_MEM_BUDDY_MAX_ORDER; ++closestLevel) {
+		if (count <= phyMemBuddySizes[closestLevel]) {
+			break;
+		}
+	}
+	bool perfectFit = count == phyMemBuddySizes[closestLevel];
+	size_t byte, bit;
+	uint8_t currentBitmap;
+	uint64_t addr;
+	bool found;
+	if (!perfectFit) {
+		// Page requests of count == 1 || count == 2 will have perfect fits
+		// So it's guaranteed that closestLevel is >= 2 here
+		// If remaining count is < phyMemBuddySizes[closestLevel - 2], i.e. count < 0.75 * phyMemBuddySizes[closestLevel]
+		// find and assign a buddy of closest fit less than count or go down to lower levels and return address
+		// otherwise find and assign a buddy from closestLevel or go down to lower levels
+		size_t remaining = count - phyMemBuddySizes[closestLevel - 1];
+		if (remaining < phyMemBuddySizes[closestLevel - 2]) {
+			--closestLevel;
+		}
+	}
+	found = false;
+	for (byte = 0; byte < phyMemBuddyBitmapSizes[closestLevel]; ++byte) {
+		if (phyMemBuddyBitmaps[closestLevel][byte] != 0xff) {
+			found = true;
+			break;
+		}
+	}
+	if (found) {
+		currentBitmap = phyMemBuddyBitmaps[closestLevel][byte];
+		for (bit = 0; bit < 8; ++bit) {
+			if (!(currentBitmap & 1)) {
+				break;
+			}
+			currentBitmap >>= 1;
+		}
+		addr = (bit + byte * 8) << (pageSizeShift + closestLevel);
+		markPhysicalPages((void*) addr, phyMemBuddySizes[closestLevel], PHY_MEM_USED);
+		result.allocatedCount = phyMemBuddySizes[closestLevel];
+		result.address = (void*) addr;
+		return result;
+	} else {
+		// Page requests of count == 1 will have perfect fits
+		// So it's guaranteed that closestLevel is >= 1 here
+		// Go down to lower levels, find the biggest possible buddy
+		// that can be assigned and return its address
+		for (int i = closestLevel - 1; i >= 0; --i) {
+			found = false;
+			for (byte = 0; byte < phyMemBuddyBitmapSizes[i]; ++byte) {
+				if (phyMemBuddyBitmaps[i][byte] != 0xff) {
+					found = true;
+					break;
+				}
+			}
+			if (found) {
+				currentBitmap = phyMemBuddyBitmaps[i][byte];
+				for (bit = 0; bit < 8; ++bit) {
+					if (!(currentBitmap & 1)) {
+						break;
+					}
+					currentBitmap >>= 1;
+				}
+				addr = (bit + byte * 8) << (pageSizeShift + i);
+				markPhysicalPages((void*) addr, phyMemBuddySizes[i], PHY_MEM_USED);
+				result.allocatedCount = phyMemBuddySizes[i];
+				result.address = (void*) addr;
+				return result;
+			}
+		}
+	}
+	return result;
+}
+
+// Returns the byte and bit index of a physical buddy
+// Returns SIZE_MAX in both byte and bit if the address or order is out of bounds
+PhyMemBuddyBitmapIndex getPhysicalBuddyBitmapIndex(void* address, size_t order) {
 	uint64_t addr = (uint64_t) address;
 	PhyMemBuddyBitmapIndex index;
-	if (addr >= phyMemPagesTotalCount * pageSize || buddyLevel >= PHY_MEM_BUDDY_MAX_ORDER) {
-		index.byte = index.bit = 0xffffffff;
-		terminalPrintString(invalidBuddyAccess, strlen(invalidBuddyAccess));
-		terminalPrintHex(&addr, sizeof(addr));
-		terminalPrintString(buddyStr, strlen(buddyStr));
-		terminalPrintHex(&buddyLevel, sizeof(buddyLevel));
-		terminalPrintChar('\n');
+	if (addr >= phyMemPagesTotalCount * pageSize || order >= PHY_MEM_BUDDY_MAX_ORDER) {
+		index.byte = index.bit = SIZE_MAX;
 		return index;
 	}
-	addr >>= (pageSizeShift + buddyLevel);
+	addr >>= (pageSizeShift + order);
 	index.byte = addr / 8;
 	index.bit = addr - index.byte * 8;
 	return index;
 }
 
-// Marks physical pages as used in the physical memory manager
-void markPhysicalPages(void* address, size_t pageCount, uint8_t type) {
+// Marks physical pages as used or free in the physical memory manager
+void markPhysicalPages(void* address, size_t count, uint8_t type) {
+	if (count == 0) {
+		return;
+	}
+
 	uint64_t addr = (uint64_t) address;
 	if (addr >= phyMemPagesTotalCount * pageSize) {
 		return;
 	}
 
-	// Set all the pages at buddy level 0 first and then build up from there
-	addr &= pageAddressMasks[0];
+	// Set all the pages at buddy order 0 first and then build up from there
+	addr &= phyMemBuddyMasks[0];
 	// TODO: performance can be improved by working in groups of 8 pages
-	for (size_t i = 0; i < pageCount; ++i) {
-		PhyMemBuddyBitmapIndex index = getPhysicalPageBuddyBitmapIndex((void*)(addr + i * pageSize), 0);
+	for (size_t i = 0; i < count; ++i) {
+		PhyMemBuddyBitmapIndex index = getPhysicalBuddyBitmapIndex((void*)(addr + i * pageSize), 0);
 		bool currentUsed = phyMemBuddyBitmaps[0][index.byte] & (1 << index.bit);
-		if (type == PhyMemEntry_Used) {
+		if (type == PHY_MEM_USED) {
 			phyMemBuddyBitmaps[0][index.byte] |= (1 << index.bit);
 			if (!currentUsed) {
 				--phyMemPagesAvailableCount;
 			}
-		} else if (type == PhyMemEntry_Free) {
-			phyMemBuddyBitmaps[0][index.byte] &= ~(1 << index.bit);
+		} else if (type == PHY_MEM_FREE) {
+			phyMemBuddyBitmaps[0][index.byte] &= ~((uint8_t)1 << index.bit);
 			if (currentUsed) {
 				++phyMemPagesAvailableCount;
 			}
 		}
 	}
 
-	// FIXME: build on upper levels of buddy
-	size_t levelCount = pageCount;
+	// Sync higher order buddies
+	size_t levelCount = count;
 	for (size_t i = 1; i < PHY_MEM_BUDDY_MAX_ORDER; ++i) {
 		if (levelCount == 0) {
 			levelCount = 2;
@@ -178,16 +266,14 @@ void markPhysicalPages(void* address, size_t pageCount, uint8_t type) {
 			++levelCount;
 		}
 		levelCount >>= 1;
-		// terminalPrintDecimal(levelCount);
 		for (size_t j = 0; j < levelCount; ++j) {
-			uint64_t currentLevelAddr = (addr & pageAddressMasks[i]) + j * phyMemBuddySizes[i] * pageSize;
-			bool bothBuddiesFree = arePhysicalBuddiesOfType((void*)currentLevelAddr, i - 1, 2, PhyMemEntry_Free);
+			uint64_t currentLevelAddr = (addr & phyMemBuddyMasks[i]) + j * phyMemBuddySizes[i] * pageSize;
+			bool bothBuddiesFree = arePhysicalBuddiesOfType((void*)currentLevelAddr, i - 1, 2, PHY_MEM_FREE);
 			if (!bothBuddiesFree) {
-				PhyMemBuddyBitmapIndex index = getPhysicalPageBuddyBitmapIndex((void*)currentLevelAddr, i);
+				PhyMemBuddyBitmapIndex index = getPhysicalBuddyBitmapIndex((void*)currentLevelAddr, i);
 				phyMemBuddyBitmaps[i][index.byte] |= (1 << index.bit);
 			}
 		}
-		// terminalPrintChar('\n');
 	}
 }
 
@@ -213,8 +299,8 @@ void listMmapEntries() {
 	}
 }
 
-// Debug helper to list all physical pages marked as used
-void listUsedPhysicalBuddies(size_t buddyLevel) {
+// Debug helper to list all physical buddies at given order marked as used
+void listUsedPhysicalBuddies(size_t order) {
 	terminalPrintString(rangeOfUsed, strlen(rangeOfUsed));
 	terminalPrintSpaces4();
 	terminalPrintString(availCountStr, strlen(availCountStr));
@@ -222,8 +308,8 @@ void listUsedPhysicalBuddies(size_t buddyLevel) {
 	terminalPrintChar('\n');
 	uint64_t lastUsed = 0, length = 0;
 	bool ongoingAvailable = false;
-	for (size_t i = 0; i < phyMemTotalSize; i += phyMemBuddySizes[buddyLevel] * pageSize) {
-		if (arePhysicalBuddiesOfType((void*)i, buddyLevel, 1, PhyMemEntry_Free)) {
+	for (uint64_t i = 0; i < phyMemPagesTotalCount * pageSize; i += phyMemBuddySizes[order] * pageSize) {
+		if (arePhysicalBuddiesOfType((void*)i, order, 1, PHY_MEM_FREE)) {
 			if (ongoingAvailable) {
 				continue;
 			} else {
@@ -236,7 +322,7 @@ void listUsedPhysicalBuddies(size_t buddyLevel) {
 				ongoingAvailable = true;
 			}
 		} else {
-			length += phyMemBuddySizes[buddyLevel] * pageSize;
+			length += phyMemBuddySizes[order] * pageSize;
 			ongoingAvailable = false;
 		}
 	}
@@ -249,19 +335,24 @@ void listUsedPhysicalBuddies(size_t buddyLevel) {
 	}
 }
 
-// Returns true if all the physical pages starting at given address are of given type, false if even one page is different
-bool arePhysicalBuddiesOfType(void* address, size_t buddyLevel, size_t buddyCount, uint8_t type) {
+// Returns true if all the physical buddies starting at a given address and order
+// are of given type, false if even one buddy is different
+bool arePhysicalBuddiesOfType(void* address, size_t order, size_t count, uint8_t type) {
+	if (count == 0) {
+		return true;
+	}
+
 	uint64_t addr = (uint64_t) address;
 	if (addr >= phyMemPagesTotalCount * pageSize) {
 		return false;
 	}
-	addr &= pageAddressMasks[buddyLevel];
-	for (size_t i = 0; i < buddyCount; ++i) {
-		PhyMemBuddyBitmapIndex index = getPhysicalPageBuddyBitmapIndex(
-			(void*)(addr + i * phyMemBuddySizes[buddyLevel] * pageSize),
-			buddyLevel
+	addr &= phyMemBuddyMasks[order];
+	for (size_t i = 0; i < count; ++i) {
+		PhyMemBuddyBitmapIndex index = getPhysicalBuddyBitmapIndex(
+			(void*)(addr + i * phyMemBuddySizes[order] * pageSize),
+			order
 		);
-		if ((phyMemBuddyBitmaps[buddyLevel][index.byte] & (1 << index.bit) ? PhyMemEntry_Used : PhyMemEntry_Free) != type) {
+		if ((phyMemBuddyBitmaps[order][index.byte] & (1 << index.bit) ? PHY_MEM_USED : PHY_MEM_FREE) != type) {
 			return false;
 		}
 	}
@@ -281,14 +372,14 @@ void initPhysicalMemorySize() {
 	}
 }
 
-// Initializes usable (conventional ACPI3_MemType_Usable) physical memory size
+// Initializes usable (conventional ACPI3_MEM_TYPE_USABLE) physical memory size
 void initUsablePhysicalMemorySize() {
 	phyMemUsableSize = 0;
 	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
-		if (mmap[i].regionType == ACPI3_MemType_Usable) {
+		if (mmap[i].regionType == ACPI3_MEM_TYPE_USABLE) {
 			phyMemUsableSize += mmap[i].length;
 		}
 	}
 	// Make it 4KiB aligned
-	phyMemUsableSize = (phyMemUsableSize >> 12) * pageSize;
+	phyMemUsableSize = (phyMemUsableSize >> pageSizeShift) * pageSize;
 }

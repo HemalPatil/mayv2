@@ -17,8 +17,8 @@ section .lowerhalf
 ; rdi will have the address of the info table. DO NOT trash it.
 ; Execution starts here. 
 ; 32-bit code of the loader cannot jump to 64-bit address directly.
-; Hence, we first jump to 0x80000000 and then jump to 0xffffffff80000000
-; Currently we are in 32-bit compatibility mode since GDT64 is not loaded
+; Hence, first jump to 0x80000000 and then jump to 0xffffffff80000000
+; Currently CPU is in 32-bit compatibility mode since GDT64 is not loaded
 kernelStart:
 	mov ax, 0x10		; 64-bit data segment
 	mov ds, ax
@@ -41,9 +41,9 @@ section .text
 higherHalfStart:
 	mov rax, 0x00000000ffffffff
 	and rdi, rax	; rdi contains info table address, pass it as 1st parameter to kernelMain
-	and rsi, rax	; rsi contains kernel ELF base, 2nd parameter
-	and rdx, rax	; rdx contains kernel ELF size, 3rd parameter
-	and rcx, rax	; rcx contains usable memory address right after PML4 entries, 4th parameter
+	and rsi, rax	; rsi contains kernel ELF program header, 2nd parameter
+	and rdx, rax	; rdx contains kernel ELF header entry count, 3rd parameter
+	and rcx, rax	; rcx contains usable physical memory address right after PML4 entries, 4th parameter
 	call kernelMain
 	; code beyond this should never get executed
 kernelEnd:
