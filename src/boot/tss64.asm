@@ -26,16 +26,17 @@ iomapbase	dw 0
 TSS_END:
 
 section .rodata
-	tssLoading db 10, 'Loading TSS...', 10, 0
-	tssLoaded db 'TSS loaded', 10, 0
+	tssLoading db 'Loading TSS...', 0
 
 section .text
+	extern doneStr
 	extern GDT_START
+	extern terminalPrintChar
 	extern terminalPrintString
 	global setupTss64
 setupTss64:
 	mov rdi, tssLoading
-	mov rsi, 16
+	mov rsi, 14
 	call terminalPrintString
 	mov rdx, GDT_START
 	add rdx, 0x1a	; point to TSS descriptor byte 2
@@ -49,7 +50,9 @@ setupTss64:
 	mov [rdx + 6], eax	; move base[32..63] of TSS
 	mov ax, 0x18
 	ltr ax
-	mov rdi, tssLoaded
-	mov rsi, 11
+	mov rdi, [doneStr]
+	mov rsi, 4
 	call terminalPrintString
+	mov rdi, 10
+	call terminalPrintChar
 	ret

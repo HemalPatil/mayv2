@@ -66,11 +66,11 @@ void kernelMain(
 	if (!initializeDynamicMemory()) {
 		kernelPanic();
 	}
-	return;
 
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();
 	setupIdt64();
+	return;
 	
 	if (!parseAcpi3()) {
 		kernelPanic();

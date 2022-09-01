@@ -19,8 +19,9 @@ uint64_t phyMemUsableSize = 0;
 
 const char* const initPhyMemStr = "Initializing physical memory management...\n";
 const char* const initPhyMemCompleteStr = "Physical memory management initialized\n\n";
-const char* const phyMemSizeStr = "Total physical memory ";
-const char* const usableMemSizeStr = "Usable physical memory ";
+const char* const phyMemStr = "physical memory ";
+const char* const totalStr = "Total ";
+const char* const usableStr = "Usable ";
 const char* const mmapBaseStr = "MMAP Base ";
 const char* const countStr = "Number of MMAP entries ";
 const char* const tableHeader = "Base address         Length               Type\n";
@@ -47,13 +48,15 @@ bool initializePhysicalMemory(
 
 	initPhysicalMemorySize();
 	terminalPrintSpaces4();
-	terminalPrintString(phyMemSizeStr, strlen(phyMemSizeStr));
+	terminalPrintString(totalStr, strlen(totalStr));
+	terminalPrintString(phyMemStr, strlen(phyMemStr));
 	terminalPrintHex(&phyMemTotalSize, sizeof(phyMemTotalSize));
 	terminalPrintChar('\n');
 
 	initUsablePhysicalMemorySize();
 	terminalPrintSpaces4();
-	terminalPrintString(usableMemSizeStr, strlen(usableMemSizeStr));
+	terminalPrintString(usableStr, strlen(usableStr));
+	terminalPrintString(phyMemStr, strlen(phyMemStr));
 	terminalPrintHex(&phyMemUsableSize, sizeof(phyMemUsableSize));
 	terminalPrintChar('\n');
 

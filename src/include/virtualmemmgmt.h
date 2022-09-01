@@ -35,6 +35,7 @@ extern const uint64_t virtualPageIndexMask;
 extern const size_t virtualPageIndexShift;
 
 extern PML4CrawlResult crawlPageTables(void *virtualAddress);
+extern void displayCrawlPageTablesResult(void *virtualAddress);
 extern bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount);
 extern bool isCanonicalVirtualAddress(void* address);
 extern bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count);

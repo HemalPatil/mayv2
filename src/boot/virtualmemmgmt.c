@@ -26,9 +26,12 @@ const char* const maxVirAddrMismatch = "Max virtual address bits mismatch. Expec
 const char* const gotStr = "] got [";
 const char* const entryCreationFailed = "Failed to create PML4 entry at level ";
 const char* const forAddress = " for address ";
-const char* const removingId = "Removing identity mapping of first ";
+const char* const removingId = "Removing PML4 identity mapping of first ";
 const char* const mibs = "MiBs...";
 const char* const reservingHeap = "Reserving memory for dynamic memory manager...";
+const char* const pageTablesStr = "Page tables of ";
+const char* const isCanonicalStr = "isCanonical = ";
+const char* const crawlTableHeader = "Level MappedTables         Tables               Indexes\n";
 
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
@@ -120,7 +123,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
-	// TODO: Reserve heapSize amount memory for dynamic memory manager
+	// Reserve heapSize amount memory for dynamic memory manager
 	// Reserve in batches of 2MiBs because physical memory manager
 	// currently doesn't support requesting more than 2MiB at once
 	terminalPrintSpaces4();
@@ -313,4 +316,27 @@ PML4CrawlResult crawlPageTables(void *virtualAddress) {
 
 	getPageTableFromPml4IndexesReturn:
 		return result;
+}
+
+// Debug helper to display result of crawlPageTables for a given virtual address
+void displayCrawlPageTablesResult(void *virtualAddress) {
+	terminalPrintString(pageTablesStr, strlen(pageTablesStr));
+	terminalPrintHex(&virtualAddress, sizeof(virtualAddress));
+	terminalPrintChar('\n');
+	terminalPrintString(isCanonicalStr, strlen(isCanonicalStr));
+	PML4CrawlResult result = crawlPageTables(virtualAddress);
+	terminalPrintString(result.isCanonical ? trueStr : falseStr, strlen(result.isCanonical ? trueStr : falseStr));
+	terminalPrintChar('\n');
+	terminalPrintString(crawlTableHeader, strlen(crawlTableHeader));
+	for (int i = 4; i >= 0; --i) {
+		terminalPrintDecimal(i);
+		terminalPrintSpaces4();
+		terminalPrintChar(' ');
+		terminalPrintHex(&result.mappedTables[i], sizeof(result.mappedTables[i]));
+		terminalPrintChar(' ');
+		terminalPrintHex(&result.tables[i], sizeof(result.tables[i]));
+		terminalPrintChar(' ');
+		terminalPrintHex(&result.indexes[i], sizeof(result.indexes[i]));
+		terminalPrintChar('\n');
+	}
 }
