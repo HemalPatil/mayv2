@@ -24,7 +24,8 @@ const char* const totalStr = "Total ";
 const char* const usableStr = "Usable ";
 const char* const mmapBaseStr = "MMAP Base ";
 const char* const countStr = "Number of MMAP entries ";
-const char* const tableHeader = "Base address         Length               Type\n";
+const char* const mmapTableHeader = "Base address         Length               Type\n";
+const char* const phyMemTableHeader = "Base                 Length\n";
 const char* const rangeOfUsed = "Range of used physical memory\n";
 const char* const invalidBuddyAccess = "Invalid physical memory buddy bitmap access for address ";
 const char* const buddyStr = " buddy order ";
@@ -290,7 +291,7 @@ void listMmapEntries() {
 	terminalPrintString(countStr, strlen(countStr));
 	terminalPrintHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
 	terminalPrintChar('\n');
-	terminalPrintString(tableHeader, strlen(tableHeader));
+	terminalPrintString(mmapTableHeader, strlen(mmapTableHeader));
 	for (i = 0; i < infoTable->mmapEntryCount; ++i) {
 		terminalPrintSpaces4();
 		terminalPrintHex(&(mmap[i].base), sizeof(mmap->base));
@@ -304,11 +305,16 @@ void listMmapEntries() {
 
 // Debug helper to list all physical buddies at given order marked as used
 void listUsedPhysicalBuddies(size_t order) {
+	if (order >= PHY_MEM_BUDDY_MAX_ORDER) {
+		return;
+	}
 	terminalPrintString(rangeOfUsed, strlen(rangeOfUsed));
 	terminalPrintSpaces4();
 	terminalPrintString(availCountStr, strlen(availCountStr));
 	terminalPrintHex(&phyMemPagesAvailableCount, sizeof(phyMemPagesAvailableCount));
 	terminalPrintChar('\n');
+	terminalPrintSpaces4();
+	terminalPrintString(phyMemTableHeader, strlen(phyMemTableHeader));
 	uint64_t lastUsed = 0, length = 0;
 	bool ongoingAvailable = false;
 	for (uint64_t i = 0; i < phyMemPagesTotalCount * pageSize; i += phyMemBuddySizes[order] * pageSize) {
@@ -319,6 +325,7 @@ void listUsedPhysicalBuddies(size_t order) {
 				lastUsed = i - length;
 				terminalPrintSpaces4();
 				terminalPrintHex(&lastUsed, sizeof(lastUsed));
+				terminalPrintChar(' ');
 				terminalPrintHex(&length, sizeof(length));
 				terminalPrintChar('\n');
 				length = 0;
