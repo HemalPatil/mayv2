@@ -126,16 +126,20 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
-	// Reserve heapSize amount memory for dynamic memory manager
+	// Reserve initialHeapSize amount of memory for dynamic memory manager
 	// Reserve in batches of 2MiBs because physical memory manager
 	// currently doesn't support requesting more than 2MiB at once
 	terminalPrintSpaces4();
 	terminalPrintString(reservingHeap, strlen(reservingHeap));
-	heapBase = usableKernelSpaceStart;
+	heapRegionsList = usableKernelSpaceStart;
 	PhysicalPageRequestResult requestResult;
-	for (uint64_t i = 0; i < heapSize; i += 2 * mib1, usableKernelSpaceStart = (void*)((uint64_t)usableKernelSpaceStart + 2 * mib1)) {
+	for (uint64_t i = 0; i < initialHeapSize; i += 2 * mib1, usableKernelSpaceStart = (void*)((uint64_t)usableKernelSpaceStart + 2 * mib1)) {
 		requestResult = requestPhysicalPages(2 * mib1 / pageSize, 0);
-		if (!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount)) {
+		if (
+			requestResult.address == INVALID_ADDRESS ||
+			requestResult.allocatedCount != (2 * mib1 / pageSize) ||
+			!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount
+		)) {
 			terminalPrintString(failedStr, strlen(failedStr));
 			terminalPrintChar('\n');
 			return false;
