@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define INVALID_ADDRESS (void*) 0x8000000000000000
+#define INVALID_ADDRESS ((void*) 0x8000000000000000)
 #define KERNEL_LOWERHALF_ORIGIN 0x80000000
 #define KERNEL_HIGHERHALF_ORIGIN 0xffffffff80000000
 #define L32K64_SCRATCH_BASE 0x80000

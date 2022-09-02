@@ -21,8 +21,8 @@ InfoTable *infoTable;
 // First C-function to be called
 void kernelMain(
 	InfoTable *infoTableAddress,
-	ELF64ProgramHeader* programHeader,
-	size_t headerEntryCount,
+	size_t lowerHalfSize,
+	size_t higherHalfSize,
 	void* usablePhyMemStart
 ) {
 	infoTable = infoTableAddress;
@@ -32,24 +32,6 @@ void kernelMain(
 	terminalClearScreen();
 	terminalSetCursorPosition(0, 0);
 	terminalPrintString(kernelLoadedStr, strlen(kernelLoadedStr));
-
-	// Parse the ELF header and find the size of kernel in lower and higher half
-	size_t higherHalfSize = 0;
-	size_t lowerHalfSize = 0;
-	for (uint16_t i = 0; i < headerEntryCount; ++i) {
-		if (programHeader[i].segmentType != ELF_SEGMENT_TYPE_LOAD) {
-			continue;
-		}
-		size_t pageCount = programHeader[i].segmentSizeInMemory / pageSize;
-		if (programHeader[i].segmentSizeInMemory != pageCount * pageSize) {
-			++pageCount;
-		}
-		if (programHeader[i].virtualAddress >= KERNEL_HIGHERHALF_ORIGIN) {
-			higherHalfSize += pageCount * pageSize;
-		} else {
-			lowerHalfSize += pageCount * pageSize;
-		}
-	}
 
 	// Initialize physical memory
 	size_t phyMemBuddyPagesCount = 0;

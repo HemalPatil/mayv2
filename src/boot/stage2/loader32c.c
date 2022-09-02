@@ -6,11 +6,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define ISO_SECTOR_SIZE 2048
+#define KERNEL_HIGHERHALF_ORIGIN 0xffffffff80000000
 #define L32_IDENTITY_MAP_SIZE 32
 #define L32K64_SCRATCH_BASE 0x80000
 #define L32K64_SCRATCH_LENGTH 0x10000
 #define LOADER32_ORIGIN 0x00100000
-#define ISO_SECTOR_SIZE 2048
 #define PML4_PAGE_PRESENT_READ_WRITE 3
 
 // Disk Address Packet for extended disk operations
@@ -48,8 +49,8 @@ extern void loadKernel64ElfSectors();
 extern void jumpToKernel64(
 	const PML4E* const pml4t,
 	const InfoTable* const table,
-	const uint32_t programHeader,
-	const uint32_t kernelElfSize,
+	const uint32_t lowerHalfSize,
+	const uint32_t higherHalfSize,
 	const uint32_t usablePhyMemStart
 );
 extern uint8_t getLinearAddressLimit();
@@ -344,6 +345,7 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 	PML4E *pml4t = (PML4E *)(uint32_t)infoTable->pml4eRootPhysicalAddress;
 	// New pages that need to be made should start from this address and add pageSize to it.
 	uint32_t newPageStart = infoTable->pml4eRootPhysicalAddress + pml4Count * pageSize;
+	uint32_t lowerHalfSize = 0, higherHalfSize = 0;
 	elfHeader = (ELF64Header*)kernelElfBase;
 	programHeader = (ELF64ProgramHeader*)(kernelElfBase + (uint32_t)elfHeader->headerTablePosition);
 	for (uint16_t i = 0; i < elfHeader->headerEntryCount; ++i) {
@@ -358,12 +360,17 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 		memset((void *)memorySeekp, 0, sizeInMemory);
 		memcpy((void *)(kernelElfBase + (uint32_t)programHeader[i].fileOffset), (void *)memorySeekp, (uint32_t)programHeader[i].segmentSizeInFile);
 
-		// Kernel64 is linked at higher half addresses.
+		// Kernel is linked at higher half addresses.
 		// Right now it is last 2GiB of 64-bit address space, may change if linker script is changed
 		// Map this section in the paging structure
 		size_t pageCount = sizeInMemory / pageSize;
 		if (sizeInMemory - pageCount * pageSize) {
 			++pageCount;
+		}
+		if (programHeader[i].virtualAddress < (uint64_t)KERNEL_HIGHERHALF_ORIGIN) {
+			lowerHalfSize += pageCount * pageSize;
+		} else {
+			higherHalfSize += pageCount * pageSize;
 		}
 		printString("  PageCount = 0x");
 		printHex(&pageCount, sizeof(pageCount));
@@ -421,7 +428,7 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 	}
 
 	// Jump to kernel. Code beyond this should never get executed.
-	jumpToKernel64(pml4t, infoTableAddress, (uint32_t)programHeader, elfHeader->headerEntryCount, newPageStart);
+	jumpToKernel64(pml4t, infoTableAddress, lowerHalfSize, higherHalfSize, newPageStart);
 	printString("Fatal error : Cannot boot!");
 	return 1;
 }
