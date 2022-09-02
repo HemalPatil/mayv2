@@ -9,12 +9,8 @@
 #include <tss64.h>
 #include <virtualmemmgmt.h>
 
-const char* const infoTableStr = "InfoTable located at ";
-const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
-const char* const kernelPanicString = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
-const char* const lowerHalfStr = "Kernel lower half size ";
-const char* const usableMem = "Usable physical memory start ";
-const char* const higherHalfStr = "Kernel higher half size ";
+static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
+static const char* const kernelPanicString = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
 
 InfoTable *infoTable;
 

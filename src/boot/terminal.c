@@ -26,9 +26,8 @@ static uint8_t currentBgColour = DEFAULT_TERMINAL_COLOUR >> 4;
 static uint8_t currentTerminalColour = DEFAULT_TERMINAL_COLOUR;
 static uint16_t cursorPort = 0x3d4;
 static uint16_t cursorPortIndex = 0x3d5;
-
-const char* const hexPalette = "0123456789ABCDEF";
-const char* const spaces4 = "    ";
+static const char* const hexPalette = "0123456789ABCDEF";
+static const char* const spaces4 = "    ";
 
 // Check if video mode is 80x25 VGA
 bool isTerminalMode() {

@@ -17,22 +17,18 @@ size_t phyMemPagesTotalCount = 0;
 uint64_t phyMemTotalSize = 0;
 uint64_t phyMemUsableSize = 0;
 
-const char* const initPhyMemStr = "Initializing physical memory management...\n";
-const char* const initPhyMemCompleteStr = "Physical memory management initialized\n\n";
-const char* const phyMemStr = "physical memory ";
-const char* const totalStr = "Total ";
-const char* const usableStr = "Usable ";
-const char* const mmapBaseStr = "MMAP Base ";
-const char* const countStr = "Number of MMAP entries ";
-const char* const mmapTableHeader = "Base address         Length               Type\n";
-const char* const phyMemTableHeader = "Base                 Length\n";
-const char* const rangeOfUsed = "Range of used physical memory\n";
-const char* const invalidBuddyAccess = "Invalid physical memory buddy bitmap access for address ";
-const char* const buddyStr = " buddy order ";
-const char* const creatingBuddy = "Creating buddy bitmaps...";
-const char* const buddyAddrStr = "Buddy system levels\n";
-const char* const levelStr = "Level ";
-const char* const availCountStr = "Pages available ";
+static const char* const initPhyMemStr = "Initializing physical memory management...\n";
+static const char* const initPhyMemCompleteStr = "Physical memory management initialized\n\n";
+static const char* const phyMemStr = "physical memory ";
+static const char* const totalStr = "Total ";
+static const char* const usableStr = "Usable ";
+static const char* const mmapBaseStr = "MMAP Base ";
+static const char* const countStr = "Number of MMAP entries ";
+static const char* const mmapTableHeader = "Base address         Length               Type\n";
+static const char* const phyMemTableHeader = "Base                 Length\n";
+static const char* const rangeOfUsed = "Range of used physical memory\n";
+static const char* const creatingBuddy = "Creating buddy bitmaps...";
+static const char* const availCountStr = "Pages available ";
 
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool initializePhysicalMemory(

@@ -4,19 +4,19 @@
 
 RSDPDescriptor2 *rsdp = 0;
 
-const char* const parsingAcpi = "\nParsing ACPI3...\n";
-const char* const searchingRsdp = "Searching for RSDP...\n";
-const char* const acpiParseFailed = "Could not find ACPI3 tables\n";
-const char* const acpiFound = "RSDP = ";
-const char* const xsdtSignature = "XSDT";
-const char* const verifyingChecksum = "Verifying RSD checksum...\n";
-const char* const checksumStr = "Checksum ";
-const char* const ok = "ok\n";
-const char* const not = "not ";
-const char* const verifyingXsdtSig = "Verifying XSDT signature...\nSignature ";
-const char* const rsdtAddress = "RSDT Address = ";
-const char* const xsdtAddress = "XSDT Address = ";
-const char* const oldAcpi = " ACPI version found is older than ACPI3\n";
+static const char* const parsingAcpi = "\nParsing ACPI3...\n";
+static const char* const searchingRsdp = "Searching for RSDP...\n";
+static const char* const acpiParseFailed = "Could not find ACPI3 tables\n";
+static const char* const acpiFound = "RSDP = ";
+static const char* const xsdtSignature = "XSDT";
+static const char* const verifyingChecksum = "Verifying RSD checksum...\n";
+static const char* const checksumStr = "Checksum ";
+static const char* const ok = "ok\n";
+static const char* const not = "not ";
+static const char* const verifyingXsdtSig = "Verifying XSDT signature...\nSignature ";
+static const char* const rsdtAddress = "RSDT Address = ";
+static const char* const xsdtAddress = "XSDT Address = ";
+static const char* const oldAcpi = " ACPI version found is older than ACPI3\n";
 
 RSDPDescriptor2* searchRsdp() {
 	// Put the magic string 'RSD PTR ' in a 64-bit number and search

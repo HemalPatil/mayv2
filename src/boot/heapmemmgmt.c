@@ -17,12 +17,12 @@ HeapHeader *latestHeapSearched = INVALID_ADDRESS;
 // must always be a multiple of 2MiB due to current limitations in physical memory manager
 uint64_t initialHeapSize = 0x400000;
 
-const char* const initHeapStr = "Initializing dynamic memory management...\n";
-const char* const initHeapCompleteStr = "Dynamic memory management initialized\n\n";
-const char* const creatingHeapHeaderStr = "Creating heap headers...";
-const char* const movingVirMemLists = "Moving virtual address space lists to heap memory...";
-const char* const listHeapStr = "List of all kernel heap regions\n";
-const char* const heapHeaderStr = "Heap start           Size                 Count Remaining\n";
+static const char* const initHeapStr = "Initializing dynamic memory management...\n";
+static const char* const initHeapCompleteStr = "Dynamic memory management initialized\n\n";
+static const char* const creatingHeapHeaderStr = "Creating heap headers...";
+static const char* const movingVirMemLists = "Moving virtual address space lists to heap memory...";
+static const char* const listHeapStr = "List of all kernel heap regions\n";
+static const char* const heapHeaderStr = "Heap start           Size                 Count Remaining\n";
 
 bool initializeDynamicMemory() {
 	// TODO: complete dynamic memory initialization

@@ -19,23 +19,23 @@ PML4E* const pml4t = (PML4E*)(pdptMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint
 const size_t virtualPageIndexShift = 9;
 const uint64_t virtualPageIndexMask = ((uint64_t)1 << virtualPageIndexShift) - 1;
 
-const char* const initVirMemStr = "Initializing virtual memory management...\n";
-const char* const initVirMemCompleteStr = "Virtual memory management initialized\n\n";
-const char* const markingPml4 = "Marking PML4 page tables as used in physical memory...";
-const char* const movingBuddies = "Mapping physical memory manager in kernel address space...";
-const char* const maxVirAddrMismatch = "Max virtual address bits mismatch. Expected [";
-const char* const gotStr = "] got [";
-const char* const entryCreationFailed = "Failed to create PML4 entry at level ";
-const char* const forAddress = " for address ";
-const char* const removingId = "Removing PML4 identity mapping of first ";
-const char* const mibs = "MiBs...";
-const char* const reservingHeap = "Reserving memory for dynamic memory manager...";
-const char* const pageTablesStr = "Page tables of ";
-const char* const isCanonicalStr = "isCanonical = ";
-const char* const crawlTableHeader = "Level Tables               Physical tables      Indexes\n";
-const char* const addrSpaceStr = " address space list\n";
-const char* const addrSpaceHeader = "Base                 Page count           Available\n";
-const char* const creatingLists = "Creating virtual address space lists...";
+static const char* const initVirMemStr = "Initializing virtual memory management...\n";
+static const char* const initVirMemCompleteStr = "Virtual memory management initialized\n\n";
+static const char* const markingPml4 = "Marking PML4 page tables as used in physical memory...";
+static const char* const movingBuddies = "Mapping physical memory manager in kernel address space...";
+static const char* const maxVirAddrMismatch = "Max virtual address bits mismatch. Expected [";
+static const char* const gotStr = "] got [";
+static const char* const entryCreationFailed = "Failed to create PML4 entry at level ";
+static const char* const forAddress = " for address ";
+static const char* const removingId = "Removing PML4 identity mapping of first ";
+static const char* const mibs = "MiBs...";
+static const char* const reservingHeap = "Reserving memory for dynamic memory manager...";
+static const char* const pageTablesStr = "Page tables of ";
+static const char* const isCanonicalStr = "isCanonical = ";
+static const char* const crawlTableHeader = "Level Tables               Physical tables      Indexes\n";
+static const char* const addrSpaceStr = " address space list\n";
+static const char* const addrSpaceHeader = "Base                 Page count           Available\n";
+static const char* const creatingLists = "Creating virtual address space lists...";
 
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {

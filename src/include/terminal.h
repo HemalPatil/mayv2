@@ -22,8 +22,6 @@
 #define TERMINAL_COLOUR_YELLOW		0xe
 #define TERMINAL_COLOUR_BWHITE		0xf
 
-extern const char* const hexPalette;
-
 extern bool isTerminalMode();
 extern void terminalSetBgColour(uint8_t colour);
 extern void terminalSetTextColour(uint8_t colour);
