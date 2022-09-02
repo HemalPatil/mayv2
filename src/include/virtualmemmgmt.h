@@ -11,7 +11,7 @@
 struct PML4CrawlResult {
 	size_t indexes[5];
 	bool isCanonical;
-	PML4E* mappedTables[5];
+	PML4E* physicalTables[5];
 	PML4E* tables[5];
 };
 typedef struct PML4CrawlResult PML4CrawlResult;

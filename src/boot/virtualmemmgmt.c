@@ -7,15 +7,11 @@
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 
-#define GIB_1 (uint64_t)1024 * 1024 * 1024
-#define KIB_4 4 * 1024
-#define MIB_2 2 * 1024 * 1024
-
 static const uint64_t nonCanonicalStart = (uint64_t)1 << (MAX_VIRTUAL_ADDRESS_BITS - 1);
 static const uint64_t nonCanonicalEnd = ~(nonCanonicalStart - 1);
 
-VirtualMemNode *kernelAddressSpaceList = 0;
-VirtualMemNode *normalAddressSpaceList = 0;
+VirtualMemNode *kernelAddressSpaceList = INVALID_ADDRESS;
+VirtualMemNode *normalAddressSpaceList = INVALID_ADDRESS;
 const uint64_t ptMask = (uint64_t)UINT64_MAX - 1024 * (uint64_t)GIB_1 + 1;
 const uint64_t pdMask = ptMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint64_t)GIB_1;
 const uint64_t pdptMask = pdMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint64_t)MIB_2;
@@ -36,13 +32,14 @@ const char* const mibs = "MiBs...";
 const char* const reservingHeap = "Reserving memory for dynamic memory manager...";
 const char* const pageTablesStr = "Page tables of ";
 const char* const isCanonicalStr = "isCanonical = ";
-const char* const crawlTableHeader = "Level MappedTables         Tables               Indexes\n";
+const char* const crawlTableHeader = "Level Tables               Physical tables      Indexes\n";
 const char* const addrSpaceStr = " address space list\n";
 const char* const addrSpaceHeader = "Base                 Page count           Available\n";
 const char* const creatingLists = "Creating virtual address space lists...";
 
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
+	uint64_t mib1 = 0x100000;
 	terminalPrintString(initVirMemStr, strlen(initVirMemStr));
 
 	if (infoTable->maxLinearAddress != MAX_VIRTUAL_ADDRESS_BITS) {
@@ -117,7 +114,6 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintString(removingId, strlen(removingId));
 	terminalPrintDecimal(L32_IDENTITY_MAP_SIZE);
 	terminalPrintString(mibs, strlen(mibs));
-	uint64_t mib1 = 0x100000;
 	if (
 		!unmapVirtualPages((void*)mib1, (L32_IDENTITY_MAP_SIZE - 1) * mib1 / pageSize, false) ||
 		!unmapVirtualPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / pageSize, false) ||
@@ -150,6 +146,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintChar('\n');
 
 	// Create virtual address space linked lists towards the end of dynamic memory
+	// Dynamic memory manager will take care making these lists dynamic during its initialization
 	// Used areas of virtual address space so far
 	// 1) 0x0 to L32K64_SCRATCH_BASE
 	// 2) (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB
@@ -253,8 +250,8 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count) 
 		if (!crawlResult.isCanonical) {
 			return false;
 		}
-		for (size_t j = 4; j >= 2; --j) {
-			if (crawlResult.mappedTables[j] != crawlResult.tables[j]) {
+		for (size_t j = 3; j >= 1; --j) {
+			if (crawlResult.physicalTables[j] == INVALID_ADDRESS) {
 				// Create a new page table if entry is not present
 				requestResult = requestPhysicalPages(1, 0);
 				if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
@@ -266,12 +263,12 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count) 
 					terminalPrintChar('\n');
 					kernelPanic();
 				}
-				crawlResult.tables[j][crawlResult.indexes[j]].present = 1;
-				crawlResult.tables[j][crawlResult.indexes[j]].readWrite = 1;
-				crawlResult.tables[j][crawlResult.indexes[j]].physicalAddress = (uint64_t)requestResult.address >> pageSizeShift;
+				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].present = 1;
+				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].readWrite = 1;
+				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].physicalAddress = (uint64_t)requestResult.address >> pageSizeShift;
 			}
 		}
-		if (crawlResult.mappedTables[1] != crawlResult.tables[1]) {
+		if (crawlResult.physicalTables[0] == INVALID_ADDRESS) {
 			crawlResult.tables[1][crawlResult.indexes[1]].present = 1;
 			// FIXME: should add only appropriate permissions when mapping pages
 			crawlResult.tables[1][crawlResult.indexes[1]].readWrite = 1;
@@ -301,37 +298,30 @@ bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage
 		if (!crawlResult.isCanonical) {
 			return false;
 		}
-		if (
-			crawlResult.mappedTables[2] == crawlResult.tables[2] &&
-			crawlResult.mappedTables[1] == crawlResult.tables[1]
-		) {
-			// Page table is present and virtual address is mapped
-			crawlResult.mappedTables[1][crawlResult.indexes[1]].present = 0;
+		if (crawlResult.physicalTables[0] != INVALID_ADDRESS) {
+			// Virtual address is fully resolved
+			crawlResult.tables[1][crawlResult.indexes[1]].present = 0;
 			if (freePhysicalPage) {
-				markPhysicalPages(crawlResult.mappedTables[0], 1, PHY_MEM_FREE);
+				markPhysicalPages(crawlResult.physicalTables[0], 1, PHY_MEM_FREE);
 			}
 		}
 		for (size_t j = 1; j <= 3; ++j) {
-			if (crawlResult.mappedTables[j + 1] != crawlResult.tables[j + 1]) {
-				// Skip this level since entry for it doesn't exist in the upper level
+			if (crawlResult.physicalTables[j] == INVALID_ADDRESS) {
+				// Skip this level since it is not present in physical memory
 				continue;
 			}
 			// Page table at current level exists
 			// Free it if all entries inside it are absent
-			bool freeEntry = true;
+			bool freePageTable = true;
 			for (size_t k = 0; k < PML4_ENTRY_COUNT; ++k) {
 				if (crawlResult.tables[j][k].present) {
-					freeEntry = false;
+					freePageTable = false;
 					break;
 				}
 			}
-			if (freeEntry) {
-				crawlResult.mappedTables[j + 1][crawlResult.indexes[j + 1]].present = 0;
-				markPhysicalPages(
-					(void*)((uint64_t)crawlResult.mappedTables[j + 1][crawlResult.indexes[j + 1]].physicalAddress << pageSizeShift),
-					1,
-					PHY_MEM_FREE
-				);
+			if (freePageTable) {
+				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].present = 0;
+				markPhysicalPages((void*)crawlResult.physicalTables[j], 1, PHY_MEM_FREE);
 			}
 		}
 	}
@@ -349,15 +339,17 @@ bool isCanonicalVirtualAddress(void* address) {
 }
 
 // Crawls the PML4T for a virtual address
-// and sets the virtual addresses of page tables of a virtual address where 1 <= level <= 4
-// All levels in tables and mappedTables are identical,
-// mappedTables[0] is set to physical page address,
-// and indexes[0] is set to physical page offset if an address can be fully resolved
-// Address of a level and subsequent lower levels are set to INVALID_ADDRESS in mappedTables
+// and sets the physical and virtual addresses of page tables of a virtual address where 0 <= level <= 3
+// physicalTables[4] is always set to pml4t root's physical address for canonical addresses
+// tables[0] is always set to INVALID_ADDRESS
+// Subsequent levels in physicalTables are set to physical address of a table if it is present in memory,
+// and indexes[0] is set to the offset in physical page if an address can be fully resolved
+// Address of a level and subsequent lower levels are set to INVALID_ADDRESS in physicalTables
 // if mapping while crawling the PML4 structure is not present for that level
-// If an address is not canonical all levels in mappedTables are set to INVALID_ADDRESS
+// If an address is not canonical all levels in physicalTables are set to INVALID_ADDRESS
 PML4CrawlResult crawlPageTables(void *virtualAddress) {
 	PML4CrawlResult result;
+	result.isCanonical = false;
 	uint64_t addr = (uint64_t)virtualAddress & phyMemBuddyMasks[0];
 	result.indexes[0] = (uint64_t)virtualAddress - addr;
 	addr >>= pageSizeShift;
@@ -372,32 +364,26 @@ PML4CrawlResult crawlPageTables(void *virtualAddress) {
 	result.tables[3] = (PML4E*)((uint64_t)pdptMask + result.indexes[4] * KIB_4);
 	result.tables[4] = pml4t;
 
-	result.mappedTables[0] =
-	result.mappedTables[1] =
-	result.mappedTables[2] =
-	result.mappedTables[3] =
-	result.mappedTables[4] =
+	result.physicalTables[0] =
+	result.physicalTables[1] =
+	result.physicalTables[2] =
+	result.physicalTables[3] =
+	result.physicalTables[4] =
 		INVALID_ADDRESS;
 
-	// Ensure address is canonical
 	if (isCanonicalVirtualAddress(virtualAddress)) {
 		result.isCanonical = true;
+		result.physicalTables[4] = (PML4E*) infoTable->pml4eRootPhysicalAddress;
 		for (size_t i = 4; i >= 1; --i) {
 			if (result.tables[i][result.indexes[i]].present) {
-				result.mappedTables[i] = result.tables[i];
+				result.physicalTables[i - 1] = (void*)((uint64_t)result.tables[i][result.indexes[i]].physicalAddress << pageSizeShift);
 			} else {
-				goto getPageTableFromPml4IndexesReturn;
+				break;
 			}
 		}
-		result.mappedTables[0] =
-		result.tables[0] =
-			(void*)((uint64_t)result.tables[1][result.indexes[1]].physicalAddress << pageSizeShift);
-	} else {
-		result.isCanonical = false;
 	}
 
-	getPageTableFromPml4IndexesReturn:
-		return result;
+	return result;
 }
 
 // Debug helper to display result of crawlPageTables for a given virtual address
@@ -417,9 +403,9 @@ void displayCrawlPageTablesResult(void *virtualAddress) {
 		terminalPrintDecimal(i);
 		terminalPrintSpaces4();
 		terminalPrintChar(' ');
-		terminalPrintHex(&result.mappedTables[i], sizeof(result.mappedTables[i]));
-		terminalPrintChar(' ');
 		terminalPrintHex(&result.tables[i], sizeof(result.tables[i]));
+		terminalPrintChar(' ');
+		terminalPrintHex(&result.physicalTables[i], sizeof(result.physicalTables[i]));
 		terminalPrintChar(' ');
 		terminalPrintHex(&result.indexes[i], sizeof(result.indexes[i]));
 		terminalPrintChar('\n');
