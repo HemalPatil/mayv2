@@ -38,6 +38,7 @@ static const char* const crawlTableHeader = "Level Tables               Physical
 static const char* const addrSpaceStr = " address space list\n";
 static const char* const addrSpaceHeader = "Base                 Page count           Available\n";
 static const char* const creatingLists = "Creating virtual address space lists...";
+static const char* const recursiveStr = "Creating PML4 recursive entry...";
 
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
@@ -89,9 +90,14 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// This causes address range from 0xffff ff00 0000 0000 to 0xffff ff80 0000 0000
 	// i.e. the second last 512 GiB of virtual address space to be used
 	// which must be marked as used in the virtual memory list later
+	terminalPrintSpaces4();
+	terminalPrintString(recursiveStr, strlen(recursiveStr));
 	PML4E *root = (PML4E*)infoTable->pml4eRootPhysicalAddress;
 	root[PML4T_RECURSIVE_ENTRY].present = root[PML4T_RECURSIVE_ENTRY].readWrite = 1;
 	root[PML4T_RECURSIVE_ENTRY].physicalAddress = infoTable->pml4eRootPhysicalAddress >> pageSizeShift;
+	flushTLB((void*)infoTable->pml4eRootPhysicalAddress);
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
 
 	// Map physical memory buddy bitmap to kernel address space
 	terminalPrintSpaces4();
@@ -183,20 +189,20 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 		return false;
 	}
 	VirtualMemNode *current = (VirtualMemNode*)usableKernelSpaceStart;
-	// Used kernel space
-	kernelAddressSpaceList = current;
-	kernelAddressSpaceList->available = false;
-	kernelAddressSpaceList->base = (void*) KERNEL_HIGHERHALF_ORIGIN;
-	kernelAddressSpaceList->pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / pageSize;
-	kernelAddressSpaceList->next = ++current;
-	kernelAddressSpaceList->previous = NULL;
-	// Available kernel space
-	current->available = true;
-	current->base = usableKernelSpaceStart;
-	current->pageCount = ((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / pageSize;
-	current->next = NULL;
-	current->previous = kernelAddressSpaceList;
-	++current;
+	// // Used kernel space
+	// kernelAddressSpaceList = current;
+	// kernelAddressSpaceList->available = false;
+	// kernelAddressSpaceList->base = (void*) KERNEL_HIGHERHALF_ORIGIN;
+	// kernelAddressSpaceList->pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / pageSize;
+	// kernelAddressSpaceList->next = ++current;
+	// kernelAddressSpaceList->previous = NULL;
+	// // Available kernel space
+	// current->available = true;
+	// current->base = usableKernelSpaceStart;
+	// current->pageCount = ((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / pageSize;
+	// current->next = NULL;
+	// current->previous = kernelAddressSpaceList;
+	// ++current;
 	// // Normal 0 to L32K64_SCRATCH_BASE used
 	// normalAddressSpaceList = current;
 	// normalAddressSpaceList->available = false;

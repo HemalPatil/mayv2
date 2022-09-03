@@ -42,6 +42,7 @@ void kernelMain(
 	if (!initializeVirtualMemory((void*)(KERNEL_HIGHERHALF_ORIGIN + higherHalfSize), lowerHalfSize, phyMemBuddyPagesCount)) {
 		kernelPanic();
 	}
+	return;
 
 	// Initialize dynamic memory
 	if (!initializeDynamicMemory()) {
