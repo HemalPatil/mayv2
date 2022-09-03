@@ -38,44 +38,40 @@ bool initializeDynamicMemory() {
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
-	// uint64_t phy = 0x200000;
-	// uint64_t vir = heapRegionsList;
-	// for (size_t i = 0; i < 0x400000; ++i, ++phy, ++vir) {
-	// 	PML4CrawlResult r = crawlPageTables(vir);
-	// 	if (r.physicalTables[0] != (phy & phyMemBuddyMasks[0]) || r.indexes[0] != (vir & ~phyMemBuddyMasks[0])) {
-	// 		terminalPrintHex(&vir, sizeof(vir));
-	// 		terminalPrintChar('\n');
-	// 	}
-	// }
-
 	// TODO: Move the virtual address space lists at the end of heap to the heap to make them dynamic
 	// and unmap the page containing the lists
 	terminalPrintSpaces4();
 	terminalPrintString(movingVirMemLists, strlen(movingVirMemLists));
 	void *ghostPage = kernelAddressSpaceList;
-	VirtualMemNode *current = kernelMalloc(sizeof(VirtualMemNode));
-	memcpy(current, kernelAddressSpaceList, sizeof(VirtualMemNode));
-	VirtualMemNode *newList = current;
-	VirtualMemNode *newPrevious = current;
-	VirtualMemNode *oldCurrent = kernelAddressSpaceList->next;
-	while (oldCurrent) {
-		current = kernelMalloc(sizeof(VirtualMemNode));
-		memcpy(current, oldCurrent, sizeof(VirtualMemNode));
-		newPrevious->next = current;
-		current->previous = newPrevious;
-		newPrevious = current;
-		oldCurrent = oldCurrent->next;
+	VirtualMemNode *lists[2] = { kernelAddressSpaceList, normalAddressSpaceList };
+	VirtualMemNode *newLists[2] = { NULL, NULL };
+	for (size_t i = 0; i < 2; ++i) {
+		VirtualMemNode *current = kernelMalloc(sizeof(VirtualMemNode));
+		memcpy(current, lists[i], sizeof(VirtualMemNode));
+		newLists[i] = current;
+		VirtualMemNode *newPrevious = current;
+		VirtualMemNode *oldCurrent = lists[i]->next;
+		while (oldCurrent) {
+			current = kernelMalloc(sizeof(VirtualMemNode));
+			memcpy(current, oldCurrent, sizeof(VirtualMemNode));
+			newPrevious->next = current;
+			current->previous = newPrevious;
+			newPrevious = current;
+			oldCurrent = oldCurrent->next;
+		}
 	}
-	kernelAddressSpaceList = newList;
-	if (!unmapVirtualPages(ghostPage, 1, true)) {
-		terminalPrintString(failedStr, strlen(failedStr));
-		terminalPrintChar('\n');
-		return false;
-	}
+	kernelAddressSpaceList = newLists[0];
+	normalAddressSpaceList = newLists[1];
+	// if (!unmapVirtualPages(ghostPage, 1, true)) {
+	// 	terminalPrintString(failedStr, strlen(failedStr));
+	// 	terminalPrintChar('\n');
+	// 	return false;
+	// }
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
 	listKernelAddressSpace();
+	listNormalAddressSpace();
 
 	terminalPrintString(initHeapCompleteStr, strlen(initHeapCompleteStr));
 	return true;

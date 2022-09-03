@@ -35,7 +35,7 @@ static const char* const reservingHeap = "Reserving memory for dynamic memory ma
 static const char* const pageTablesStr = "Page tables of ";
 static const char* const isCanonicalStr = "isCanonical = ";
 static const char* const crawlTableHeader = "Level Tables               Physical tables      Indexes\n";
-static const char* const addrSpaceStr = " address space list\n";
+static const char* const addrSpaceStr = " address space list ";
 static const char* const addrSpaceHeader = "Base                 Page count           Available\n";
 static const char* const creatingLists = "Creating virtual address space lists...";
 static const char* const recursiveStr = "Creating PML4 recursive entry...";
@@ -189,94 +189,77 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 		return false;
 	}
 	VirtualMemNode *current = (VirtualMemNode*)usableKernelSpaceStart;
-	// // Used kernel space
-	// kernelAddressSpaceList = current;
-	// kernelAddressSpaceList->available = false;
-	// kernelAddressSpaceList->base = (void*) KERNEL_HIGHERHALF_ORIGIN;
-	// kernelAddressSpaceList->pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / pageSize;
-	// kernelAddressSpaceList->next = ++current;
-	// kernelAddressSpaceList->previous = NULL;
-	// // Available kernel space
-	// current->available = true;
-	// current->base = usableKernelSpaceStart;
-	// current->pageCount = ((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / pageSize;
-	// current->next = NULL;
-	// current->previous = kernelAddressSpaceList;
-	// ++current;
-	// // Normal 0 to L32K64_SCRATCH_BASE used
-	// normalAddressSpaceList = current;
-	// normalAddressSpaceList->available = false;
-	// normalAddressSpaceList->base = 0;
-	// normalAddressSpaceList->pageCount = L32K64_SCRATCH_BASE / pageSize;
-	// normalAddressSpaceList->next = ++current;
-	// normalAddressSpaceList->previous = NULL;
-	// terminalPrintString("n1\n", 3);
-	// // Normal L32K64_SCRATCH_BASE to (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) available
-	// current->available = true;
-	// current->base = (void*) L32K64_SCRATCH_BASE;
-	// current->pageCount = L32K64_SCRATCH_LENGTH / pageSize;
-	// current->next = current + 1;
-	// current->previous = current - 1;
-	// ++current;
-	// // Normal (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB used
-	// current->available = false;
-	// current->base = (void*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH);
-	// current->pageCount = (mib1 - L32K64_SCRATCH_BASE - L32K64_SCRATCH_LENGTH)/pageSize;
-	// current->next = current + 1;
-	// current->previous = current - 1;
-	// ++current;
-	// // Normal 1MiB to valid lower half canonical address available
-	// current->available = true;
-	// current->base = (void*) mib1;
-	// current->pageCount = (nonCanonicalStart - mib1) / pageSize;
-	// current->next = current + 1;
-	// current->previous = current - 1;
-	// ++current;
-	// // Mark non canonical address range as used
-	// current->available = false;
-	// current->base = (void*) nonCanonicalStart;
-	// current->pageCount = (nonCanonicalEnd - nonCanonicalStart) / pageSize;
-	// current->next = current + 1;
-	// current->previous = current - 1;
-	// ++current;
-	// // Normal valid higher half canonical address to PML4 recursive map available
-	// current->available = true;
-	// current->base = (void*) nonCanonicalEnd;
-	// current->pageCount = (ptMask - nonCanonicalEnd) / pageSize;
-	// current->next = current + 1;
-	// current->previous = current - 1;
-	// ++current;
-	// // PML4 recursive map used
-	// current->available = false;
-	// current->base = (void*) ptMask;
-	// current->pageCount = ((uint64_t)512 * GIB_1) / pageSize;
-	// current->next = current + 1;
-	// current->previous = current - 1;
-	// ++current;
-	// // Normal PML4 recursive map to KERNEL_HIGHERHALF_ORIGIN available
-	// current->available = true;
-	// current->base = (void*)(ptMask + 512 * GIB_1);
-	// current->pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
-	// current->next = NULL;
-	// current->previous = current - 1;
-	// terminalPrintString(doneStr, strlen(doneStr));
-	// terminalPrintChar('\n');
-
-
-
-	// uint64_t phy = 0x200000;
-	// uint64_t vir = heapRegionsList;
-	// for (size_t i = 0; i < 0x400000; ++i, ++phy, ++vir) {
-	// 	PML4CrawlResult r = crawlPageTables(vir);
-	// 	if (r.physicalTables[0] != (phy & phyMemBuddyMasks[0])) {
-	// 		terminalPrintHex(&vir, sizeof(vir));
-	// 		terminalPrintChar(' ');
-	// 		terminalPrintHex(&phy, sizeof(phy));
-	// 		terminalPrintChar(' ');
-	// 		terminalPrintHex(&r.physicalTables[0], sizeof(r.physicalTables[0]));
-	// 		terminalPrintChar('\n');
-	// 	}
-	// }
+	// Used kernel space
+	kernelAddressSpaceList = current;
+	kernelAddressSpaceList->available = false;
+	kernelAddressSpaceList->base = (void*) KERNEL_HIGHERHALF_ORIGIN;
+	kernelAddressSpaceList->pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / pageSize;
+	kernelAddressSpaceList->next = ++current;
+	kernelAddressSpaceList->previous = NULL;
+	// Available kernel space
+	current->available = true;
+	current->base = usableKernelSpaceStart;
+	current->pageCount = ((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / pageSize;
+	current->next = NULL;
+	current->previous = kernelAddressSpaceList;
+	++current;
+	// Normal 0 to L32K64_SCRATCH_BASE used
+	normalAddressSpaceList = current;
+	normalAddressSpaceList->available = false;
+	normalAddressSpaceList->base = 0;
+	normalAddressSpaceList->pageCount = L32K64_SCRATCH_BASE / pageSize;
+	normalAddressSpaceList->next = ++current;
+	normalAddressSpaceList->previous = NULL;
+	// Normal L32K64_SCRATCH_BASE to (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) available
+	current->available = true;
+	current->base = (void*) L32K64_SCRATCH_BASE;
+	current->pageCount = L32K64_SCRATCH_LENGTH / pageSize;
+	current->next = current + 1;
+	current->previous = current - 1;
+	++current;
+	// Normal (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB used
+	current->available = false;
+	current->base = (void*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH);
+	current->pageCount = (mib1 - L32K64_SCRATCH_BASE - L32K64_SCRATCH_LENGTH)/pageSize;
+	current->next = current + 1;
+	current->previous = current - 1;
+	++current;
+	// Normal 1MiB to valid lower half canonical address available
+	current->available = true;
+	current->base = (void*) mib1;
+	current->pageCount = (nonCanonicalStart - mib1) / pageSize;
+	current->next = current + 1;
+	current->previous = current - 1;
+	++current;
+	// Mark non canonical address range as used
+	current->available = false;
+	current->base = (void*) nonCanonicalStart;
+	current->pageCount = (nonCanonicalEnd - nonCanonicalStart) / pageSize;
+	current->next = current + 1;
+	current->previous = current - 1;
+	++current;
+	// Normal valid higher half canonical address to PML4 recursive map available
+	current->available = true;
+	current->base = (void*) nonCanonicalEnd;
+	current->pageCount = (ptMask - nonCanonicalEnd) / pageSize;
+	current->next = current + 1;
+	current->previous = current - 1;
+	++current;
+	// PML4 recursive map used
+	current->available = false;
+	current->base = (void*) ptMask;
+	current->pageCount = ((uint64_t)512 * GIB_1) / pageSize;
+	current->next = current + 1;
+	current->previous = current - 1;
+	++current;
+	// Normal PML4 recursive map to KERNEL_HIGHERHALF_ORIGIN available
+	current->available = true;
+	current->base = (void*)(ptMask + 512 * GIB_1);
+	current->pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
+	current->next = NULL;
+	current->previous = current - 1;
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
 
 	terminalPrintString(initVirMemCompleteStr, strlen(initVirMemCompleteStr));
 	return true;
@@ -318,6 +301,7 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count) 
 				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].present = 1;
 				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].readWrite = 1;
 				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].physicalAddress = (uint64_t)requestResult.address >> pageSizeShift;
+				memset(crawlResult.tables[j], 0, pageSize);
 			}
 		}
 		if (crawlResult.physicalTables[0] == INVALID_ADDRESS) {
@@ -480,6 +464,8 @@ void listNormalAddressSpace() {
 
 static void traverseAddressSpaceList(VirtualMemNode *current) {
 	terminalPrintString(addrSpaceStr, strlen(addrSpaceStr));
+	terminalPrintHex(&current, sizeof(current));
+	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintString(addrSpaceHeader, strlen(addrSpaceHeader));
 	while (current) {
@@ -489,6 +475,8 @@ static void traverseAddressSpaceList(VirtualMemNode *current) {
 		terminalPrintHex(&current->pageCount, sizeof(current->pageCount));
 		terminalPrintChar(' ');
 		terminalPrintDecimal(current->available);
+		terminalPrintChar(' ');
+		terminalPrintHex(&current, sizeof(current));
 		terminalPrintChar('\n');
 		current = current->next;
 	}
