@@ -4,12 +4,19 @@ section .text
 	global getPhysicalAddressLimit
 	global getLinearAddressLimit
 	global hangSystem
+	global flushTLB
+
+flushTLB:
+	cli
+	mov cr3, rdi
+	; FIXME: must set the interrupt flag back to its original state
+	ret
 
 hangSystem:
 	cli
 	hlt
 	jmp hangSystem
-	ret	; reduntant since system should not exit from here
+	ret
 
 getPhysicalAddressLimit:
 	mov eax,0x80000008

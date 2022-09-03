@@ -124,6 +124,7 @@ bool initializePhysicalMemory(
 // If wastage in a buddy is more than 25% of its size then returns a smaller size buddy
 // Actual number of pages assigned is returned in allocatedCount
 // Returns INVALID_ADDRESS and allocatedCount = 0 if request count is greater than currently available pages
+// Unsafe to call this function until virtual memory manager is initialized
 PhysicalPageRequestResult requestPhysicalPages(size_t count, uint8_t flags) {
 	PhysicalPageRequestResult result;
 	result.address = INVALID_ADDRESS;

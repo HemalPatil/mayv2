@@ -21,6 +21,9 @@ void kernelMain(
 	size_t higherHalfSize,
 	void* usablePhyMemStart
 ) {
+	// Be careful of NULL references until the IVTs in
+	// identity mapped page 0 of virtual address space
+	// are moved somewhere else during interrupt initialization
 	infoTable = infoTableAddress;
 
 	terminalSetBgColour(TERMINAL_COLOUR_BLUE);
@@ -30,7 +33,7 @@ void kernelMain(
 	terminalPrintString(kernelLoadedStr, strlen(kernelLoadedStr));
 
 	// Initialize physical memory
-	size_t phyMemBuddyPagesCount = 0;
+	size_t phyMemBuddyPagesCount;
 	if (!initializePhysicalMemory(usablePhyMemStart, lowerHalfSize, higherHalfSize, &phyMemBuddyPagesCount)) {
 		kernelPanic();
 	}

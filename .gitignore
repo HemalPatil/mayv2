@@ -9,3 +9,4 @@ ISO
 build
 build_utilities
 *.iso
+*.bin
