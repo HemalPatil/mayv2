@@ -259,21 +259,16 @@ void markPhysicalPages(void* address, size_t count, uint8_t type) {
 	}
 
 	// Sync higher order buddies
-	size_t levelCount = count;
+	uint64_t endAddr = addr + count * pageSize;
 	for (size_t i = 1; i < PHY_MEM_BUDDY_MAX_ORDER; ++i) {
-		if (levelCount == 0) {
-			levelCount = 2;
-		} else if (levelCount & 1) {
-			++levelCount;
-		}
-		levelCount >>= 1;
-		for (size_t j = 0; j < levelCount; ++j) {
-			uint64_t currentLevelAddr = (addr & phyMemBuddyMasks[i]) + j * phyMemBuddySizes[i] * pageSize;
+		uint64_t currentLevelAddr = addr & phyMemBuddyMasks[i];
+		while (currentLevelAddr < endAddr) {
 			bool bothBuddiesFree = arePhysicalBuddiesOfType((void*)currentLevelAddr, i - 1, 2, PHY_MEM_FREE);
 			if (!bothBuddiesFree) {
 				PhyMemBuddyBitmapIndex index = getPhysicalBuddyBitmapIndex((void*)currentLevelAddr, i);
 				phyMemBuddyBitmaps[i][index.byte] |= (1 << index.bit);
 			}
+			currentLevelAddr += phyMemBuddySizes[i] * pageSize;
 		}
 	}
 }

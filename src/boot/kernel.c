@@ -43,8 +43,6 @@ void kernelMain(
 		kernelPanic();
 	}
 
-	listKernelAddressSpace();
-
 	// Initialize dynamic memory
 	if (!initializeDynamicMemory()) {
 		kernelPanic();

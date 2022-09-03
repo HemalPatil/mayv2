@@ -14,10 +14,10 @@ section .lowerhalf
 	extern TSS_START
 	global kernelStart
 
-; rdi will have the address of the info table. DO NOT trash it.
-; Execution starts here. 
-; 32-bit code of the loader cannot jump to 64-bit address directly.
-; Hence, first jump to 0x80000000 and then jump to 0xffffffff80000000
+; rdi will have the address of the info table, DO NOT trash it
+; Execution starts here
+; 32-bit code of the loader cannot jump to 64-bit address directly
+; Hence, first jump to KERNEL_LOWERHALF_ORIGIN and then jump to KERNEL_HIGHERHALF_ORIGIN
 ; Currently CPU is in 32-bit compatibility mode since GDT64 is not loaded
 kernelStart:
 	mov ax, 0x10		; 64-bit data segment
@@ -29,7 +29,7 @@ kernelStart:
 
 	; Setup 64-bit GDT
 	mov rax, gdtDescriptor
-	lgdt [rax]	; load new GDT
+	lgdt [rax]
 
 	; Jump to true 64-bit long mode
 	mov rax, higherHalfStart

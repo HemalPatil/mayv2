@@ -10,7 +10,7 @@
 static const uint64_t nonCanonicalStart = (uint64_t)1 << (MAX_VIRTUAL_ADDRESS_BITS - 1);
 static const uint64_t nonCanonicalEnd = ~(nonCanonicalStart - 1);
 
-static void traverseAddressSpaceList(VirtualMemNode *current);
+static void traverseAddressSpaceList(VirtualMemNode *current, bool forwardDirection);
 
 VirtualMemNode *kernelAddressSpaceList = INVALID_ADDRESS;
 VirtualMemNode *normalAddressSpaceList = INVALID_ADDRESS;
@@ -36,7 +36,7 @@ static const char* const pageTablesStr = "Page tables of ";
 static const char* const isCanonicalStr = "isCanonical = ";
 static const char* const crawlTableHeader = "Level Tables               Physical tables      Indexes\n";
 static const char* const addrSpaceStr = " address space list ";
-static const char* const addrSpaceHeader = "Base                 Page count           Available\n";
+static const char* const addrSpaceHeader = "Base                 Page count           A Node address\n";
 static const char* const creatingLists = "Creating virtual address space lists...";
 static const char* const recursiveStr = "Creating PML4 recursive entry...";
 
@@ -95,7 +95,6 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	PML4E *root = (PML4E*)infoTable->pml4eRootPhysicalAddress;
 	root[PML4T_RECURSIVE_ENTRY].present = root[PML4T_RECURSIVE_ENTRY].readWrite = 1;
 	root[PML4T_RECURSIVE_ENTRY].physicalAddress = infoTable->pml4eRootPhysicalAddress >> pageSizeShift;
-	flushTLB((void*)infoTable->pml4eRootPhysicalAddress);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -311,7 +310,6 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count) 
 			crawlResult.tables[1][crawlResult.indexes[1]].physicalAddress = phyAddr >> pageSizeShift;
 		}
 	}
-	flushTLB((void*)infoTable->pml4eRootPhysicalAddress);
 	return true;
 }
 
@@ -362,7 +360,6 @@ bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage
 			}
 		}
 	}
-	flushTLB((void*)infoTable->pml4eRootPhysicalAddress);
 	return true;
 }
 
@@ -451,23 +448,28 @@ void displayCrawlPageTablesResult(void *virtualAddress) {
 }
 
 // Debug helper to list all entries in kernelAddressSpaceList
-void listKernelAddressSpace() {
+void listKernelAddressSpace(bool forwardDirection) {
 	terminalPrintString("Kernel", 6);
-	traverseAddressSpaceList(kernelAddressSpaceList);
+	traverseAddressSpaceList(kernelAddressSpaceList, forwardDirection);
 }
 
 // Debug helper to list all entries in normalAddressSpaceList
-void listNormalAddressSpace() {
+void listNormalAddressSpace(bool forwardDirection) {
 	terminalPrintString("Normal", 6);
-	traverseAddressSpaceList(normalAddressSpaceList);
+	traverseAddressSpaceList(normalAddressSpaceList, forwardDirection);
 }
 
-static void traverseAddressSpaceList(VirtualMemNode *current) {
+static void traverseAddressSpaceList(VirtualMemNode *current, bool forwardDirection) {
 	terminalPrintString(addrSpaceStr, strlen(addrSpaceStr));
 	terminalPrintHex(&current, sizeof(current));
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintString(addrSpaceHeader, strlen(addrSpaceHeader));
+	if (!forwardDirection) {
+		while (current->next) {
+			current = current->next;
+		}
+	}
 	while (current) {
 		terminalPrintSpaces4();
 		terminalPrintHex(&current->base, sizeof(current->base));
@@ -478,6 +480,6 @@ static void traverseAddressSpaceList(VirtualMemNode *current) {
 		terminalPrintChar(' ');
 		terminalPrintHex(&current, sizeof(current));
 		terminalPrintChar('\n');
-		current = current->next;
+		current = forwardDirection ? current->next : current->previous;
 	}
 }

@@ -20,7 +20,7 @@ static const char* const heapHeaderStr = "Heap start           Size             
 static const char* const invalidFreeStr = "\nInvalid kernel free operation ";
 
 bool initializeDynamicMemory() {
-	// TODO: complete dynamic memory initialization
+	void *ghostPage = kernelAddressSpaceList;
 	terminalPrintString(initHeapStr, strlen(initHeapStr));
 
 	// Initalize the heap region reserved by virtual memory manager during its initialization
@@ -38,11 +38,10 @@ bool initializeDynamicMemory() {
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
-	// TODO: Move the virtual address space lists at the end of heap to the heap to make them dynamic
-	// and unmap the page containing the lists
+	// Move the virtual address space lists at the end of heap to the heap to make them dynamic
+	// and unmap the ghost page containing the lists
 	terminalPrintSpaces4();
 	terminalPrintString(movingVirMemLists, strlen(movingVirMemLists));
-	void *ghostPage = kernelAddressSpaceList;
 	VirtualMemNode *lists[2] = { kernelAddressSpaceList, normalAddressSpaceList };
 	VirtualMemNode *newLists[2] = { NULL, NULL };
 	for (size_t i = 0; i < 2; ++i) {
@@ -62,16 +61,13 @@ bool initializeDynamicMemory() {
 	}
 	kernelAddressSpaceList = newLists[0];
 	normalAddressSpaceList = newLists[1];
-	// if (!unmapVirtualPages(ghostPage, 1, true)) {
-	// 	terminalPrintString(failedStr, strlen(failedStr));
-	// 	terminalPrintChar('\n');
-	// 	return false;
-	// }
+	if (!unmapVirtualPages(ghostPage, 1, true)) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		return false;
+	}
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
-
-	listKernelAddressSpace();
-	listNormalAddressSpace();
 
 	terminalPrintString(initHeapCompleteStr, strlen(initHeapCompleteStr));
 	return true;
@@ -137,7 +133,7 @@ void* kernelMalloc(size_t count) {
 				heap->remaining -= count;
 				++heap->entryCount;
 				void *mallocedValue = (void*)((uint64_t)heapEntry + sizeof(HeapEntry));
-				heap->entryTable[heap->entryCount] = mallocedValue;
+				heap->entryTable[heap->entryCount - 1] = mallocedValue;
 				HeapEntry *newEntry = nextHeapEntry(heap, heapEntry);
 				if (newEntry == NULL) {
 					// mallocedValue is the last entry
