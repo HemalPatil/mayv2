@@ -25,6 +25,4 @@ extern void kernelPanic();
 
 // kernellib.asm
 extern void flushTLB(void *newPml4Root);
-extern uint8_t getLinearAddressLimit();
-extern uint8_t getPhysicalAddressLimit();
 extern void hangSystem();
