@@ -17,7 +17,7 @@ static const char* const creatingHeapHeaderStr = "Creating heap header...";
 static const char* const movingVirMemLists = "Moving virtual address space lists to heap memory...";
 static const char* const listHeapStr = "List of all kernel heap regions\n";
 static const char* const heapHeaderStr = "Heap start           Size                 Count Remaining\n";
-static const char* const invalidFreeStr = "\nInvalid kernel free operation ";
+static const char* const invalidFreeStr = "\nInvalid kernelFree operation ";
 
 bool initializeDynamicMemory() {
 	void *ghostPage = kernelAddressSpaceList;
@@ -155,36 +155,40 @@ void* kernelMalloc(size_t count) {
 	return NULL;
 }
 
-// void someRandomName(void *address) {
-// 	uint64_t addr = (uint64_t) address;
-// 	HeapHeader *header = heapRegionsList;
-// 	while (header) {
-// 		// Ensure the address is within the heap's bounds
-// 		uint64_t heapStart = (uint64_t) header;
-// 		uint64_t heapFreeEnd = heapStart + header->size - header->entryCount * sizeof(void*);
-// 		if (
-// 			(addr > heapStart + sizeof(HeapHeader) + 2 * sizeof(uint32_t)) &&
-// 			(addr < heapFreeEnd)
-// 		) {
-// 			// Check if this address is allocated in the current heap
-// 			bool entryFound = false;
-// 			uint64_t *entry = (uint64_t*)heapFreeEnd;
-// 			for (size_t i = 0; i < header->entryCount; ++i, ++entry) {
-// 				if (*entry == addr) {
-// 					entryFound = true;
-// 					break;
-// 				}
-// 			}
-// 			if (entryFound) {
-// 				--header->entryCount;
-// 				*entry = *((uint64_t*)heapFreeEnd);
-// 			}
-// 		}
-// 		header = header->next;
-// 	}
-// 	terminalPrintString(invalidFreeStr, strlen(invalidFreeStr));
-// 	terminalPrintChar('\n');
-// }
+void kernelFree(void *address) {
+	uint64_t addr = (uint64_t) address;
+	HeapHeader *heap = heapRegionsList;
+	while (heap) {
+		// Ensure the address is within the heap's bounds
+		if (
+			(addr >= (uint64_t)heap + sizeof(HeapHeader) + sizeof(HeapEntry)) &&
+			(addr < (uint64_t)heap + heap->size)
+		) {
+			// Check if this address is allocated in the current heap
+			bool entryFound = false;
+			size_t i;
+			for (i = 0; i < heap->entryCount; ++i) {
+				if (heap->entryTable[i] == address) {
+					entryFound = true;
+					break;
+				}
+			}
+			if (entryFound) {
+				--heap->entryCount;
+				heap->entryTable[i] = heap->entryTable[heap->entryCount];
+				heap->latestEntrySearched = (HeapEntry*)(addr - sizeof(HeapEntry));
+				heap->latestEntrySearched->signature = HEAP_ENTRY_FREE;
+				heap->remaining += heap->latestEntrySearched->size;
+				// TODO: defrag the heap
+				return;
+			}
+		}
+		heap = heap->next;
+	}
+	terminalPrintString(invalidFreeStr, strlen(invalidFreeStr));
+	terminalPrintHex(&address, sizeof(address));
+	terminalPrintChar('\n');
+}
 
 static HeapEntry* nextHeapEntry(HeapHeader *heap, HeapEntry *heapEntry) {
 	uint64_t heapEnd = (uint64_t)heap + heap->size;
