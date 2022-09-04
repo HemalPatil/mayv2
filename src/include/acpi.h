@@ -30,7 +30,7 @@ struct ACPISDTHeader {
 	char oemId[6];
 	char oemTableID[8];
 	uint32_t oemRevision;
-	uint32_t creatorID;
+	uint32_t creatorId;
 	uint32_t creatorRevision;
 } __attribute__((packed));
 typedef struct ACPISDTHeader ACPISDTHeader;
@@ -48,6 +48,12 @@ struct RSDPDescriptor2 {
 } __attribute__((packed));
 typedef struct RSDPDescriptor2 RSDPDescriptor2;
 
+extern ACPISDTHeader *apic;
+extern ACPISDTHeader *fadt;
 extern RSDPDescriptor2 *rsdp;
+extern ACPISDTHeader *ssdt;
+extern ACPISDTHeader *xsdt;
 
+extern ACPISDTHeader* findAcpiTable(ACPISDTHeader *xsdt, uint32_t signature);
 extern bool parseAcpi3();
+extern bool validAcpi3Table(ACPISDTHeader* header);

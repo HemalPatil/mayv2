@@ -4,38 +4,31 @@
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 
-// The string 'XSDT'
-static const uint32_t xsdtSignature = 0x54445358;
+static const uint32_t apicSignature = 0x43495041; // The string 'APIC'
+static const uint32_t fadtSignature = 0x50434146; // The string 'FADT'
+static const uint32_t ssdtSignature = 0x54445353; // The string 'SSDT'
+static const uint32_t xsdtSignature = 0x54445358; // The string 'XSDT'
 
-RSDPDescriptor2 *rsdp = 0;
+static RSDPDescriptor2* searchRsdp();
+
+ACPISDTHeader *apic = NULL;
+ACPISDTHeader *fadt = NULL;
+RSDPDescriptor2 *rsdp = NULL;
+ACPISDTHeader *ssdt = NULL;
+ACPISDTHeader *xsdt = NULL;
 
 static const char* const parsingAcpiStr = "Parsing ACPI3";
 static const char* const searchingRsdpStr = "Searching for RSDP";
 static const char* const acpiFound = "RSDP ";
 static const char* const verifyingChecksumStr = "Checking RSDT integrity";
-static const char* const verifyingXsdtSigStr = "Checking XSDT signature";
+static const char* const verifyingXsdtSigStr = "Checking XSDT signature and integrity";
 static const char* const rsdtAddressStr = "RSDT ";
 static const char* const xsdtAddressStr = ", XSDT ";
 static const char* const oldAcpi = "ACPI version found is older than ACPI3\n";
 static const char* const checkingRevisionStr = "Checking ACPI revision";
 static const char* const parseCompleteStr = "ACPI3 parsed\n\n";
 static const char* const mappingXsdtStr = "Mapping XSDT to kernel address space";
-
-RSDPDescriptor2* searchRsdp() {
-	// Search for the magic string 'RSD PTR ' at every 8 byte boundary
-	uint64_t rsdPtr = 0x2052545020445352;
-	for (uint64_t *p = 0; p < (uint64_t*)L32K64_SCRATCH_BASE; ++p) {
-		if (*p == rsdPtr) {
-			return (RSDPDescriptor2*)p;
-		}
-	}
-	for (uint64_t *p = (uint64_t*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH); p < (uint64_t*)0x100000; ++p) {
-		if (*p == rsdPtr) {
-			return (RSDPDescriptor2*)p;
-		}
-	}
-	return NULL;
-}
+static const char* const findingAcpiTablesStr = "Searching for APIC, FADT, and SSDT entries";
 
 bool parseAcpi3() {
 	terminalPrintString(parsingAcpiStr, strlen(parsingAcpiStr));
@@ -124,11 +117,12 @@ bool parseAcpi3() {
 	terminalPrintChar('\n');
 
 	// Verify the XSDT signature
-	ACPISDTHeader *xsdt = (ACPISDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~phyMemBuddyMasks[0]));
+	xsdt = (ACPISDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~phyMemBuddyMasks[0]));
 	terminalPrintSpaces4();
 	terminalPrintString(verifyingXsdtSigStr, strlen(verifyingXsdtSigStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (*(uint32_t*)xsdt->signature != xsdtSignature) {
+	// Assumes the entrie XSDT lies in the same page as XSDT
+	if (*(uint32_t*)xsdt->signature != xsdtSignature || !validAcpi3Table(xsdt)) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
@@ -138,6 +132,64 @@ bool parseAcpi3() {
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
 
+	// Find all the relevant tables
+	terminalPrintSpaces4();
+	terminalPrintString(findingAcpiTablesStr, strlen(findingAcpiTablesStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	apic = findAcpiTable(xsdt, apicSignature);
+	fadt = findAcpiTable(xsdt, fadtSignature);
+	ssdt = findAcpiTable(xsdt, ssdtSignature);
+	if (apic == INVALID_ADDRESS || fadt == INVALID_ADDRESS || ssdt == INVALID_ADDRESS) {
+	terminalPrintString(failedStr, strlen(failedStr));
+	terminalPrintChar('\n');
+		return false;
+	}
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
 	terminalPrintString(parseCompleteStr, strlen(parseCompleteStr));
 	return true;
+}
+
+// Finds the ACPI table with a given signature and returns its address
+// Returns INVALID_ADDRESS is not found
+// Assumes the entire XSDT and the tables pointed to by it are mapped in the same page as XSDT
+ACPISDTHeader* findAcpiTable(ACPISDTHeader *xsdt, uint32_t signature) {
+	size_t tableCount = (xsdt->length - sizeof(ACPISDTHeader)) / sizeof(uint64_t);
+	for (size_t i = 0; i < tableCount; ++i) {
+		ACPISDTHeader *table = (ACPISDTHeader*)(
+			((uint64_t)xsdt & phyMemBuddyMasks[0]) |
+			(((uint64_t*)(xsdt + 1))[i] & ~phyMemBuddyMasks[0])
+		);
+		if (*(uint32_t*)table->signature == signature) {
+			return table;
+		}
+	}
+	return INVALID_ADDRESS;
+}
+
+// Adds up all the bytes in an ACPI table and returns true only if the checksum is 0
+// Assumes the entire table is mapped in the address space
+bool validAcpi3Table(ACPISDTHeader* header) {
+	uint8_t checksum = 0;
+	for (size_t i = 0; i < header->length; ++i) {
+		checksum += ((uint8_t*)header)[i];
+	}
+	return checksum == 0;
+}
+
+static RSDPDescriptor2* searchRsdp() {
+	// Search for the magic string 'RSD PTR ' at every 8 byte boundary
+	uint64_t rsdPtr = 0x2052545020445352;
+	for (uint64_t *p = 0; p < (uint64_t*)L32K64_SCRATCH_BASE; ++p) {
+		if (*p == rsdPtr) {
+			return (RSDPDescriptor2*)p;
+		}
+	}
+	for (uint64_t *p = (uint64_t*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH); p < (uint64_t*)0x100000; ++p) {
+		if (*p == rsdPtr) {
+			return (RSDPDescriptor2*)p;
+		}
+	}
+	return NULL;
 }
