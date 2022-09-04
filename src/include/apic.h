@@ -40,7 +40,10 @@ struct APICInterruptSourceOverrideEntry {
 } __attribute__((packed));
 typedef struct APICInterruptSourceOverrideEntry APICInterruptSourceOverrideEntry;
 
-extern void disableLegacyPic();
+// apic.c
 extern size_t getCpuCount();
 extern bool initializeApic();
+
+// apicasm.asm
+extern void disableLegacyPic();
 extern bool isApicPresent();

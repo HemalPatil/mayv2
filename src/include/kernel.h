@@ -23,6 +23,6 @@ extern InfoTable *infoTable;
 extern void kernelPanic();
 
 
-// kernellib.asm
+// kernelasm.asm
 extern void flushTLB(void *newPml4Root);
 extern void hangSystem();

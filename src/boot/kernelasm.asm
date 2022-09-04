@@ -36,6 +36,8 @@ kernelStart:
 	jmp rax
 
 section .text
+	global flushTLB
+	global hangSystem
 	global higherHalfStart
 	extern kernelMain
 higherHalfStart:
@@ -49,3 +51,15 @@ higherHalfStart:
 kernelEnd:
 	hlt
 	jmp kernelEnd
+
+flushTLB:
+	cli
+	mov cr3, rdi
+	; FIXME: must set the interrupt flag back to its original state
+	ret
+
+hangSystem:
+	cli
+	hlt
+	jmp hangSystem
+	ret
