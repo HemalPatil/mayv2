@@ -29,7 +29,6 @@ static const char* const mmapTableHeader = "Base address         Length         
 static const char* const phyMemTableHeader = "Base                 Length\n";
 static const char* const rangeOfUsed = "Range of used physical memory\n";
 static const char* const creatingBuddy = "Creating buddy bitmaps...";
-static const char* const availCountStr = "Pages available ";
 
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool initializePhysicalMemory(
@@ -304,7 +303,7 @@ void listUsedPhysicalBuddies(size_t order) {
 	}
 	terminalPrintString(rangeOfUsed, strlen(rangeOfUsed));
 	terminalPrintSpaces4();
-	terminalPrintString(availCountStr, strlen(availCountStr));
+	terminalPrintString(pagesAvailableStr, strlen(pagesAvailableStr));
 	terminalPrintHex(&phyMemPagesAvailableCount, sizeof(phyMemPagesAvailableCount));
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();

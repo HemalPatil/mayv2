@@ -10,8 +10,11 @@
 static const uint64_t nonCanonicalStart = (uint64_t)1 << (MAX_VIRTUAL_ADDRESS_BITS - 1);
 static const uint64_t nonCanonicalEnd = ~(nonCanonicalStart - 1);
 
-VirtualMemNode *kernelAddressSpaceList = INVALID_ADDRESS;
+static size_t generalPagesAvailableCount = 0;
+static size_t kernelPagesAvailableCount = 0;
+
 VirtualMemNode *generalAddressSpaceList = INVALID_ADDRESS;
+VirtualMemNode *kernelAddressSpaceList = INVALID_ADDRESS;
 const uint64_t ptMask = (uint64_t)UINT64_MAX - 1024 * (uint64_t)GIB_1 + 1;
 const uint64_t pdMask = ptMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint64_t)GIB_1;
 const uint64_t pdptMask = pdMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint64_t)MIB_2;
@@ -34,16 +37,23 @@ static const char* const pageTablesStr = "Page tables of ";
 static const char* const isCanonicalStr = "isCanonical = ";
 static const char* const crawlTableHeader = "Level Tables               Physical tables      Indexes\n";
 static const char* const addrSpaceStr = " address space list ";
-static const char* const addrSpaceHeader = "Base                 Page count           A Node address\n";
+static const char* const addrSpaceHeader = "Base                 Page count           Available Node address\n";
 static const char* const creatingLists = "Creating virtual address space lists...";
 static const char* const recursiveStr = "Creating PML4 recursive entry...";
+static const char* const checkingMaxBits = "Checking max virtual address bits...";
 
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
 	uint64_t mib1 = 0x100000;
 	terminalPrintString(initVirMemStr, strlen(initVirMemStr));
 
+	terminalPrintSpaces4();
+	terminalPrintString(checkingMaxBits, strlen(checkingMaxBits));
 	if (infoTable->maxLinearAddress != MAX_VIRTUAL_ADDRESS_BITS) {
+		terminalPrintString(notStr, strlen(notStr));
+		terminalPrintChar(' ');
+		terminalPrintString(okStr, strlen(okStr));
+		terminalPrintChar('\n');
 		terminalPrintSpaces4();
 		terminalPrintString(maxVirAddrMismatch, strlen(maxVirAddrMismatch));
 		terminalPrintDecimal(MAX_VIRTUAL_ADDRESS_BITS);
@@ -54,6 +64,8 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 		terminalPrintChar('\n');
 		return false;
 	}
+	terminalPrintString(okStr, strlen(okStr));
+	terminalPrintChar('\n');
 
 	// Mark all existing identity mapped page tables as marked in physical memory
 	terminalPrintSpaces4();
@@ -196,7 +208,9 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// Available kernel space
 	current->available = true;
 	current->base = usableKernelSpaceStart;
-	current->pageCount = ((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / pageSize;
+	kernelPagesAvailableCount =
+		current->pageCount =
+		((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / pageSize;
 	current->next = NULL;
 	current->previous = kernelAddressSpaceList;
 	++current;
@@ -213,6 +227,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	current->pageCount = L32K64_SCRATCH_LENGTH / pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
+	generalPagesAvailableCount += current->pageCount;
 	++current;
 	// General (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB used
 	current->available = false;
@@ -227,6 +242,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	current->pageCount = (nonCanonicalStart - mib1) / pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
+	generalPagesAvailableCount += current->pageCount;
 	++current;
 	// Mark non canonical address range as used
 	current->available = false;
@@ -241,6 +257,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	current->pageCount = (ptMask - nonCanonicalEnd) / pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
+	generalPagesAvailableCount += current->pageCount;
 	++current;
 	// PML4 recursive map used
 	current->available = false;
@@ -255,11 +272,101 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	current->pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
 	current->next = NULL;
 	current->previous = current - 1;
+	generalPagesAvailableCount += current->pageCount;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
 	terminalPrintString(initVirMemCompleteStr, strlen(initVirMemCompleteStr));
 	return true;
+}
+
+// Returns a region in the kernel address space that is the closest fit to the number of requested pages
+// Returns INVALID_ADDRESS and allocatedCount = 0 if request count is count == 0
+// or greater than currently available kernel pages
+// Unsafe to call this function until dynamic memory manager is initialized
+PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
+	PageRequestResult result;
+	result.address = INVALID_ADDRESS;
+	result.allocatedCount = 0;
+	if (count > ((flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
+		return result;
+	}
+	VirtualMemNode *list = (flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelAddressSpaceList : generalAddressSpaceList;
+	VirtualMemNode *bestFit = NULL, *current = list;
+	while (current) {
+		if (
+			current->available &&
+			current->pageCount >= count &&
+			(bestFit == NULL || bestFit->pageCount > current->pageCount)
+		) {
+			bestFit = current;
+		}
+		current = current->next;
+	}
+	if (flags & MEMORY_REQUEST_CONTIGUOUS) {
+		bestFit->available = false;
+		if (bestFit->pageCount != count) {
+			VirtualMemNode *newNode = kernelMalloc(sizeof(VirtualMemNode));
+			newNode->available = true;
+			newNode->base = (void*)((uint64_t)bestFit->base + count * pageSize);
+			newNode->pageCount = bestFit->pageCount - count;
+			newNode->next = bestFit->next;
+			newNode->previous = bestFit;
+			bestFit->next = newNode;
+			if (newNode->next) {
+				newNode->next->previous = newNode;
+			}
+			bestFit->pageCount = count;
+		}
+		if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+			kernelPagesAvailableCount -= count;
+		} else {
+			generalPagesAvailableCount -= count;
+		}
+		result.address = bestFit->base;
+		result.allocatedCount = count;
+
+		// Merge blocks of same type in the list
+		current = list;
+		while(current->next) {
+			if (current->available == current->next->available) {
+				// Merge blocks
+				VirtualMemNode *nextBlock = current->next;
+				current->pageCount += nextBlock->pageCount;
+				current->next = nextBlock->next;
+				if (nextBlock->next) {
+					nextBlock->next->previous = current;
+				}
+				kernelFree(nextBlock);
+			} else {
+				// Move to the next block
+				current = current->next;
+			}
+		}
+
+		if (flags & MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE) {
+			size_t total = 0;
+			while (total != count) {
+				PageRequestResult phyResult = requestPhysicalPages(count - total, 0);
+				if (phyResult.address == INVALID_ADDRESS || phyResult.allocatedCount == 0) {
+					// Out of memory
+					// TODO: should swap out pages instead of panicking
+					terminalPrintString(outOfMemoryStr, strlen(outOfMemoryStr));
+					kernelPanic();
+				}
+				mapVirtualPages(
+					(void*)((uint64_t)result.address + total * pageSize),
+					phyResult.address,
+					phyResult.allocatedCount
+				);
+				total += phyResult.allocatedCount;
+			}
+		}
+	} else {
+		// FIXME: serve non-contiguous virtual addresses
+		// is this case even needed?
+	}
+	return result;
 }
 
 // Maps virtual pages to physical pages
@@ -293,6 +400,7 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count) 
 					terminalPrintString(forAddress, strlen(forAddress));
 					terminalPrintHex(&virAddr, sizeof(virAddr));
 					terminalPrintChar('\n');
+					terminalPrintString(outOfMemoryStr, strlen(outOfMemoryStr));
 					kernelPanic();
 				}
 				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].present = 1;
@@ -446,32 +554,42 @@ void displayCrawlPageTablesResult(void *virtualAddress) {
 }
 
 // Debug helper to list all entries in a given virtual address space list
-void traverseAddressSpaceList(VirtualMemNode *current, bool forwardDirection) {
-	if (current == kernelAddressSpaceList) {
+void traverseAddressSpaceList(VirtualMemNode *list, bool forwardDirection) {
+	if (list == kernelAddressSpaceList) {
 		terminalPrintString("Kernel", 6);
 	} else {
 		terminalPrintString("General", 7);
 	}
 	terminalPrintString(addrSpaceStr, strlen(addrSpaceStr));
-	terminalPrintHex(&current, sizeof(current));
+	terminalPrintHex(&list, sizeof(list));
+	terminalPrintChar('\n');
+	terminalPrintSpaces4();
+	terminalPrintString(pagesAvailableStr, strlen(pagesAvailableStr));
+	if (list == kernelAddressSpaceList) {
+		terminalPrintHex(&kernelPagesAvailableCount, sizeof(kernelPagesAvailableCount));
+	} else {
+		terminalPrintHex(&generalPagesAvailableCount, sizeof(generalPagesAvailableCount));
+	}
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintString(addrSpaceHeader, strlen(addrSpaceHeader));
 	if (!forwardDirection) {
-		while (current->next) {
-			current = current->next;
+		while (list->next) {
+			list = list->next;
 		}
 	}
-	while (current) {
+	while (list) {
 		terminalPrintSpaces4();
-		terminalPrintHex(&current->base, sizeof(current->base));
+		terminalPrintHex(&list->base, sizeof(list->base));
 		terminalPrintChar(' ');
-		terminalPrintHex(&current->pageCount, sizeof(current->pageCount));
+		terminalPrintHex(&list->pageCount, sizeof(list->pageCount));
 		terminalPrintChar(' ');
-		terminalPrintDecimal(current->available);
+		terminalPrintDecimal(list->available);
+		terminalPrintSpaces4();
+		terminalPrintSpaces4();
 		terminalPrintChar(' ');
-		terminalPrintHex(&current, sizeof(current));
+		terminalPrintHex(&list, sizeof(list));
 		terminalPrintChar('\n');
-		current = forwardDirection ? current->next : current->previous;
+		list = forwardDirection ? list->next : list->previous;
 	}
 }

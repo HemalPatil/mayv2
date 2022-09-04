@@ -51,7 +51,7 @@ void kernelMain(
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();
 	setupIdt64();
-	return;
+	terminalPrintChar('\n');
 	
 	if (!parseAcpi3()) {
 		kernelPanic();
