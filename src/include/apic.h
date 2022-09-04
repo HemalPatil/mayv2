@@ -22,6 +22,15 @@ struct APICCPUEntry {
 } __attribute__((packed));
 typedef struct APICCPUEntry APICCPUEntry;
 
+struct APICIOEntry {
+	APICEntryHeader header;
+	uint8_t apicId;
+	uint8_t reserved;
+	uint32_t address;
+	uint32_t globalInterruptBase;
+} __attribute__((packed));
+typedef struct APICIOEntry APICIOEntry;
+
 struct APICInterruptSourceOverrideEntry {
 	APICEntryHeader header;
 	uint8_t busSource;

@@ -45,7 +45,11 @@ void terminalSetTextColour(uint8_t colour) {
 	currentTerminalColour = currentBgColour << 4 | currentTextColour;
 }
 
-// Clears the terminal screen
+void terminalGetCursorPosition(size_t *x, size_t *y) {
+	*x = cursorX;
+	*y = cursorY;
+}
+
 void terminalClearScreen() {
 	if (!isTerminalMode()) {
 		return;
