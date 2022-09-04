@@ -138,7 +138,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintSpaces4();
 	terminalPrintString(reservingHeap, strlen(reservingHeap));
 	heapRegionsList = usableKernelSpaceStart;
-	PhysicalPageRequestResult requestResult = requestPhysicalPages(HEAP_NEW_REGION_SIZE / pageSize, 0);
+	PageRequestResult requestResult = requestPhysicalPages(HEAP_NEW_REGION_SIZE / pageSize, 0);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != (HEAP_NEW_REGION_SIZE / pageSize) ||
@@ -277,7 +277,7 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count) 
 		return false;
 	}
 
-	PhysicalPageRequestResult requestResult;
+	PageRequestResult requestResult;
 	PML4CrawlResult crawlResult;
 	for (size_t i = 0; i < count; ++i, phyAddr += pageSize, virAddr += pageSize) {
 		crawlResult = crawlPageTables((void*)virAddr);

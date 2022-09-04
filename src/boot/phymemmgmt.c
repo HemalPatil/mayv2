@@ -125,8 +125,8 @@ bool initializePhysicalMemory(
 // Actual number of pages assigned is returned in allocatedCount
 // Returns INVALID_ADDRESS and allocatedCount = 0 if request count is greater than currently available pages
 // Unsafe to call this function until virtual memory manager is initialized
-PhysicalPageRequestResult requestPhysicalPages(size_t count, uint8_t flags) {
-	PhysicalPageRequestResult result;
+PageRequestResult requestPhysicalPages(size_t count, uint8_t flags) {
+	PageRequestResult result;
 	result.address = INVALID_ADDRESS;
 	result.allocatedCount = 0;
 	// FIXME: handle requests for sizes > 2MiB i.e. 512 count

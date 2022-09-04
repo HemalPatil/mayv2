@@ -11,17 +11,17 @@
 #define PHY_MEM_FREE 0
 #define PHY_MEM_USED 1
 
+struct PageRequestResult {
+	void* address;
+	size_t allocatedCount;
+};
+typedef struct PageRequestResult PageRequestResult;
+
 struct PhyMemBuddyBitmapIndex {
 	size_t byte;
 	size_t bit;
 };
 typedef struct PhyMemBuddyBitmapIndex PhyMemBuddyBitmapIndex;
-
-struct PhysicalPageRequestResult {
-	void* address;
-	size_t allocatedCount;
-};
-typedef struct PhysicalPageRequestResult PhysicalPageRequestResult;
 
 extern const size_t pageSize;
 extern const size_t pageSizeShift;
@@ -50,4 +50,4 @@ extern void initUsablePhysicalMemorySize();
 extern void listMmapEntries();
 extern void listUsedPhysicalBuddies(size_t order);
 extern void markPhysicalPages(void* address, size_t count, uint8_t type);
-extern PhysicalPageRequestResult requestPhysicalPages(size_t count, uint8_t flags);
+extern PageRequestResult requestPhysicalPages(size_t count, uint8_t flags);
