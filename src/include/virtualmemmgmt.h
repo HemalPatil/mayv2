@@ -39,9 +39,10 @@ extern const size_t virtualPageIndexShift;
 
 extern PML4CrawlResult crawlPageTables(void *virtualAddress);
 extern void displayCrawlPageTablesResult(void *virtualAddress);
-extern bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount);
-extern bool isCanonicalVirtualAddress(void* address);
-extern bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count);
+extern bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags);
+extern bool initializeVirtualMemory(void *usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount);
+extern bool isCanonicalVirtualAddress(void *address);
+extern bool mapVirtualPages(void *virtualAddress, void *physicalAddress, size_t count);
 extern PageRequestResult requestVirtualPages(size_t count, uint8_t flags);
 extern void traverseAddressSpaceList(VirtualMemNode *current, bool forwardDirection);
-extern bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage);
+extern bool unmapVirtualPages(void *virtualAddress, size_t count, bool freePhysicalPage);

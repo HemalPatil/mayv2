@@ -1,5 +1,6 @@
 #include <commonstrings.h>
 #include <kernel.h>
+#include <heapmemmgmt.h>
 #include <string.h>
 #include <terminal.h>
 #include <virtualmemmgmt.h>
@@ -117,18 +118,21 @@ bool parseAcpi3() {
 	terminalPrintChar('\n');
 
 	// Verify the XSDT signature
-	xsdt = (ACPISDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~phyMemBuddyMasks[0]));
+	ACPISDTHeader *oldXsdt = (ACPISDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~phyMemBuddyMasks[0]));
 	terminalPrintSpaces4();
 	terminalPrintString(verifyingXsdtSigStr, strlen(verifyingXsdtSigStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	// Assumes the entrie XSDT lies in the same page as XSDT
-	if (*(uint32_t*)xsdt->signature != xsdtSignature || !validAcpi3Table(xsdt)) {
+	if (*(uint32_t*)oldXsdt->signature != xsdtSignature || !validAcpi3Table(oldXsdt)) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
 		terminalPrintChar('\n');
 		return false;
 	}
+	// Copy the XSDT to heap
+	xsdt = kernelMalloc(oldXsdt->length);
+	memcpy(xsdt, oldXsdt, oldXsdt->length);
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
 
@@ -136,14 +140,23 @@ bool parseAcpi3() {
 	terminalPrintSpaces4();
 	terminalPrintString(findingAcpiTablesStr, strlen(findingAcpiTablesStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	apic = findAcpiTable(xsdt, apicSignature);
-	fadt = findAcpiTable(xsdt, fadtSignature);
-	ssdt = findAcpiTable(xsdt, ssdtSignature);
-	if (apic == INVALID_ADDRESS || fadt == INVALID_ADDRESS || ssdt == INVALID_ADDRESS) {
-	terminalPrintString(failedStr, strlen(failedStr));
-	terminalPrintChar('\n');
+	ACPISDTHeader* oldApic = findAcpiTable(oldXsdt, apicSignature);
+	ACPISDTHeader* oldFadt = findAcpiTable(oldXsdt, fadtSignature);
+	ACPISDTHeader* oldSsdt = findAcpiTable(oldXsdt, ssdtSignature);
+	if (oldApic == INVALID_ADDRESS || oldFadt == INVALID_ADDRESS || oldSsdt == INVALID_ADDRESS) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
 		return false;
 	}
+	// Copy the tables to heap
+	apic = kernelMalloc(oldApic->length);
+	memcpy(apic, oldApic, oldApic->length);
+	fadt = kernelMalloc(oldFadt->length);
+	memcpy(fadt, oldFadt, oldFadt->length);
+	ssdt = kernelMalloc(oldSsdt->length);
+	memcpy(ssdt, oldSsdt, oldSsdt->length);
+	// Free the kernel page used for parsing XSDT
+	freeVirtualPages((void*)((uint64_t)oldXsdt & phyMemBuddyMasks[0]), 1, MEMORY_REQUEST_KERNEL_PAGE);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 

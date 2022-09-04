@@ -13,6 +13,8 @@ static const uint64_t nonCanonicalEnd = ~(nonCanonicalStart - 1);
 static size_t generalPagesAvailableCount = 0;
 static size_t kernelPagesAvailableCount = 0;
 
+static void defragAddressSpaceList(VirtualMemNode *list);
+
 VirtualMemNode *generalAddressSpaceList = INVALID_ADDRESS;
 VirtualMemNode *kernelAddressSpaceList = INVALID_ADDRESS;
 const uint64_t ptMask = (uint64_t)UINT64_MAX - 1024 * (uint64_t)GIB_1 + 1;
@@ -288,7 +290,10 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	return true;
 }
 
-// Returns a region in the kernel address space that is the closest fit to the number of requested pages
+// Returns a region in the kernel or general address space depending on MEMORY_REQUEST_KERNEL_PAGE flag
+// that is the closest fit to the number of requested pages
+// If MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE flag is passed,
+// the returned virtual addresses are mapped to newly allocated physical pages
 // Returns INVALID_ADDRESS and allocatedCount = 0 if request count is count == 0
 // or greater than currently available kernel pages
 // Unsafe to call this function until dynamic memory manager is initialized
@@ -333,24 +338,7 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 		}
 		result.address = bestFit->base;
 		result.allocatedCount = count;
-
-		// Merge blocks of same type in the list
-		current = list;
-		while(current->next) {
-			if (current->available == current->next->available) {
-				// Merge blocks
-				VirtualMemNode *nextBlock = current->next;
-				current->pageCount += nextBlock->pageCount;
-				current->next = nextBlock->next;
-				if (nextBlock->next) {
-					nextBlock->next->previous = current;
-				}
-				kernelFree(nextBlock);
-			} else {
-				// Move to the next block
-				current = current->next;
-			}
-		}
+		defragAddressSpaceList(list);
 
 		if (flags & MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE) {
 			size_t total = 0;
@@ -375,6 +363,124 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 		// is this case even needed?
 	}
 	return result;
+}
+
+// Frees and unmaps virtual pages from the kernel or general address space
+// depending on MEMORY_REQUEST_KERNEL_PAGE flag
+// It is assumed all virtual addresses are canonical and pageSize boundary aligned
+// If MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE flag is passed,
+// the physical pages to which a virtual page is mapped is also freed
+// Returns false if the virtual pages to be freed do not entirely fit in a used region
+bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
+	uint64_t vBeg = (uint64_t)virtualAddress;
+	uint64_t vEnd = vBeg + count * pageSize;
+
+	// Ensure the virtual addresses are pageSize boundary aligned and canonical
+	if ((vBeg & ~phyMemBuddyMasks[0]) || !isCanonicalVirtualAddress(virtualAddress)) {
+		return false;
+	}
+
+	VirtualMemNode *list = (flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelAddressSpaceList : generalAddressSpaceList;
+	VirtualMemNode *current = list;
+	while (current) {
+		uint64_t cBeg = (uint64_t)current->base;
+		uint64_t cEnd = cBeg + current->pageCount * pageSize;
+		if (!current->available && cBeg <= vBeg && cEnd >= vEnd) {
+			if (cBeg == vBeg && cEnd == vEnd) {
+				// Region to be freed fits exactly in current block
+				current->available = true;
+			} else {
+				VirtualMemNode *newNode1 = kernelMalloc(sizeof(VirtualMemNode));
+				VirtualMemNode *newNode2 = kernelMalloc(sizeof(VirtualMemNode));
+				VirtualMemNode *newNode3 = kernelMalloc(sizeof(VirtualMemNode));
+				newNode1->available = false;
+				newNode1->base = current->base;
+				newNode1->pageCount = (vBeg - cBeg) / pageSize;
+				newNode1->next = newNode2;
+				newNode1->previous = current->previous;
+				if (newNode1->previous) {
+					newNode1->previous->next = newNode1;
+				} else {
+					// This is the first node in the list
+					if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+						kernelAddressSpaceList = newNode1;
+						kernelFree(kernelAddressSpaceList);
+					} else {
+						generalAddressSpaceList = newNode1;
+						kernelFree(generalAddressSpaceList);
+					}
+				}
+				newNode2->available = true;
+				newNode2->base = (void*)vBeg;
+				newNode2->pageCount = count;
+				newNode2->next = newNode3;
+				newNode2->previous = newNode1;
+				newNode3->available = false;
+				newNode3->base = (void*)vEnd;
+				newNode3->pageCount = (cEnd - vEnd) / pageSize;
+				newNode3->next = current->next;
+				newNode3->previous = newNode2;
+				if (newNode3->next) {
+					newNode3->next->previous = newNode3;
+				}
+				kernelFree(current);
+				if (newNode1->pageCount == 0) {
+					// Region to be freed is at the beginning of the current block
+					newNode2->previous = newNode1->previous;
+					if (newNode2->previous) {
+						newNode2->previous->next = newNode2;
+					} else {
+						// This is the first node in the list
+						if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+							kernelAddressSpaceList = newNode1;
+							kernelFree(kernelAddressSpaceList);
+						} else {
+							generalAddressSpaceList = newNode1;
+							kernelFree(generalAddressSpaceList);
+						}
+					}
+					kernelFree(newNode1);
+				}
+				if (newNode3->pageCount == 0) {
+					// Region to be freed is at the end of the current block
+					newNode2->next = newNode3->next;
+					if (newNode2->next) {
+						newNode2->next->previous = newNode2;
+					}
+					kernelFree(newNode3);
+				}
+			}
+			if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+				kernelPagesAvailableCount += count;
+			} else {
+				generalPagesAvailableCount += count;
+			}
+			defragAddressSpaceList((flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelAddressSpaceList : generalAddressSpaceList);
+
+			unmapVirtualPages(virtualAddress, count, flags & MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE);
+			return true;
+		}
+		current = current->next;
+	}
+	return true;
+}
+
+static void defragAddressSpaceList(VirtualMemNode *list) {
+	while(list->next) {
+		if (list->available == list->next->available) {
+			// Merge blocks
+			VirtualMemNode *nextBlock = list->next;
+			list->pageCount += nextBlock->pageCount;
+			list->next = nextBlock->next;
+			if (nextBlock->next) {
+				nextBlock->next->previous = list;
+			}
+			kernelFree(nextBlock);
+		} else {
+			// Move to the next block
+			list = list->next;
+		}
+	}
 }
 
 // Maps virtual pages to physical pages
@@ -436,7 +542,7 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count) 
 bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage) {
 	uint64_t addr = (uint64_t) virtualAddress;
 
-	// Ensure the virtual addresses are 4KiB page aligned
+	// Ensure the virtual addresses are pageSize boundary aligned
 	if (addr & ~phyMemBuddyMasks[0]) {
 		return false;
 	}

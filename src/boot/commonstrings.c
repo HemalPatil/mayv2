@@ -8,4 +8,5 @@ const char* const notStr = "not";
 const char* const okStr = "ok";
 const char* const outOfMemoryStr = "\nOut of memory\n";
 const char* const pagesAvailableStr = "Pages available ";
+const char* const presentStr = "present";
 const char* const trueStr = "true";

@@ -52,14 +52,16 @@ void kernelMain(
 	setupTss64();
 	setupIdt64();
 	terminalPrintChar('\n');
-	
+
 	if (!parseAcpi3()) {
 		kernelPanic();
 	}
-	hangSystem();
 
 	// Disable PIC and setup APIC
-	setupApic();
+	if (!initializeApic()) {
+		kernelPanic();
+	}
+	hangSystem();
 
 	// Get basic interrupts and exceptions setup
 	// Initializing ACPI will generate page faults while parsing ACPI tables
