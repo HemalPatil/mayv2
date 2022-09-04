@@ -1,6 +1,7 @@
 #pragma once
 
 #include <elf64.h>
+#include <phymemmgmt.h>
 #include <pml4t.h>
 #include <stddef.h>
 #include <stdint.h>

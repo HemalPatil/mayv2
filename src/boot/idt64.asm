@@ -44,13 +44,14 @@ idtDescriptor:
 	idt64Base dq IDT_START
 	defaultInterruptString db 'Default interrupt handler!', 10, 0
 	doubleFaultString db 'Double Fault!', 10, 0
-	idtLoading db 'Loading IDT...', 0
+	idtLoading db 'Loading IDT', 0
 	idtLoaded db 'IDT loaded', 10, 0
 	interruptsEnabled db 'Enabled interrupts', 10, 0
 	pageFaultString db 'Page Fault! Tried to access ', 0
 
 section .text
 	extern doneStr
+	extern ellipsisStr
 	extern terminalPrintChar
 	extern terminalPrintHex
 	extern terminalPrintString
@@ -58,7 +59,10 @@ section .text
 	global enableInterrupts
 setupIdt64:
 	mov rdi, idtLoading
-	mov rsi, 14
+	mov rsi, 11
+	call terminalPrintString
+	mov rdi, [ellipsisStr]
+	mov rsi, 3
 	call terminalPrintString
 ; Fill all 256 interrupt handlers with defaultInterruptHandler
 ; Set rdx to base address of IDT and loop through all 256

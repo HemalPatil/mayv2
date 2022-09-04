@@ -2,19 +2,24 @@
 #include <kernel.h>
 #include <string.h>
 #include <terminal.h>
+#include <virtualmemmgmt.h>
+
+// The string 'XSDT'
+static const uint32_t xsdtSignature = 0x54445358;
 
 RSDPDescriptor2 *rsdp = 0;
 
-static const char* const parsingAcpi = "Parsing ACPI3...\n";
-static const char* const searchingRsdp = "Searching for RSDP...";
-static const char* const acpiFound = "RSDP = ";
-static const char* const xsdtSignature = "XSDT";
-static const char* const verifyingChecksum = "Checking RSD integrity...";
-static const char* const verifyingXsdtSig = "Verifying XSDT signature...\nSignature ";
-static const char* const rsdtAddress = "RSDT Address = ";
-static const char* const xsdtAddress = "XSDT Address = ";
+static const char* const parsingAcpiStr = "Parsing ACPI3";
+static const char* const searchingRsdpStr = "Searching for RSDP";
+static const char* const acpiFound = "RSDP ";
+static const char* const verifyingChecksumStr = "Checking RSDT integrity";
+static const char* const verifyingXsdtSigStr = "Checking XSDT signature";
+static const char* const rsdtAddressStr = "RSDT ";
+static const char* const xsdtAddressStr = ", XSDT ";
 static const char* const oldAcpi = "ACPI version found is older than ACPI3\n";
-static const char* const checkingRevision = "Checking ACPI revision...";
+static const char* const checkingRevisionStr = "Checking ACPI revision";
+static const char* const parseCompleteStr = "ACPI3 parsed\n\n";
+static const char* const mappingXsdtStr = "Mapping XSDT to kernel address space";
 
 RSDPDescriptor2* searchRsdp() {
 	// Search for the magic string 'RSD PTR ' at every 8 byte boundary
@@ -33,12 +38,15 @@ RSDPDescriptor2* searchRsdp() {
 }
 
 bool parseAcpi3() {
-	terminalPrintString(parsingAcpi, strlen(parsingAcpi));
+	terminalPrintString(parsingAcpiStr, strlen(parsingAcpiStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
 
 	// Search for RSDP in the identity mapped regions from
 	// 0 to L32K64_SCRATCH_BASE and (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB
 	terminalPrintSpaces4();
-	terminalPrintString(searchingRsdp, strlen(searchingRsdp));
+	terminalPrintString(searchingRsdpStr, strlen(searchingRsdpStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	rsdp = searchRsdp();
 	if (!rsdp) {
 		terminalPrintString(failedStr, strlen(failedStr));
@@ -54,7 +62,8 @@ bool parseAcpi3() {
 
 	// Ensure the revision is ACPI3
 	terminalPrintSpaces4();
-	terminalPrintString(checkingRevision, strlen(checkingRevision));
+	terminalPrintString(checkingRevisionStr, strlen(checkingRevisionStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	if (rsdp->revision <= RSDP_REVISION_2_AND_ABOVE) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
@@ -69,7 +78,8 @@ bool parseAcpi3() {
 
 	// Verify the checksum
 	terminalPrintSpaces4();
-	terminalPrintString(verifyingChecksum, strlen(verifyingChecksum));
+	terminalPrintString(verifyingChecksumStr, strlen(verifyingChecksumStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	uint8_t checksum = 0;
 	for (size_t i = 0; i < sizeof(RSDPDescriptor2); ++i) {
 		checksum += ((uint8_t*)rsdp)[i];
@@ -83,25 +93,51 @@ bool parseAcpi3() {
 	}
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
-	hangSystem();
 
-	// // TODO: Initalize ACPI3
-	// // Read https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf Section 5.2
-	// ACPISDTHeader *rsdt = rsdp->rsdtAddress;
-	// terminalPrintString(rsdtAddress, strlen(rsdtAddress));
-	// terminalPrintHex(&rsdt, sizeof(rsdt));
-	// terminalPrintChar('\n');
-	// ACPISDTHeader *xsdt = rsdp->xsdtAddress;
-	// terminalPrintString(xsdtAddress, strlen(xsdtAddress));
-	// terminalPrintHex(&xsdt, sizeof(xsdt));
-	// terminalPrintChar('\n');
-	// terminalPrintString(verifyingXsdtSig, strlen(verifyingXsdtSig));
-	// if (strcmp(xsdt->signature, xsdtSignature)) {
-	// 	terminalPrintString(not, strlen(not));
-	// 	terminalPrintString(ok, strlen(ok));
-	// 	return false;
-	// }
-	// terminalPrintString(ok, strlen(ok));
+	// TODO: Initalize ACPI3
+	// Read https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf Section 5.2
+	ACPISDTHeader *rsdtPhy = (ACPISDTHeader*)(uint64_t)rsdp->rsdtAddress;
+	terminalPrintSpaces4();
+	terminalPrintString(rsdtAddressStr, strlen(rsdtAddressStr));
+	terminalPrintHex(&rsdtPhy, sizeof(rsdtPhy));
+	ACPISDTHeader *xsdtPhy = (ACPISDTHeader*)rsdp->xsdtAddress;
+	terminalPrintString(xsdtAddressStr, strlen(xsdtAddressStr));
+	terminalPrintHex(&xsdtPhy, sizeof(xsdtPhy));
+	terminalPrintChar('\n');
 
+	// The XSDT is most likely not mapped in the virtual address space
+	// Request a kernel page and map it to XSDT's page
+	terminalPrintSpaces4();
+	terminalPrintString(mappingXsdtStr, strlen(mappingXsdtStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	if (
+		requestResult.address == INVALID_ADDRESS ||
+		requestResult.allocatedCount != 1 ||
+		!mapVirtualPages(requestResult.address, (void*)((uint64_t)xsdtPhy & phyMemBuddyMasks[0]), 1)
+	) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		return false;
+	}
+	terminalPrintString(okStr, strlen(okStr));
+	terminalPrintChar('\n');
+
+	// Verify the XSDT signature
+	ACPISDTHeader *xsdt = (ACPISDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~phyMemBuddyMasks[0]));
+	terminalPrintSpaces4();
+	terminalPrintString(verifyingXsdtSigStr, strlen(verifyingXsdtSigStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (*(uint32_t*)xsdt->signature != xsdtSignature) {
+		terminalPrintString(notStr, strlen(notStr));
+		terminalPrintChar(' ');
+		terminalPrintString(okStr, strlen(okStr));
+		terminalPrintChar('\n');
+		return false;
+	}
+	terminalPrintString(okStr, strlen(okStr));
+	terminalPrintChar('\n');
+
+	terminalPrintString(parseCompleteStr, strlen(parseCompleteStr));
 	return true;
 }

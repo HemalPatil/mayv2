@@ -1,6 +1,7 @@
 #include <commonstrings.h>
 
 const char* const doneStr = "done";
+const char* const ellipsisStr = "...";
 const char* const failedStr = "failed";
 const char* const falseStr = "false";
 const char* const notStr = "not";

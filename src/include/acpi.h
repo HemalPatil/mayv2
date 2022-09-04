@@ -40,9 +40,9 @@ struct RSDPDescriptor2 {
 	uint8_t checksum;
 	char oemId[6];
 	uint8_t revision;
-	ACPISDTHeader *rsdtAddress;
+	uint32_t rsdtAddress;
 	uint32_t length;
-	ACPISDTHeader *xsdtAddress;
+	uint64_t xsdtAddress;
 	uint8_t extendedChecksum;
 	uint8_t reserved[3];
 } __attribute__((packed));

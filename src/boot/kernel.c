@@ -56,6 +56,7 @@ void kernelMain(
 	if (!parseAcpi3()) {
 		kernelPanic();
 	}
+	hangSystem();
 
 	// Disable PIC and setup APIC
 	setupApic();

@@ -22,33 +22,35 @@ PML4E* const pml4t = (PML4E*)(pdptMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint
 const size_t virtualPageIndexShift = 9;
 const uint64_t virtualPageIndexMask = ((uint64_t)1 << virtualPageIndexShift) - 1;
 
-static const char* const initVirMemStr = "Initializing virtual memory management...\n";
+static const char* const initVirMemStr = "Initializing virtual memory management";
 static const char* const initVirMemCompleteStr = "Virtual memory management initialized\n\n";
-static const char* const markingPml4 = "Marking PML4 page tables as used in physical memory...";
-static const char* const movingBuddies = "Mapping physical memory manager in kernel address space...";
+static const char* const markingPml4Str = "Marking PML4 page tables as used in physical memory";
+static const char* const movingBuddiesStr = "Mapping physical memory manager in kernel address space";
 static const char* const maxVirAddrMismatch = "Max virtual address bits mismatch. Expected [";
 static const char* const gotStr = "] got [";
 static const char* const entryCreationFailed = "Failed to create PML4 entry at level ";
 static const char* const forAddress = " for address ";
 static const char* const removingId = "Removing PML4 identity mapping of first ";
-static const char* const mibs = "MiBs...";
-static const char* const reservingHeap = "Reserving memory for dynamic memory manager...";
+static const char* const reservingHeapStr = "Reserving memory for dynamic memory manager";
 static const char* const pageTablesStr = "Page tables of ";
 static const char* const isCanonicalStr = "isCanonical = ";
 static const char* const crawlTableHeader = "Level Tables               Physical tables      Indexes\n";
 static const char* const addrSpaceStr = " address space list ";
 static const char* const addrSpaceHeader = "Base                 Page count           Available Node address\n";
-static const char* const creatingLists = "Creating virtual address space lists...";
-static const char* const recursiveStr = "Creating PML4 recursive entry...";
-static const char* const checkingMaxBits = "Checking max virtual address bits...";
+static const char* const creatingListsStr = "Creating virtual address space lists";
+static const char* const recursiveStr = "Creating PML4 recursive entry";
+static const char* const checkingMaxBitsStr = "Checking max virtual address bits";
 
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
 	uint64_t mib1 = 0x100000;
 	terminalPrintString(initVirMemStr, strlen(initVirMemStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
 
 	terminalPrintSpaces4();
-	terminalPrintString(checkingMaxBits, strlen(checkingMaxBits));
+	terminalPrintString(checkingMaxBitsStr, strlen(checkingMaxBitsStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	if (infoTable->maxLinearAddress != MAX_VIRTUAL_ADDRESS_BITS) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
@@ -69,7 +71,8 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 
 	// Mark all existing identity mapped page tables as marked in physical memory
 	terminalPrintSpaces4();
-	terminalPrintString(markingPml4, strlen(markingPml4));
+	terminalPrintString(markingPml4Str, strlen(markingPml4Str));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PML4E *pml4tId = (PML4E*) infoTable->pml4tPhysicalAddress;
 	markPhysicalPages(pml4tId, 1, PHY_MEM_USED);
 	for (size_t i = 0; i < PML4_ENTRY_COUNT; ++i) {
@@ -102,6 +105,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// which must be marked as used in the virtual memory list later
 	terminalPrintSpaces4();
 	terminalPrintString(recursiveStr, strlen(recursiveStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PML4E *root = (PML4E*)infoTable->pml4tPhysicalAddress;
 	root[PML4T_RECURSIVE_ENTRY].present = root[PML4T_RECURSIVE_ENTRY].readWrite = 1;
 	root[PML4T_RECURSIVE_ENTRY].physicalAddress = infoTable->pml4tPhysicalAddress >> pageSizeShift;
@@ -110,7 +114,8 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 
 	// Map physical memory buddy bitmap to kernel address space
 	terminalPrintSpaces4();
-	terminalPrintString(movingBuddies, strlen(movingBuddies));
+	terminalPrintString(movingBuddiesStr, strlen(movingBuddiesStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	if (!mapVirtualPages(usableKernelSpaceStart, phyMemBuddyBitmaps[0], phyMemBuddyPagesCount)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -130,7 +135,8 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintSpaces4();
 	terminalPrintString(removingId, strlen(removingId));
 	terminalPrintDecimal(L32_IDENTITY_MAP_SIZE);
-	terminalPrintString(mibs, strlen(mibs));
+	terminalPrintString("MiBs", 4);
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	if (
 		!unmapVirtualPages((void*)mib1, (L32_IDENTITY_MAP_SIZE - 1) * mib1 / pageSize, false) ||
 		!unmapVirtualPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / pageSize, false) ||
@@ -146,7 +152,8 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// Create new heap region of size HEAP_NEW_REGION_SIZE
 	// and reserve an entry table for this heap
 	terminalPrintSpaces4();
-	terminalPrintString(reservingHeap, strlen(reservingHeap));
+	terminalPrintString(reservingHeapStr, strlen(reservingHeapStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	heapRegionsList = usableKernelSpaceStart;
 	PageRequestResult requestResult = requestPhysicalPages(HEAP_NEW_REGION_SIZE / pageSize, 0);
 	if (
@@ -186,7 +193,8 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// 3) PML4 recursive mapping
 	// 4) KERNEL_HIGHERHALF_ORIGIN to usableKernelSpaceStart
 	terminalPrintSpaces4();
-	terminalPrintString(creatingLists, strlen(creatingLists));
+	terminalPrintString(creatingListsStr, strlen(creatingListsStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	requestResult = requestPhysicalPages(1, 0);
 	if (
 		requestResult.address == INVALID_ADDRESS ||

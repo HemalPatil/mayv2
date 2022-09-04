@@ -11,10 +11,10 @@ static HeapEntry* nextHeapEntry(HeapHeader *heap, HeapEntry *heapEntry);
 HeapHeader *heapRegionsList = INVALID_ADDRESS;
 HeapHeader *latestHeapSearched = INVALID_ADDRESS;
 
-static const char* const initHeapStr = "Initializing dynamic memory management...\n";
+static const char* const initHeapStr = "Initializing dynamic memory management";
 static const char* const initHeapCompleteStr = "Dynamic memory management initialized\n\n";
-static const char* const creatingHeapHeaderStr = "Creating heap header...";
-static const char* const movingVirMemLists = "Moving virtual address space lists to heap memory...";
+static const char* const creatingHeapHeaderStr = "Creating heap header";
+static const char* const movingVirMemListsStr = "Moving virtual address space lists to heap memory";
 static const char* const listHeapStr = "List of all kernel heap regions\n";
 static const char* const heapHeaderStr = "Heap start           Size                 Count Remaining\n";
 static const char* const invalidFreeStr = "\nInvalid kernelFree operation ";
@@ -22,10 +22,13 @@ static const char* const invalidFreeStr = "\nInvalid kernelFree operation ";
 bool initializeDynamicMemory() {
 	void *ghostPage = kernelAddressSpaceList;
 	terminalPrintString(initHeapStr, strlen(initHeapStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
 
 	// Initalize the heap region reserved by virtual memory manager during its initialization
 	terminalPrintSpaces4();
 	terminalPrintString(creatingHeapHeaderStr, strlen(creatingHeapHeaderStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	heapRegionsList->entryCount = 0;
 	heapRegionsList->size = HEAP_NEW_REGION_SIZE;
 	heapRegionsList->remaining = heapRegionsList->size - sizeof(HeapHeader) - sizeof(HeapEntry);
@@ -41,7 +44,8 @@ bool initializeDynamicMemory() {
 	// Move the virtual address space lists at the end of heap to the heap to make them dynamic
 	// and unmap the ghost page containing the lists
 	terminalPrintSpaces4();
-	terminalPrintString(movingVirMemLists, strlen(movingVirMemLists));
+	terminalPrintString(movingVirMemListsStr, strlen(movingVirMemListsStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	VirtualMemNode *lists[2] = { kernelAddressSpaceList, generalAddressSpaceList };
 	VirtualMemNode *newLists[2] = { NULL, NULL };
 	for (size_t i = 0; i < 2; ++i) {

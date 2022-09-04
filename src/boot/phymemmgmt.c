@@ -18,7 +18,7 @@ size_t phyMemBuddyBitmapSizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 uint64_t phyMemBuddyMasks[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 size_t phyMemBuddySizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 
-static const char* const initPhyMemStr = "Initializing physical memory management...\n";
+static const char* const initPhyMemStr = "Initializing physical memory management";
 static const char* const initPhyMemCompleteStr = "Physical memory management initialized\n\n";
 static const char* const phyMemStr = "physical memory ";
 static const char* const totalStr = "Total ";
@@ -28,7 +28,7 @@ static const char* const countStr = "Number of MMAP entries ";
 static const char* const mmapTableHeader = "Base address         Length               Type\n";
 static const char* const phyMemTableHeader = "Base                 Length\n";
 static const char* const rangeOfUsed = "Range of used physical memory\n";
-static const char* const creatingBuddy = "Creating buddy bitmaps...";
+static const char* const creatingBuddyStr = "Creating buddy bitmaps";
 
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool initializePhysicalMemory(
@@ -38,6 +38,8 @@ bool initializePhysicalMemory(
 	size_t *phyMemBuddyPagesCount
 ) {
 	terminalPrintString(initPhyMemStr, strlen(initPhyMemStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
 
 	// Display diagnostic information about memory like MMAP entries,
 	// physical and usable memory size
@@ -68,7 +70,8 @@ bool initializePhysicalMemory(
 	*phyMemBuddyPagesCount = 0;
 	uint64_t totalBytesRequired = 0;
 	terminalPrintSpaces4();
-	terminalPrintString(creatingBuddy, strlen(creatingBuddy));
+	terminalPrintString(creatingBuddyStr, strlen(creatingBuddyStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	for (size_t i = 0; i < PHY_MEM_BUDDY_MAX_ORDER; ++i) {
 		phyMemBuddySizes[i] = 1 << i;
 		phyMemBuddyMasks[i] = ~(phyMemBuddySizes[i] * pageSize - 1);
