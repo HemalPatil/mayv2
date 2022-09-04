@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #define L32_IDENTITY_MAP_SIZE 32
-#define PHY_MEM_ALLOCATE_CONTIGUOUS 1
+#define MEMORY_REQUEST_CONTIGUOUS 1
 #define PHY_MEM_BUDDY_MAX_ORDER 10
 #define PHY_MEM_FREE 0
 #define PHY_MEM_USED 1
@@ -31,10 +31,6 @@ extern uint8_t* phyMemBuddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER];
 extern size_t phyMemBuddyBitmapSizes[PHY_MEM_BUDDY_MAX_ORDER];
 extern uint64_t phyMemBuddyMasks[PHY_MEM_BUDDY_MAX_ORDER];
 extern size_t phyMemBuddySizes[PHY_MEM_BUDDY_MAX_ORDER];
-extern size_t phyMemPagesAvailableCount;
-extern size_t phyMemPagesTotalCount;
-extern size_t phyMemTotalSize;
-extern size_t phyMemUsableSize;
 
 extern bool arePhysicalBuddiesOfType(void* address, size_t order, size_t count, uint8_t type);
 extern PhyMemBuddyBitmapIndex getPhysicalBuddyBitmapIndex(void* address, size_t order);

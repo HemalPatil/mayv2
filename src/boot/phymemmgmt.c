@@ -4,6 +4,11 @@
 #include <string.h>
 #include <terminal.h>
 
+static size_t phyMemPagesAvailableCount = 0;
+static size_t phyMemPagesTotalCount = 0;
+static size_t phyMemTotalSize = 0;
+static size_t phyMemUsableSize = 0;
+
 const size_t pageSizeShift = 12;
 const size_t pageSize = 1 << pageSizeShift;
 
@@ -12,10 +17,6 @@ uint8_t* phyMemBuddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 size_t phyMemBuddyBitmapSizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 uint64_t phyMemBuddyMasks[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 size_t phyMemBuddySizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
-size_t phyMemPagesAvailableCount = 0;
-size_t phyMemPagesTotalCount = 0;
-uint64_t phyMemTotalSize = 0;
-uint64_t phyMemUsableSize = 0;
 
 static const char* const initPhyMemStr = "Initializing physical memory management...\n";
 static const char* const initPhyMemCompleteStr = "Physical memory management initialized\n\n";
@@ -123,7 +124,8 @@ bool initializePhysicalMemory(
 // Returns the closest size match physical buddy
 // If wastage in a buddy is more than 25% of its size then returns a smaller size buddy
 // Actual number of pages assigned is returned in allocatedCount
-// Returns INVALID_ADDRESS and allocatedCount = 0 if request count is greater than currently available pages
+// Returns INVALID_ADDRESS and allocatedCount = 0 if request count is count == 0
+// or greater than currently available pages
 // Unsafe to call this function until virtual memory manager is initialized
 PageRequestResult requestPhysicalPages(size_t count, uint8_t flags) {
 	PageRequestResult result;
@@ -135,7 +137,7 @@ PageRequestResult requestPhysicalPages(size_t count, uint8_t flags) {
 		count == 0 ||
 		count > phyMemPagesAvailableCount ||
 		count > phyMemBuddySizes[PHY_MEM_BUDDY_MAX_ORDER - 1] ||
-		flags & PHY_MEM_ALLOCATE_CONTIGUOUS
+		flags & MEMORY_REQUEST_CONTIGUOUS
 	) {
 		return result;
 	}
