@@ -62,7 +62,7 @@ bool initializePhysicalMemory(
 
 	// The memory has important structures in 1st MiB; will be marked used and system
 	// Kernel process must be marked used and system
-	// Unknown number (at least 11) of pages are being occupied by PML4T starting from infoTable->pml4eRootPhysicalAddress
+	// Unknown number (at least 11) of pages are being occupied by PML4T starting from infoTable->pml4tPhysicalAddress
 	// Create buddy bitmap right after PML4T
 	// Virtual memory manager will take of marking PML4T as used during its initialization
 	*phyMemBuddyPagesCount = 0;

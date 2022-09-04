@@ -178,18 +178,18 @@ void identityMapMemory(uint64_t* pagePtr) {
 	memset(pagePtr, 0, (3 + L32_IDENTITY_MAP_SIZE / 2) * pageSize);
 
 	// PML4T[0] points to PDPT at pml4Root + pageSize, i.e. handles the first 512GiB
-	pagePtr[0] = (infoTable->pml4eRootPhysicalAddress + pageSize) | PML4_PAGE_PRESENT_READ_WRITE;
+	pagePtr[0] = (infoTable->pml4tPhysicalAddress + pageSize) | PML4_PAGE_PRESENT_READ_WRITE;
 
 	// pagePtr right now points to PDPT which handles first 512GiB
-	pagePtr = (uint64_t *)(uint32_t)(infoTable->pml4eRootPhysicalAddress + pageSize);
+	pagePtr = (uint64_t *)(uint32_t)(infoTable->pml4tPhysicalAddress + pageSize);
 	// PDPT[0] points to PD which handles the first 1GiB
-	pagePtr[0] = (infoTable->pml4eRootPhysicalAddress + 2 * pageSize) | PML4_PAGE_PRESENT_READ_WRITE;
+	pagePtr[0] = (infoTable->pml4tPhysicalAddress + 2 * pageSize) | PML4_PAGE_PRESENT_READ_WRITE;
 
 	// Each entry in PD points to PT. Each PT handles 2MiB.
 	// Add L32_IDENTITY_MAP_SIZE / 2 entries to PD
 	// and fill all entries in the PTs with page frames 0x0 to L32_IDENTITY_MAP_SIZE MiB
-	uint64_t *pdEntry = (uint64_t *)(uint32_t)(infoTable->pml4eRootPhysicalAddress + 2 * pageSize);
-	uint64_t *ptEntry = (uint64_t *)(uint32_t)(infoTable->pml4eRootPhysicalAddress + 3 * pageSize);
+	uint64_t *pdEntry = (uint64_t *)(uint32_t)(infoTable->pml4tPhysicalAddress + 2 * pageSize);
+	uint64_t *ptEntry = (uint64_t *)(uint32_t)(infoTable->pml4tPhysicalAddress + 3 * pageSize);
 	uint64_t pageFrame = 0x0 | PML4_PAGE_PRESENT_READ_WRITE;
 	size_t i = 0, j = 0;
 	for (i = 0; i < L32_IDENTITY_MAP_SIZE / 2; ++i) {
@@ -330,11 +330,11 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 
 	size_t pml4Count = 3 + L32_IDENTITY_MAP_SIZE / 2; // Look at identityMapMemory comments to understand how this is calculated
 	// Align PML4 root to 4 KiB boundary
-	infoTable->pml4eRootPhysicalAddress = (kernelElfBase + kernelElfSize) & pageSizeMask;
-	if (infoTable->pml4eRootPhysicalAddress != kernelElfBase + kernelElfSize) {
-		infoTable->pml4eRootPhysicalAddress += pageSize;
+	infoTable->pml4tPhysicalAddress = (kernelElfBase + kernelElfSize) & pageSizeMask;
+	if (infoTable->pml4tPhysicalAddress != kernelElfBase + kernelElfSize) {
+		infoTable->pml4tPhysicalAddress += pageSize;
 	}
-	identityMapMemory((uint64_t*)(uint32_t)infoTable->pml4eRootPhysicalAddress);
+	identityMapMemory((uint64_t*)(uint32_t)infoTable->pml4tPhysicalAddress);
 	uint32_t memorySeekp = kernelBase;
 	printString("KernelBase = 0x");
 	printHex(&kernelBase, sizeof(kernelBase));
@@ -342,9 +342,9 @@ int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, D
 	printString("ProgramHeaderEntryCount = 0x");
 	printHex(&elfHeader->headerEntryCount, sizeof(elfHeader->headerEntryCount));
 	printString("\n");
-	PML4E *pml4t = (PML4E *)(uint32_t)infoTable->pml4eRootPhysicalAddress;
+	PML4E *pml4t = (PML4E *)(uint32_t)infoTable->pml4tPhysicalAddress;
 	// New pages that need to be made should start from this address and add pageSize to it.
-	uint32_t newPageStart = infoTable->pml4eRootPhysicalAddress + pml4Count * pageSize;
+	uint32_t newPageStart = infoTable->pml4tPhysicalAddress + pml4Count * pageSize;
 	uint32_t lowerHalfSize = 0, higherHalfSize = 0;
 	elfHeader = (ELF64Header*)kernelElfBase;
 	programHeader = (ELF64ProgramHeader*)(kernelElfBase + (uint32_t)elfHeader->headerTablePosition);

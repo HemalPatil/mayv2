@@ -60,7 +60,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// Mark all existing identity mapped page tables as marked in physical memory
 	terminalPrintSpaces4();
 	terminalPrintString(markingPml4, strlen(markingPml4));
-	PML4E *pml4tId = (PML4E*) infoTable->pml4eRootPhysicalAddress;
+	PML4E *pml4tId = (PML4E*) infoTable->pml4tPhysicalAddress;
 	markPhysicalPages(pml4tId, 1, PHY_MEM_USED);
 	for (size_t i = 0; i < PML4_ENTRY_COUNT; ++i) {
 		if (pml4tId[i].present) {
@@ -92,9 +92,9 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// which must be marked as used in the virtual memory list later
 	terminalPrintSpaces4();
 	terminalPrintString(recursiveStr, strlen(recursiveStr));
-	PML4E *root = (PML4E*)infoTable->pml4eRootPhysicalAddress;
+	PML4E *root = (PML4E*)infoTable->pml4tPhysicalAddress;
 	root[PML4T_RECURSIVE_ENTRY].present = root[PML4T_RECURSIVE_ENTRY].readWrite = 1;
-	root[PML4T_RECURSIVE_ENTRY].physicalAddress = infoTable->pml4eRootPhysicalAddress >> pageSizeShift;
+	root[PML4T_RECURSIVE_ENTRY].physicalAddress = infoTable->pml4tPhysicalAddress >> pageSizeShift;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -408,7 +408,7 @@ PML4CrawlResult crawlPageTables(void *virtualAddress) {
 
 	if (isCanonicalVirtualAddress(virtualAddress)) {
 		result.isCanonical = true;
-		result.physicalTables[4] = (PML4E*) infoTable->pml4eRootPhysicalAddress;
+		result.physicalTables[4] = (PML4E*) infoTable->pml4tPhysicalAddress;
 		for (size_t i = 4; i >= 1; --i) {
 			if (result.tables[i][result.indexes[i]].present) {
 				result.physicalTables[i - 1] = (void*)((uint64_t)result.tables[i][result.indexes[i]].physicalAddress << pageSizeShift);
