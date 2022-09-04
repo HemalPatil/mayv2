@@ -42,7 +42,7 @@ bool initializeDynamicMemory() {
 	// and unmap the ghost page containing the lists
 	terminalPrintSpaces4();
 	terminalPrintString(movingVirMemLists, strlen(movingVirMemLists));
-	VirtualMemNode *lists[2] = { kernelAddressSpaceList, normalAddressSpaceList };
+	VirtualMemNode *lists[2] = { kernelAddressSpaceList, generalAddressSpaceList };
 	VirtualMemNode *newLists[2] = { NULL, NULL };
 	for (size_t i = 0; i < 2; ++i) {
 		VirtualMemNode *current = kernelMalloc(sizeof(VirtualMemNode));
@@ -60,7 +60,7 @@ bool initializeDynamicMemory() {
 		}
 	}
 	kernelAddressSpaceList = newLists[0];
-	normalAddressSpaceList = newLists[1];
+	generalAddressSpaceList = newLists[1];
 	if (!unmapVirtualPages(ghostPage, 1, true)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');

@@ -10,10 +10,8 @@
 static const uint64_t nonCanonicalStart = (uint64_t)1 << (MAX_VIRTUAL_ADDRESS_BITS - 1);
 static const uint64_t nonCanonicalEnd = ~(nonCanonicalStart - 1);
 
-static void traverseAddressSpaceList(VirtualMemNode *current, bool forwardDirection);
-
 VirtualMemNode *kernelAddressSpaceList = INVALID_ADDRESS;
-VirtualMemNode *normalAddressSpaceList = INVALID_ADDRESS;
+VirtualMemNode *generalAddressSpaceList = INVALID_ADDRESS;
 const uint64_t ptMask = (uint64_t)UINT64_MAX - 1024 * (uint64_t)GIB_1 + 1;
 const uint64_t pdMask = ptMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint64_t)GIB_1;
 const uint64_t pdptMask = pdMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint64_t)MIB_2;
@@ -202,28 +200,28 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	current->next = NULL;
 	current->previous = kernelAddressSpaceList;
 	++current;
-	// Normal 0 to L32K64_SCRATCH_BASE used
-	normalAddressSpaceList = current;
-	normalAddressSpaceList->available = false;
-	normalAddressSpaceList->base = 0;
-	normalAddressSpaceList->pageCount = L32K64_SCRATCH_BASE / pageSize;
-	normalAddressSpaceList->next = ++current;
-	normalAddressSpaceList->previous = NULL;
-	// Normal L32K64_SCRATCH_BASE to (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) available
+	// General 0 to L32K64_SCRATCH_BASE used
+	generalAddressSpaceList = current;
+	generalAddressSpaceList->available = false;
+	generalAddressSpaceList->base = 0;
+	generalAddressSpaceList->pageCount = L32K64_SCRATCH_BASE / pageSize;
+	generalAddressSpaceList->next = ++current;
+	generalAddressSpaceList->previous = NULL;
+	// General L32K64_SCRATCH_BASE to (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) available
 	current->available = true;
 	current->base = (void*) L32K64_SCRATCH_BASE;
 	current->pageCount = L32K64_SCRATCH_LENGTH / pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
 	++current;
-	// Normal (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB used
+	// General (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB used
 	current->available = false;
 	current->base = (void*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH);
 	current->pageCount = (mib1 - L32K64_SCRATCH_BASE - L32K64_SCRATCH_LENGTH)/pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
 	++current;
-	// Normal 1MiB to valid lower half canonical address available
+	// General 1MiB to valid lower half canonical address available
 	current->available = true;
 	current->base = (void*) mib1;
 	current->pageCount = (nonCanonicalStart - mib1) / pageSize;
@@ -237,7 +235,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	current->next = current + 1;
 	current->previous = current - 1;
 	++current;
-	// Normal valid higher half canonical address to PML4 recursive map available
+	// General valid higher half canonical address to PML4 recursive map available
 	current->available = true;
 	current->base = (void*) nonCanonicalEnd;
 	current->pageCount = (ptMask - nonCanonicalEnd) / pageSize;
@@ -251,7 +249,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	current->next = current + 1;
 	current->previous = current - 1;
 	++current;
-	// Normal PML4 recursive map to KERNEL_HIGHERHALF_ORIGIN available
+	// General PML4 recursive map to KERNEL_HIGHERHALF_ORIGIN available
 	current->available = true;
 	current->base = (void*)(ptMask + 512 * GIB_1);
 	current->pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
@@ -447,19 +445,13 @@ void displayCrawlPageTablesResult(void *virtualAddress) {
 	}
 }
 
-// Debug helper to list all entries in kernelAddressSpaceList
-void listKernelAddressSpace(bool forwardDirection) {
-	terminalPrintString("Kernel", 6);
-	traverseAddressSpaceList(kernelAddressSpaceList, forwardDirection);
-}
-
-// Debug helper to list all entries in normalAddressSpaceList
-void listNormalAddressSpace(bool forwardDirection) {
-	terminalPrintString("Normal", 6);
-	traverseAddressSpaceList(normalAddressSpaceList, forwardDirection);
-}
-
-static void traverseAddressSpaceList(VirtualMemNode *current, bool forwardDirection) {
+// Debug helper to list all entries in a given virtual address space list
+void traverseAddressSpaceList(VirtualMemNode *current, bool forwardDirection) {
+	if (current == kernelAddressSpaceList) {
+		terminalPrintString("Kernel", 6);
+	} else {
+		terminalPrintString("General", 7);
+	}
 	terminalPrintString(addrSpaceStr, strlen(addrSpaceStr));
 	terminalPrintHex(&current, sizeof(current));
 	terminalPrintChar('\n');

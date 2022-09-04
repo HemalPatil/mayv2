@@ -25,8 +25,8 @@ struct VirtualMemNode {
 };
 typedef struct VirtualMemNode VirtualMemNode;
 
+extern VirtualMemNode *generalAddressSpaceList;
 extern VirtualMemNode *kernelAddressSpaceList;
-extern VirtualMemNode *normalAddressSpaceList;
 extern const uint64_t pdMask;
 extern const uint64_t pdptMask;
 extern PML4E* const pml4t;
@@ -38,7 +38,6 @@ extern PML4CrawlResult crawlPageTables(void *virtualAddress);
 extern void displayCrawlPageTablesResult(void *virtualAddress);
 extern bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount);
 extern bool isCanonicalVirtualAddress(void* address);
-extern void listKernelAddressSpace(bool forwardDirection);
-extern void listNormalAddressSpace(bool forwardDirection);
 extern bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count);
+extern void traverseAddressSpaceList(VirtualMemNode *current, bool forwardDirection);
 extern bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage);
