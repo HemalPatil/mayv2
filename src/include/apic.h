@@ -94,6 +94,7 @@ typedef union IOAPICRedirectionEntry IOAPICRedirectionEntry;
 
 // apic.c
 extern size_t getCpuCount();
+extern LocalAPIC* getLocalApic();
 extern bool initializeApic();
 extern uint32_t readIoApic(const uint8_t offset);
 extern IOAPICRedirectionEntry readIoRedirectionEntry(const uint8_t irq);

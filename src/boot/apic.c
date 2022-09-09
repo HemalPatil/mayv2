@@ -250,3 +250,7 @@ void writeIoApic(const uint8_t offset, const uint32_t value) {
 size_t getCpuCount() {
 	return cpuCount;
 }
+
+LocalAPIC* getLocalApic() {
+	return localApic;
+}

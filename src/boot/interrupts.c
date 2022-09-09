@@ -39,3 +39,7 @@ bool initializeInterrupts() {
 	terminalPrintString(intrInitCompleteStr, strlen(intrInitCompleteStr));
 	return true;
 }
+
+void endInterrupt() {
+	getLocalApic()->endOfInterrupt = 0;
+}

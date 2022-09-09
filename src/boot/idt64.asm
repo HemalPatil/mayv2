@@ -59,6 +59,7 @@ idtDescriptor:
 section .text
 	extern doneStr
 	extern ellipsisStr
+	extern endInterrupt
 	extern terminalPrintChar
 	extern terminalPrintHex
 	extern terminalPrintString
@@ -143,11 +144,11 @@ pageFaultHandler:
 	iretq
 
 keyboardHandler:
+	in al, 0x60
 	mov rdi, keyboardStr
 	mov rsi, 3
 	call terminalPrintString
-	cli
-	hlt
+	call endInterrupt
 	iretq
 
 defaultInterruptHandler:
