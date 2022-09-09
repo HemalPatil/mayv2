@@ -2,10 +2,12 @@
 #include <apic.h>
 #include <commonstrings.h>
 #include <heapmemmgmt.h>
+#include <idt64.h>
 #include <kernel.h>
 #include <phymemmgmt.h>
 #include <string.h>
 #include <terminal.h>
+#include <virtualmemmgmt.h>
 
 static uint32_t apicFlags = 0;
 static size_t cpuCount = 0;
@@ -14,7 +16,9 @@ static size_t interruptOverrideCount = 0;
 static APICInterruptSourceOverrideEntry *interruptOverrideEntries = NULL;
 static size_t ioApicCount = 0;
 static APICIOEntry *ioApicEntries = NULL;
-static void* localApicPhysicalAddress = NULL;
+static void *localApicPhysicalAddress = NULL;
+static LocalAPIC *localApic = NULL;
+static void *ioApic = NULL;
 
 static const char* const initApicStr = "Initializing APIC";
 static const char* const apicInitCompleteStr = "APIC initialized\n\n";
@@ -26,7 +30,10 @@ static const char* const localApicAddrStr = "Local APIC address ";
 static const char* const flagsStr = " Flags ";
 static const char* const lengthStr = " Length ";
 static const char* const entriesStr = "APIC entries\n";
-static const char* const entryHeaderStr = "Type Flags        CpuID IOapicID IOapicAddr\n";
+static const char* const entryHeaderStr = "Type Flags        CpuID APICID IOapicAddr   IRQ Global\n";
+static const char* const mappingApicStr = "Mapping local APIC to kernel address space";
+static const char* const mappingIoApicStr = "Mapping IOAPIC to kernel address space";
+static const char* const enablingApicStr = "Enabling APIC";
 
 bool initializeApic() {
 	terminalPrintString(initApicStr, strlen(initApicStr));
@@ -83,6 +90,7 @@ bool initializeApic() {
 		terminalPrintSpaces4();
 		uint32_t flags;
 		size_t x, y;
+		terminalGetCursorPosition(&x, &y);
 		if (entry->type == APIC_TYPE_CPU) {
 			++cpuCount;
 			APICCPUEntry *cpuEntry = (APICCPUEntry*)entry;
@@ -90,10 +98,13 @@ bool initializeApic() {
 			terminalPrintHex(&flags, sizeof(flags));
 			terminalPrintChar(' ');
 			terminalPrintDecimal(cpuEntry->cpuId);
-			terminalGetCursorPosition(&x, &y);
 			terminalSetCursorPosition(36, y);
+			terminalPrintDecimal(cpuEntry->apicId);
+			terminalSetCursorPosition(43, y);
 			terminalPrintChar('-');
-			terminalSetCursorPosition(45, y);
+			terminalSetCursorPosition(56, y);
+			terminalPrintChar('-');
+			terminalSetCursorPosition(60, y);
 			terminalPrintChar('-');
 		} else if (entry->type == APIC_TYPE_INTERRUPT_SOURCE_OVERRIDE) {
 			++interruptOverrideCount;
@@ -102,11 +113,14 @@ bool initializeApic() {
 			terminalPrintHex(&flags, sizeof(flags));
 			terminalPrintChar(' ');
 			terminalPrintChar('-');
-			terminalGetCursorPosition(&x, &y);
 			terminalSetCursorPosition(36, y);
 			terminalPrintChar('-');
-			terminalSetCursorPosition(45, y);
+			terminalSetCursorPosition(43, y);
 			terminalPrintChar('-');
+			terminalSetCursorPosition(56, y);
+			terminalPrintDecimal(overrideEntry->irqSource);
+			terminalSetCursorPosition(60, y);
+			terminalPrintHex(&overrideEntry->globalSystemInterrupt, sizeof(overrideEntry->globalSystemInterrupt));
 		} else if (entry->type == APIC_TYPE_IO) {
 			++ioApicCount;
 			APICIOEntry *ioEntry = (APICIOEntry*)entry;
@@ -115,8 +129,12 @@ bool initializeApic() {
 			terminalPrintChar('-');
 			terminalSetCursorPosition(36, y);
 			terminalPrintDecimal(ioEntry->apicId);
-			terminalSetCursorPosition(45, y);
+			terminalSetCursorPosition(43, y);
 			terminalPrintHex(&ioEntry->address, sizeof(ioEntry->address));
+			terminalSetCursorPosition(56, y);
+			terminalPrintChar('-');
+			terminalSetCursorPosition(60, y);
+			terminalPrintChar('-');
 		}
 		terminalPrintChar('\n');
 		entry = (APICEntryHeader*)((uint64_t)entry + entry->length);
@@ -154,8 +172,79 @@ bool initializeApic() {
 		terminalPrintChar('\n');
 	}
 
+	// Map the local APIC page to kernel address space
+	terminalPrintSpaces4();
+	terminalPrintString(mappingApicStr, strlen(mappingApicStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	if (
+		requestResult.address == INVALID_ADDRESS ||
+		requestResult.allocatedCount != 1 ||
+		!mapVirtualPages(requestResult.address, localApicPhysicalAddress, 1)
+	) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		return false;
+	}
+	localApic = (LocalAPIC*)requestResult.address;
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
+	// Map the 1st IOAPIC page to kernel address space
+	// TODO: deal with multiple IOAPICs
+	terminalPrintSpaces4();
+	terminalPrintString(mappingIoApicStr, strlen(mappingIoApicStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	if (
+		requestResult.address == INVALID_ADDRESS ||
+		requestResult.allocatedCount != 1 ||
+		!mapVirtualPages(requestResult.address, (void*)(uint64_t)ioApicEntries[0].address, 1)
+	) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		return false;
+	}
+	ioApic = requestResult.address;
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
+	// Enable APIC by setting bit 8 in localApic->spuriousInterruptVector
+	terminalPrintSpaces4();
+	terminalPrintString(enablingApicStr, strlen(enablingApicStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	localApic->spuriousInterruptVector |= 0x100;
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
 	terminalPrintString(apicInitCompleteStr, strlen(apicInitCompleteStr));
 	return true;
+}
+
+IOAPICRedirectionEntry readIoRedirectionEntry(const uint8_t irq) {
+	IOAPICRedirectionEntry x;
+	x.lowDword = readIoApic(IOAPIC_READTBL_LOW(irq));
+	x.highDword = readIoApic(IOAPIC_READTBL_HIGH(irq));
+	return x;
+}
+
+void writeIoRedirectionEntry(const uint8_t irq, const IOAPICRedirectionEntry entry) {
+	writeIoApic(IOAPIC_READTBL_LOW(irq), entry.lowDword);
+	writeIoApic(IOAPIC_READTBL_HIGH(irq), entry.highDword);
+}
+
+uint32_t readIoApic(const uint8_t offset) {
+	// Put offset in IOREGSEL
+	*(volatile uint32_t*)(ioApic) = offset;
+	// Read from IOWIN
+	return *(volatile uint32_t*)((uint64_t)ioApic + 0x10);
+}
+
+void writeIoApic(const uint8_t offset, const uint32_t value) {
+	// Put offset in IOREGSEL
+	*(volatile uint32_t*)(ioApic) = offset;
+	// Write to IOWIN
+	*(volatile uint32_t*)((uint64_t)ioApic + 0x10) = value;
 }
 
 size_t getCpuCount() {

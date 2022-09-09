@@ -2,6 +2,7 @@
 #include <elf64.h>
 #include <heapmemmgmt.h>
 #include <idt64.h>
+#include <interrupts.h>
 #include <kernel.h>
 #include <phymemmgmt.h>
 #include <string.h>
@@ -61,19 +62,11 @@ void kernelMain(
 	if (!initializeApic()) {
 		kernelPanic();
 	}
-	hangSystem();
 
-	// Get basic interrupts and exceptions setup
-	// Initializing ACPI will generate page faults while parsing ACPI tables
-	// so we must first fill the IDT with offsets to basic exceptions and interrupts
-	// PopulateIDT();
-	// if (!SetupHardwareInterrupts())
-	// {
-	// 	KernelPanic(SystemInitializationFailed);
-	// }
-
-	// terminalSetCursorPosition(33, 12);
-	// terminalPrintString(HelloWorld, strlen(HelloWorld));
+	// Setup basic hardware interrupts
+	if (!initializeInterrupts()) {
+		kernelPanic();
+	}
 }
 
 void kernelPanic() {

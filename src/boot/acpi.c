@@ -5,10 +5,10 @@
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 
-static const uint32_t apicSignature = 0x43495041; // The string 'APIC'
-static const uint32_t fadtSignature = 0x50434146; // The string 'FADT'
-static const uint32_t ssdtSignature = 0x54445353; // The string 'SSDT'
-static const uint32_t xsdtSignature = 0x54445358; // The string 'XSDT'
+static const uint32_t apicSignature = 0x43495041; // 'APIC'
+static const uint32_t fadtSignature = 0x50434146; // 'FADT'
+static const uint32_t ssdtSignature = 0x54445353; // 'SSDT'
+static const uint32_t xsdtSignature = 0x54445358; // 'XSDT'
 
 static RSDPDescriptor2* searchRsdp();
 

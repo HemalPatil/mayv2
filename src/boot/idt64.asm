@@ -35,6 +35,12 @@ pageFaultDescriptor:
 	dq 0
 	dq 0
 
+	times 512 - ($-$$) db 0		; Skip first 32 reserved interrupts/exception
+
+keyboardDescriptor:
+	dq 0
+	dq 0
+
 	times 4096 - ($-$$) db 0	; Make the 64-bit IDT 4 KiB long
 IDT_END:
 
@@ -42,12 +48,13 @@ section .rodata:
 idtDescriptor:
 	idt64Limit dw 4095
 	idt64Base dq IDT_START
-	defaultInterruptString db 'Default interrupt handler!', 10, 0
-	doubleFaultString db 'Double Fault!', 10, 0
+	defaultInterruptStr db 'Default interrupt handler!', 10, 0
+	doubleFaultStr db 'Double Fault!', 10, 0
 	idtLoading db 'Loading IDT', 0
 	idtLoaded db 'IDT loaded', 10, 0
-	interruptsEnabled db 'Enabled interrupts', 10, 0
-	pageFaultString db 'Page Fault! Tried to access ', 0
+	interruptsEnabledStr db 'Enabled interrupts', 10, 0
+	pageFaultStr db 'Page Fault! Tried to access ', 0
+	keyboardStr db 'key', 0
 
 section .text
 	extern doneStr
@@ -81,6 +88,9 @@ setupIdt64DescriptorLoop:
 	mov rdx, doubleFaultDescriptor
 	mov rax, doubleFaultHandler
 	call fillOffsets
+	mov rdx, keyboardDescriptor
+	mov rax, keyboardHandler
+	call fillOffsets
 	mov rax, idtDescriptor
 	lidt [rax]	; load the IDT
 	mov rdi, [doneStr]
@@ -100,20 +110,20 @@ fillOffsets:
 
 enableInterrupts:
 	sti
-	mov rdi, interruptsEnabled
+	mov rdi, interruptsEnabledStr
 	mov rsi, 19
 	call terminalPrintString
 	ret
 
 doubleFaultHandler:
-	mov rdi, doubleFaultString
+	mov rdi, doubleFaultStr
 	mov rsi, 14
 	call terminalPrintString
 	pop r8	; Pop the 64 bit error code in thrashable register
 	iretq
 
 pageFaultHandler:
-	mov rdi, pageFaultString
+	mov rdi, pageFaultStr
 	mov rsi, 28
 	call terminalPrintString
 
@@ -132,8 +142,16 @@ pageFaultHandler:
 	call terminalPrintChar
 	iretq
 
+keyboardHandler:
+	mov rdi, keyboardStr
+	mov rsi, 3
+	call terminalPrintString
+	cli
+	hlt
+	iretq
+
 defaultInterruptHandler:
-	mov rdi, defaultInterruptString
+	mov rdi, defaultInterruptStr
 	mov rsi, 27
 	call terminalPrintString
 	pop r8	; Pop the 64 bit error code in thrashable register
