@@ -44,5 +44,5 @@ extern bool initializeVirtualMemory(void *usableKernelSpaceStart, size_t kernelL
 extern bool isCanonicalVirtualAddress(void *address);
 extern bool mapVirtualPages(void *virtualAddress, void *physicalAddress, size_t count);
 extern PageRequestResult requestVirtualPages(size_t count, uint8_t flags);
-extern void traverseAddressSpaceList(VirtualMemNode *current, bool forwardDirection);
+extern void traverseAddressSpaceList(uint8_t flags, bool forwardDirection);
 extern bool unmapVirtualPages(void *virtualAddress, size_t count, bool freePhysicalPage);

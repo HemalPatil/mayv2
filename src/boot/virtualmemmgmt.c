@@ -668,10 +668,14 @@ void displayCrawlPageTablesResult(void *virtualAddress) {
 }
 
 // Debug helper to list all entries in a given virtual address space list
-void traverseAddressSpaceList(VirtualMemNode *list, bool forwardDirection) {
-	if (list == kernelAddressSpaceList) {
+// depending on flags MEMORY_REQUEST_KERNEL_PAGE
+void traverseAddressSpaceList(uint8_t flags, bool forwardDirection) {
+	VirtualMemNode *list;
+	if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+		list = kernelAddressSpaceList;
 		terminalPrintString("Kernel", 6);
 	} else {
+		list = generalAddressSpaceList;
 		terminalPrintString("General", 7);
 	}
 	terminalPrintString(addrSpaceStr, strlen(addrSpaceStr));
@@ -679,7 +683,7 @@ void traverseAddressSpaceList(VirtualMemNode *list, bool forwardDirection) {
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintString(pagesAvailableStr, strlen(pagesAvailableStr));
-	if (list == kernelAddressSpaceList) {
+	if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
 		terminalPrintHex(&kernelPagesAvailableCount, sizeof(kernelPagesAvailableCount));
 	} else {
 		terminalPrintHex(&generalPagesAvailableCount, sizeof(generalPagesAvailableCount));
