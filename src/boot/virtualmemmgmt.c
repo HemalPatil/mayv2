@@ -400,15 +400,6 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 				newNode1->previous = current->previous;
 				if (newNode1->previous) {
 					newNode1->previous->next = newNode1;
-				} else {
-					// This is the first node in the list
-					if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
-						kernelAddressSpaceList = newNode1;
-						kernelFree(kernelAddressSpaceList);
-					} else {
-						generalAddressSpaceList = newNode1;
-						kernelFree(generalAddressSpaceList);
-					}
 				}
 				newNode2->available = true;
 				newNode2->base = (void*)vBeg;
@@ -424,22 +415,29 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 					newNode3->next->previous = newNode3;
 				}
 				kernelFree(current);
+				if (!newNode1->previous) {
+					// newNode1 and by implication current is the first node in the list
+					// current is already freed
+					if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+						kernelAddressSpaceList = newNode1;
+					} else {
+						generalAddressSpaceList = newNode1;
+					}
+				}
 				if (newNode1->pageCount == 0) {
 					// Region to be freed is at the beginning of the current block
 					newNode2->previous = newNode1->previous;
+					kernelFree(newNode1);
 					if (newNode2->previous) {
 						newNode2->previous->next = newNode2;
 					} else {
-						// This is the first node in the list
+						// newNode2 is the first node in the list
 						if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
-							kernelAddressSpaceList = newNode1;
-							kernelFree(kernelAddressSpaceList);
+							kernelAddressSpaceList = newNode2;
 						} else {
-							generalAddressSpaceList = newNode1;
-							kernelFree(generalAddressSpaceList);
+							generalAddressSpaceList = newNode2;
 						}
 					}
-					kernelFree(newNode1);
 				}
 				if (newNode3->pageCount == 0) {
 					// Region to be freed is at the end of the current block
@@ -470,10 +468,10 @@ static void defragAddressSpaceList(VirtualMemNode *list) {
 		if (list->available == list->next->available) {
 			// Merge blocks
 			VirtualMemNode *nextBlock = list->next;
-			list->pageCount += nextBlock->pageCount;
-			list->next = nextBlock->next;
-			if (nextBlock->next) {
-				nextBlock->next->previous = list;
+			list->pageCount += list->next->pageCount;
+			list->next = list->next->next;
+			if (list->next) {
+				list->next->previous = list;
 			}
 			kernelFree(nextBlock);
 		} else {

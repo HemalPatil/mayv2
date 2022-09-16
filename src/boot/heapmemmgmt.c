@@ -147,6 +147,8 @@ void* kernelMalloc(size_t count) {
 					newEntry->signature = HEAP_ENTRY_FREE;
 					newEntry->size = originalSize - count - sizeof(HeapEntry);
 					heap->latestEntrySearched = newEntry;
+				} else {
+					heap->latestEntrySearched = NULL;
 				}
 				return mallocedValue;
 			}

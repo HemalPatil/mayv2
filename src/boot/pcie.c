@@ -55,12 +55,11 @@ bool enumeratePCIe() {
 					terminalPrintChar('\n');
 					return false;
 				}
-				// terminalPrintHex(&requestResult.address, 8);
+
 				PCIeConfigurationHeader *pcieHeader = (PCIeConfigurationHeader*) requestResult.address;
 				if (pcieHeader->deviceId == PCI_INVALID_DEVICE) {
 					// Unmap the configuration page
-					// freeVirtualPages(requestResult.address, 1, MEMORY_REQUEST_KERNEL_PAGE);
-					// hangSystem(true);
+					freeVirtualPages(requestResult.address, 1, MEMORY_REQUEST_KERNEL_PAGE);
 					continue;
 				}
 				terminalPrintSpaces4();
