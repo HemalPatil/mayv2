@@ -5,15 +5,11 @@
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 
-static const uint32_t apicSignature = 0x43495041; // 'APIC'
-static const uint32_t fadtSignature = 0x50434146; // 'FADT'
-static const uint32_t ssdtSignature = 0x54445353; // 'SSDT'
-static const uint32_t xsdtSignature = 0x54445358; // 'XSDT'
-
 static RSDPDescriptor2* searchRsdp();
 
 ACPISDTHeader *apic = NULL;
-ACPISDTHeader *fadt = NULL;
+ACPISDTHeader *hpet = NULL;
+ACPISDTHeader *mcfg = NULL;
 RSDPDescriptor2 *rsdp = NULL;
 ACPISDTHeader *ssdt = NULL;
 ACPISDTHeader *xsdt = NULL;
@@ -29,7 +25,7 @@ static const char* const oldAcpi = "ACPI version found is older than ACPI3\n";
 static const char* const checkingRevisionStr = "Checking ACPI revision";
 static const char* const parseCompleteStr = "ACPI3 parsed\n\n";
 static const char* const mappingXsdtStr = "Mapping XSDT to kernel address space";
-static const char* const findingAcpiTablesStr = "Searching for APIC, FADT, and SSDT entries";
+static const char* const findingAcpiTablesStr = "Searching for APIC, HPET, MCFG, and SSDT entries";
 
 bool parseAcpi3() {
 	terminalPrintString(parsingAcpiStr, strlen(parsingAcpiStr));
@@ -88,7 +84,6 @@ bool parseAcpi3() {
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
 
-	// TODO: Initalize ACPI3
 	// Read https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf Section 5.2
 	ACPISDTHeader *rsdtPhy = (ACPISDTHeader*)(uint64_t)rsdp->rsdtAddress;
 	terminalPrintSpaces4();
@@ -123,7 +118,7 @@ bool parseAcpi3() {
 	terminalPrintString(verifyingXsdtSigStr, strlen(verifyingXsdtSigStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	// Assumes the entrie XSDT lies in the same page as XSDT
-	if (*(uint32_t*)oldXsdt->signature != xsdtSignature || !validAcpi3Table(oldXsdt)) {
+	if (*(uint32_t*)oldXsdt->signature != ACPI_XSDT_SIGNATURE || !validAcpi3Table(oldXsdt)) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
@@ -140,10 +135,16 @@ bool parseAcpi3() {
 	terminalPrintSpaces4();
 	terminalPrintString(findingAcpiTablesStr, strlen(findingAcpiTablesStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	ACPISDTHeader* oldApic = findAcpiTable(oldXsdt, apicSignature);
-	ACPISDTHeader* oldFadt = findAcpiTable(oldXsdt, fadtSignature);
-	ACPISDTHeader* oldSsdt = findAcpiTable(oldXsdt, ssdtSignature);
-	if (oldApic == INVALID_ADDRESS || oldFadt == INVALID_ADDRESS || oldSsdt == INVALID_ADDRESS) {
+	ACPISDTHeader* oldApic = findAcpiTable(oldXsdt, ACPI_APIC_SIGNATURE);
+	ACPISDTHeader* oldHpet = findAcpiTable(oldXsdt, ACPI_HPET_SIGNATURE);
+	ACPISDTHeader* oldMcfg = findAcpiTable(oldXsdt, ACPI_MCFG_SIGNATURE);
+	ACPISDTHeader* oldSsdt = findAcpiTable(oldXsdt, ACPI_SSDT_SIGNATURE);
+	if (
+		oldApic == INVALID_ADDRESS ||
+		oldHpet == INVALID_ADDRESS ||
+		oldMcfg == INVALID_ADDRESS ||
+		oldSsdt == INVALID_ADDRESS
+	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
@@ -151,8 +152,10 @@ bool parseAcpi3() {
 	// Copy the tables to heap
 	apic = kernelMalloc(oldApic->length);
 	memcpy(apic, oldApic, oldApic->length);
-	fadt = kernelMalloc(oldFadt->length);
-	memcpy(fadt, oldFadt, oldFadt->length);
+	hpet = kernelMalloc(oldHpet->length);
+	memcpy(hpet, oldHpet, oldHpet->length);
+	mcfg = kernelMalloc(oldMcfg->length);
+	memcpy(mcfg, oldMcfg, oldMcfg->length);
 	ssdt = kernelMalloc(oldSsdt->length);
 	memcpy(ssdt, oldSsdt, oldSsdt->length);
 	// Free the kernel page used for parsing XSDT

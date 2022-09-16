@@ -25,4 +25,4 @@ extern void kernelPanic();
 
 // kernelasm.asm
 extern void flushTLB(void *newPml4Root);
-extern void hangSystem();
+extern void hangSystem(bool disableInterrupts);

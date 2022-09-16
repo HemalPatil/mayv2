@@ -3,6 +3,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define ACPI_APIC_SIGNATURE 0x43495041
+#define ACPI_FADT_SIGNATURE 0x50434146
+#define ACPI_HPET_SIGNATURE 0x54455048
+#define ACPI_MCFG_SIGNATURE 0x4746434d
+#define ACPI_SSDT_SIGNATURE 0x54445353
+#define ACPI_XSDT_SIGNATURE 0x54445358
+
 #define ACPI3_MEM_TYPE_USABLE 1
 #define ACPI3_MEM_TYPE_RESERVED 2
 #define ACPI3_MEM_TYPE_RECLAIMABLE 3
@@ -49,7 +56,8 @@ struct RSDPDescriptor2 {
 typedef struct RSDPDescriptor2 RSDPDescriptor2;
 
 extern ACPISDTHeader *apic;
-extern ACPISDTHeader *fadt;
+extern ACPISDTHeader *hpet;
+extern ACPISDTHeader *mcfg;
 extern RSDPDescriptor2 *rsdp;
 extern ACPISDTHeader *ssdt;
 extern ACPISDTHeader *xsdt;

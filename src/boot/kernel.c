@@ -4,6 +4,7 @@
 #include <idt64.h>
 #include <interrupts.h>
 #include <kernel.h>
+#include <pcie.h>
 #include <phymemmgmt.h>
 #include <string.h>
 #include <terminal.h>
@@ -11,7 +12,7 @@
 #include <virtualmemmgmt.h>
 
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
-static const char* const kernelPanicString = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
+static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
 
 InfoTable *infoTable;
 
@@ -63,6 +64,11 @@ void kernelMain(
 		kernelPanic();
 	}
 
+	// Enumerate PCI bus
+	if (!enumeratePCIe()) {
+		kernelPanic();
+	}
+
 	// Setup basic hardware interrupts
 	if (!initializeInterrupts()) {
 		kernelPanic();
@@ -71,6 +77,6 @@ void kernelMain(
 
 void kernelPanic() {
 	// TODO : improve kernel panic implementation
-	terminalPrintString(kernelPanicString, strlen(kernelPanicString));
-	hangSystem();
+	terminalPrintString(kernelPanicStr, strlen(kernelPanicStr));
+	hangSystem(true);
 }

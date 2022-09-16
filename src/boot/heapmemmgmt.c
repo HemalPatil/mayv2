@@ -99,7 +99,7 @@ void listAllHeapRegions() {
 }
 
 void* kernelMalloc(size_t count) {
-	// All heap regions are currently of size 2MiB so serving more than that is not possible
+	// FIXME: All heap regions are currently of size 2MiB so serving more than that is not possible
 	if (count == 0 || count >= HEAP_NEW_REGION_SIZE - sizeof(HeapHeader)) {
 		return NULL;
 	}
@@ -192,6 +192,7 @@ void kernelFree(void *address) {
 	terminalPrintString(invalidFreeStr, strlen(invalidFreeStr));
 	terminalPrintHex(&address, sizeof(address));
 	terminalPrintChar('\n');
+	hangSystem(true);
 }
 
 static HeapEntry* nextHeapEntry(HeapHeader *heap, HeapEntry *heapEntry) {

@@ -59,7 +59,11 @@ flushTLB:
 	ret
 
 hangSystem:
+	mov rax, rdi
+	cmp rax, 0
+	jz noDisableInterrupts
 	cli
+noDisableInterrupts:
 	hlt
 	jmp hangSystem
 	ret

@@ -40,7 +40,6 @@ bool initializeApic() {
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
 
-	// TODO: complete APIC initialization
 	// Check APIC presence
 	terminalPrintSpaces4();
 	terminalPrintString(checkingApicStr, strlen(checkingApicStr));
