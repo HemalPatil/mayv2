@@ -9,6 +9,7 @@
 #include <string.h>
 #include <terminal.h>
 #include <tss64.h>
+#include <vbe.h>
 #include <virtualmemmgmt.h>
 
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
@@ -64,15 +65,20 @@ void kernelMain(
 		kernelPanic();
 	}
 
-	// Enumerate PCI bus
+	// Enumerate PCIe devices
 	if (!enumeratePCIe()) {
 		kernelPanic();
 	}
 
-	// Setup basic hardware interrupts
-	if (!initializeInterrupts()) {
+	// Set up graphical video mode
+	if (!setupGraphicalVideoMode()) {
 		kernelPanic();
 	}
+
+	// Setup basic hardware interrupts
+	// if (!initializeInterrupts()) {
+	// 	kernelPanic();
+	// }
 }
 
 void kernelPanic() {

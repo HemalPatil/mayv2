@@ -57,6 +57,8 @@ bool enumeratePCIe() {
 	}
 	if (pcieFunctions->next) {
 		pcieFunctions = pcieFunctions->next;
+	} else {
+		pcieFunctions = NULL;
 	}
 
 	terminalPrintString(initPciCompleteStr, strlen(initPciCompleteStr));

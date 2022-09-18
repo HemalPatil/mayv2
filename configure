@@ -24,6 +24,10 @@ sed -i "s/\#define ISO_SECTOR_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define ISO_SECTOR_
 sed -i "s/\#define ISO_SECTOR_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define ISO_SECTOR_SIZE $ISO_SECTOR_SIZE/" src/boot/stage2/loader32.c
 sed -i "s/ISO_SECTOR_SIZE equ $SED_HEX_OR_NUMBER_REGEX/ISO_SECTOR_SIZE equ $ISO_SECTOR_SIZE/" src/boot/stage1/bootload.asm
 
+# Configure VBE modes info location
+VBE_MODES_INFO_LOCATION=0x30000
+sed -i "s/VBE_MODES_INFO_LOCATION equ $SED_HEX_OR_NUMBER_REGEX/VBE_MODES_INFO_LOCATION equ $VBE_MODES_INFO_LOCATION/" src/boot/stage1/vidmodes.asm
+
 # Configure ELF parser origin
 ELFPARSE_ORIGIN=0x00020000
 sed -i "s/\#define ELFPARSE_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define ELFPARSE_ORIGIN $ELFPARSE_ORIGIN/" utilities/format_iso.cpp

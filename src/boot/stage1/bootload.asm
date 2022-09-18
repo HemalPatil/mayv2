@@ -196,8 +196,8 @@ loadCoreFilesCont:
 	push dword [infoTableOffset]
 	call far [dapMmap + DAP_OFFSET]				; Generate memory map
 
-	; push dword [infoTableOffset]
-	; call far [dapVidModes + DAP_OFFSET]			; Get list of all video modes
+	push dword [infoTableOffset]
+	call far [dapVidModes + DAP_OFFSET]			; Get list of all video modes
 	
 	call far [dapA20Enable + DAP_OFFSET]			; Enable the A20 line to access above 1MiB
 

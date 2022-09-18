@@ -10,12 +10,11 @@ struct InfoTable {
 	uint16_t mmapEntryCount;
 	uint16_t mmapEntriesOffset;
 	uint16_t mmapEntriesSegment;
-	uint16_t vesaInfoOffset;
-	uint16_t vesaInfoSegment;
+	uint32_t vbeModesInfoLocation;
 	char gdt32Descriptor[6];
 	uint16_t maxPhysicalAddress;
 	uint16_t maxLinearAddress;
-	uint16_t ignore;
+	uint16_t vbeModesInfoCount;
 	uint64_t kernelPhyMemBase;
 	uint64_t pml4tPhysicalAddress;
 } __attribute__((packed));

@@ -18,7 +18,7 @@ start:
 	int 0x22
 
 	call checkA20				; check if A20 line is already enabled
-	cmp ax, 1					; ax=1 means line enabled
+	cmp ax, 1					; ax == 1 means line enabled
 	je a20Enabled
 
 	mov ax, 0x2401				; Use BIOS method to activate A20 line
