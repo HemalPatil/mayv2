@@ -3,6 +3,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define PCI_CLASS_BRIDGE 0x6
+
+#define PCI_SUBCLASS_PCI_BRIDGE 0x4
+#define PCI_SUBCLASS_PCI_BRIDGE2 0x9
+
 #define PCI_BUS_COUNT 256
 #define PCI_DEVICE_COUNT 32
 #define PCI_FUNCTION_COUNT 8
@@ -18,20 +23,31 @@ struct PCIeSegmentGroupEntry {
 } __attribute__((packed));
 typedef struct PCIeSegmentGroupEntry PCIeSegmentGroupEntry;
 
-struct PCIeConfigurationHeader {
+struct PCIeConfigurationBaseHeader {
 	uint16_t vendorId;
 	uint16_t deviceId;
 	uint16_t command;
 	uint16_t status;
 	uint8_t revisionId;
 	uint8_t progIf;
-	uint8_t subclass;
+	uint8_t subClass;
 	uint8_t class;
 	uint8_t cacheLineSize;
 	uint8_t latencyTimer;
 	uint8_t headerType;
 	uint8_t bist;
 } __attribute__((packed));
-typedef struct PCIeConfigurationHeader PCIeConfigurationHeader;
+typedef struct PCIeConfigurationBaseHeader PCIeConfigurationBaseHeader;
+
+struct PCIeFunction {
+	uint8_t bus;
+	uint8_t device;
+	uint8_t function;
+	PCIeConfigurationBaseHeader *configurationSpace;
+	struct PCIeFunction *next;
+};
+typedef struct PCIeFunction PCIeFunction;
+
+extern PCIeFunction *pcieFunctions;
 
 extern bool enumeratePCIe();

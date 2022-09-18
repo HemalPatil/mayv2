@@ -8,7 +8,7 @@
 
 static const char* const initIntrStr = "Initializing interrupts";
 static const char* const intrInitCompleteStr = "Interrupts initialized\n\n";
-static const char* const enablingKeyStr = "Enabling keyboard interrupts";
+static const char* const enablingKeyStr = "Setting up keyboard interrupts";
 
 bool initializeInterrupts() {
 	terminalPrintString(initIntrStr, strlen(initIntrStr));
