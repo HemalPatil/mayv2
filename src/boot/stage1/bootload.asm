@@ -191,8 +191,12 @@ loadCoreFilesCont:
 	add di, 4
 	loop loadCoreFilesLoop
 
+	; Optimize BIOS for 64-bit long mode
 	call far [dapX64 + DAP_OFFSET]
-	
+	mov ax, 0xec00
+	mov bl, 2
+	int 0x15
+
 	push dword [infoTableOffset]
 	call far [dapMmap + DAP_OFFSET]				; Generate memory map
 

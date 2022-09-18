@@ -71,9 +71,9 @@ void kernelMain(
 	}
 
 	// Set up graphical video mode
-	if (!setupGraphicalVideoMode()) {
-		kernelPanic();
-	}
+	// if (!setupGraphicalVideoMode()) {
+	// 	kernelPanic();
+	// }
 
 	// Setup basic hardware interrupts
 	// if (!initializeInterrupts()) {

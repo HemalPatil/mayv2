@@ -1,7 +1,10 @@
+#include <commonstrings.h>
 #include <kernel.h>
+#include <phymemmgmt.h>
 #include <string.h>
 #include <terminal.h>
 #include <vbe.h>
+#include <virtualmemmgmt.h>
 
 static const char* const switchingModeStr = "Switching to graphical video mode ";
 
@@ -41,6 +44,31 @@ bool setupGraphicalVideoMode() {
 	terminalPrintDecimal(modes[selectedMode].height);
 	terminalPrintChar('x');
 	terminalPrintDecimal(modes[selectedMode].bitsPerPixel);
-	terminalPrintChar('\n');
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+
+	// Map the linear buffer of selected mode to kernel address space
+	size_t bufferSize = modes[selectedMode].width * modes[selectedMode].height * modes[selectedMode].bitsPerPixel / 8;
+	size_t bufferPageCount = bufferSize / pageSize;
+	if (bufferPageCount * pageSize != bufferSize) {
+		++bufferPageCount;
+	}
+	PageRequestResult result = requestVirtualPages(bufferPageCount, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	if (
+		result.address == INVALID_ADDRESS ||
+		result.allocatedCount != bufferPageCount ||
+		!mapVirtualPages(result.address, (void*)(uint64_t)modes[selectedMode].frameBuffer, bufferPageCount)
+	) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		return false;
+	}
+
+	for (size_t i = 0; i < 8; ++i) {
+		for (size_t j = 0; j < 16; ++j) {
+			uint32_t *pixelOffset = (uint32_t*)((uint64_t)result.address + j * modes[selectedMode].pitch + i * (modes[selectedMode].bitsPerPixel / 8));
+			*pixelOffset = 0x00ffff;
+		}
+	}
+
 	return true;
 }

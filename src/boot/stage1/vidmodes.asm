@@ -101,6 +101,11 @@ vbeModesLoopEnd:
 	pop eax
 	mov dword [es:bx + INFOTABLE_VBE_MODE_NUMBERS_LOCATION], eax
 	mov dword [es:bx + INFOTABLE_VBE_MODE_NUMBERS_LOCATION + 4], 0
+	; FIXME: should switch video mode by dropping from long->protected->real mode
+	; this is hacky
+	; mov ax, 0x4f02
+	; mov bx, 0x4144
+	; int 0x10
 	pop di
 	pop es
 	pop ds
