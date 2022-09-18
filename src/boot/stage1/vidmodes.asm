@@ -11,6 +11,7 @@ VBE_MODE_INFO_SIZE equ 256
 VBE_INVALID_MODE equ 0xffff
 INFOTABLE_VBE_MODES_COUNT equ 22
 INFOTABLE_VBE_MODES_INFO_LOCATION equ 8
+INFOTABLE_VBE_MODE_NUMBERS_LOCATION equ 40
 
 times 8 - ($-$$) db 0
 
@@ -63,11 +64,17 @@ start:
 	; es:di points to where each mode's info is stored, di is incremented by 256 each time i.e. size of mode info struct
 	; FIXME: assumes the memory at VBE_MODES_INFO_LOCATION of size 64KiB is free
 	; dx holds the mode count
-	; store the modes count and info location in InfoTable
+	; store the modes count, numbers, and info location in InfoTable
 	mov ax, [vbeInfoBlock.videoModesSegment]
 	mov ds, ax
 	mov ax, [vbeInfoBlock.videoModesOffset]
+	xor esi, esi
 	mov si, ax
+	xor eax, eax
+	mov ax, ds
+	shl eax, 4
+	add eax, esi
+	push eax
 	mov ax, VBE_MODES_INFO_LOCATION >> 4
 	mov es, ax
 	xor di, di
@@ -91,6 +98,9 @@ vbeModesLoopEnd:
 	mov bx, [bp + 6]
 	mov word [es:bx + INFOTABLE_VBE_MODES_COUNT], dx
 	mov dword [es:bx + INFOTABLE_VBE_MODES_INFO_LOCATION], VBE_MODES_INFO_LOCATION
+	pop eax
+	mov dword [es:bx + INFOTABLE_VBE_MODE_NUMBERS_LOCATION], eax
+	mov dword [es:bx + INFOTABLE_VBE_MODE_NUMBERS_LOCATION + 4], 0
 	pop di
 	pop es
 	pop ds

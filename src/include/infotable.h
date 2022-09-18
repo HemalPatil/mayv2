@@ -17,5 +17,6 @@ struct InfoTable {
 	uint16_t vbeModesInfoCount;
 	uint64_t kernelPhyMemBase;
 	uint64_t pml4tPhysicalAddress;
+	uint64_t vbeModeNumbersLocation;
 } __attribute__((packed));
 typedef struct InfoTable InfoTable;
