@@ -3,10 +3,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define PCI_CLASS_STORAGE 0x1
 #define PCI_CLASS_BRIDGE 0x6
 
 #define PCI_SUBCLASS_PCI_BRIDGE 0x4
 #define PCI_SUBCLASS_PCI_BRIDGE2 0x9
+#define PCI_SUBCLASS_SATA 0x6
+
+#define PCI_PROG_AHCI 0x1
 
 #define PCI_BUS_COUNT 256
 #define PCI_DEVICE_COUNT 32

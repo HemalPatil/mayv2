@@ -49,6 +49,8 @@ dir := $(SRC_DIR)/include
 include $(dir)/Rules.mk
 dir := $(SRC_DIR)/lib
 include $(dir)/Rules.mk
+dir := $(SRC_DIR)/drivers
+include $(dir)/Rules.mk
 dir := $(SRC_DIR)/boot
 include $(dir)/Rules.mk
 
