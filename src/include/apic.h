@@ -93,6 +93,8 @@ union IOAPICRedirectionEntry {
 typedef union IOAPICRedirectionEntry IOAPICRedirectionEntry;
 
 // apic.c
+extern uint8_t bootCpu;
+
 extern size_t getCpuCount();
 extern LocalAPIC* getLocalApic();
 extern bool initializeApic();

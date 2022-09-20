@@ -9,6 +9,8 @@
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 
+uint8_t bootCpu = 0xff;
+
 static uint32_t apicFlags = 0;
 static size_t cpuCount = 0;
 static APICCPUEntry *cpuEntries = NULL;
@@ -34,6 +36,7 @@ static const char* const entryHeaderStr = "Type Flags        CpuID APICID IOapic
 static const char* const mappingApicStr = "Mapping local APIC to kernel address space";
 static const char* const mappingIoApicStr = "Mapping IOAPIC to kernel address space";
 static const char* const enablingApicStr = "Enabling APIC";
+static const char* const bootCpuStr = "Boot CpuID [";
 
 bool initializeApic() {
 	terminalPrintString(initApicStr, strlen(initApicStr));
@@ -186,7 +189,14 @@ bool initializeApic() {
 		return false;
 	}
 	localApic = (LocalAPIC*)requestResult.address;
+	bootCpu = (localApic->apicId >> 24) & 0xff;
 	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
+	terminalPrintSpaces4();
+	terminalPrintString(bootCpuStr, strlen(bootCpuStr));
+	terminalPrintDecimal(bootCpu);
+	terminalPrintChar(']');
 	terminalPrintChar('\n');
 
 	// Map the 1st IOAPIC page to kernel address space
