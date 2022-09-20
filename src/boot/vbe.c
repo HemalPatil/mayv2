@@ -56,7 +56,7 @@ bool setupGraphicalVideoMode() {
 	if (
 		result.address == INVALID_ADDRESS ||
 		result.allocatedCount != bufferPageCount ||
-		!mapVirtualPages(result.address, (void*)(uint64_t)modes[selectedMode].frameBuffer, bufferPageCount)
+		!mapVirtualPages(result.address, (void*)(uint64_t)modes[selectedMode].frameBuffer, bufferPageCount, MEMORY_REQUEST_CACHE_DISABLE)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');

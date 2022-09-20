@@ -179,7 +179,7 @@ bool initializeApic() {
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!mapVirtualPages(requestResult.address, localApicPhysicalAddress, 1)
+		!mapVirtualPages(requestResult.address, localApicPhysicalAddress, 1, MEMORY_REQUEST_CACHE_DISABLE)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -198,7 +198,7 @@ bool initializeApic() {
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!mapVirtualPages(requestResult.address, (void*)(uint64_t)ioApicEntries[0].address, 1)
+		!mapVirtualPages(requestResult.address, (void*)(uint64_t)ioApicEntries[0].address, 1, MEMORY_REQUEST_CACHE_DISABLE)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');

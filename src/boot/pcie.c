@@ -71,7 +71,7 @@ static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8
 	if (
 		requestResult.address != INVALID_ADDRESS &&
 		requestResult.allocatedCount == 1 &&
-		mapVirtualPages(requestResult.address, (void*) functionAddress, 1)
+		mapVirtualPages(requestResult.address, (void*) functionAddress, 1, MEMORY_REQUEST_CACHE_DISABLE)
 	) {
 		return requestResult.address;
 	}

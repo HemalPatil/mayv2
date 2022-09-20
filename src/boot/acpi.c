@@ -103,7 +103,7 @@ bool parseAcpi3() {
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!mapVirtualPages(requestResult.address, (void*)((uint64_t)xsdtPhy & phyMemBuddyMasks[0]), 1)
+		!mapVirtualPages(requestResult.address, (void*)((uint64_t)xsdtPhy & phyMemBuddyMasks[0]), 1, 0)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
