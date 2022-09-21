@@ -294,6 +294,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 // that is the closest fit to the number of requested pages
 // If MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE flag is passed,
 // the returned virtual addresses are mapped to newly allocated physical pages
+// When MEMORY_REQUEST_CACHE_DISABLE flag is passed, the physical page is marked as cachedDisabled(1) in the PTE
 // Returns INVALID_ADDRESS and allocatedCount = 0 if request count is count == 0
 // or greater than currently available kernel pages
 // Unsafe to call this function until dynamic memory manager is initialized
@@ -485,7 +486,8 @@ static void defragAddressSpaceList(VirtualMemNode *list) {
 // Maps virtual pages to physical pages
 // It is assumed that all virtual pages and physical pages are contiguous, reserved, pageSize boundary aligned
 // and within bounds of physical memory and canonical virtual address space before calling this function
-// Returns true on successful mapping
+// When MEMORY_REQUEST_CACHE_DISABLE flag is passed, the physical page is marked as cachedDisabled(1) in the PTE
+// Returns true only on successful mapping
 bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count, uint8_t flags) {
 	uint64_t phyAddr = (uint64_t)physicalAddress;
 	uint64_t virAddr = (uint64_t)virtualAddress;
