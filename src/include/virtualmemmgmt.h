@@ -8,6 +8,7 @@
 
 #define MAX_VIRTUAL_ADDRESS_BITS 48
 #define MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE 4
+#define MEMORY_REQUEST_CACHE_DISABLE 8
 #define MEMORY_REQUEST_KERNEL_PAGE 2
 #define PML4T_RECURSIVE_ENTRY 510
 
@@ -16,6 +17,7 @@ struct PML4CrawlResult {
 	bool isCanonical;
 	PML4E* physicalTables[5];
 	PML4E* tables[5];
+	bool cached[5];
 };
 typedef struct PML4CrawlResult PML4CrawlResult;
 
@@ -42,7 +44,7 @@ extern void displayCrawlPageTablesResult(void *virtualAddress);
 extern bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags);
 extern bool initializeVirtualMemory(void *usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount);
 extern bool isCanonicalVirtualAddress(void *address);
-extern bool mapVirtualPages(void *virtualAddress, void *physicalAddress, size_t count);
+extern bool mapVirtualPages(void *virtualAddress, void *physicalAddress, size_t count, uint8_t flags);
 extern PageRequestResult requestVirtualPages(size_t count, uint8_t flags);
 extern void traverseAddressSpaceList(uint8_t flags, bool forwardDirection);
 extern bool unmapVirtualPages(void *virtualAddress, size_t count, bool freePhysicalPage);

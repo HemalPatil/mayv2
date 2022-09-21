@@ -51,6 +51,9 @@ void kernelMain(
 	if (!initializeDynamicMemory()) {
 		kernelPanic();
 	}
+	// PageRequestResult rr = requestVirtualPages(1, MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE | MEMORY_REQUEST_CACHE_DISABLE | MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	// displayCrawlPageTablesResult(rr.address);
+	// hangSystem(true);
 
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();
@@ -65,9 +68,15 @@ void kernelMain(
 	if (!initializeApic()) {
 		kernelPanic();
 	}
+	// hangSystem(true);
 
 	// Enumerate PCIe devices
 	if (!enumeratePCIe()) {
+		kernelPanic();
+	}
+
+	// Setup basic hardware interrupts
+	if (!initializeInterrupts()) {
 		kernelPanic();
 	}
 
@@ -91,11 +100,6 @@ void kernelMain(
 
 	// Set up graphical video mode
 	// if (!setupGraphicalVideoMode()) {
-	// 	kernelPanic();
-	// }
-
-	// Setup basic hardware interrupts
-	// if (!initializeInterrupts()) {
 	// 	kernelPanic();
 	// }
 }

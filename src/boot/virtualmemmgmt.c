@@ -36,7 +36,7 @@ static const char* const removingId = "Removing PML4 identity mapping of first "
 static const char* const reservingHeapStr = "Reserving memory for dynamic memory manager";
 static const char* const pageTablesStr = "Page tables of ";
 static const char* const isCanonicalStr = "isCanonical = ";
-static const char* const crawlTableHeader = "Level Tables               Physical tables      Indexes\n";
+static const char* const crawlTableHeader = "L Tables               Physical tables      Indexes              C\n";
 static const char* const addrSpaceStr = " address space list ";
 static const char* const addrSpaceHeader = "Base                 Page count           Available Node address\n";
 static const char* const creatingListsStr = "Creating virtual address space lists";
@@ -118,7 +118,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintSpaces4();
 	terminalPrintString(movingBuddiesStr, strlen(movingBuddiesStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!mapVirtualPages(usableKernelSpaceStart, phyMemBuddyBitmaps[0], phyMemBuddyPagesCount)) {
+	if (!mapVirtualPages(usableKernelSpaceStart, phyMemBuddyBitmaps[0], phyMemBuddyPagesCount, 0)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
@@ -161,8 +161,8 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != (HEAP_NEW_REGION_SIZE / pageSize) ||
-		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount
-	)) {
+		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
+	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
@@ -174,7 +174,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != (entryTableSize / pageSize) ||
-		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount)
+		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -201,7 +201,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount)
+		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -353,7 +353,8 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 				mapVirtualPages(
 					(void*)((uint64_t)result.address + total * pageSize),
 					phyResult.address,
-					phyResult.allocatedCount
+					phyResult.allocatedCount,
+					flags
 				);
 				total += phyResult.allocatedCount;
 			}
@@ -485,7 +486,7 @@ static void defragAddressSpaceList(VirtualMemNode *list) {
 // It is assumed that all virtual pages and physical pages are contiguous, reserved, pageSize boundary aligned
 // and within bounds of physical memory and canonical virtual address space before calling this function
 // Returns true on successful mapping
-bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count) {
+bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count, uint8_t flags) {
 	uint64_t phyAddr = (uint64_t)physicalAddress;
 	uint64_t virAddr = (uint64_t)virtualAddress;
 
@@ -526,6 +527,7 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count) 
 			// FIXME: should add only appropriate permissions when mapping pages
 			crawlResult.tables[1][crawlResult.indexes[1]].readWrite = 1;
 			crawlResult.tables[1][crawlResult.indexes[1]].physicalAddress = phyAddr >> pageSizeShift;
+			crawlResult.tables[1][crawlResult.indexes[1]].cacheDisable = (flags & MEMORY_REQUEST_CACHE_DISABLE) ? 1 : 0;
 		}
 	}
 	return true;
@@ -624,12 +626,20 @@ PML4CrawlResult crawlPageTables(void *virtualAddress) {
 	result.physicalTables[4] =
 		INVALID_ADDRESS;
 
+	result.cached[0] = 
+	result.cached[1] = 
+	result.cached[2] = 
+	result.cached[3] = 
+		false;
+	result.cached[4] = (pml4t->cacheDisable & 1) ? false : true;
+
 	if (isCanonicalVirtualAddress(virtualAddress)) {
 		result.isCanonical = true;
 		result.physicalTables[4] = (PML4E*) infoTable->pml4tPhysicalAddress;
 		for (size_t i = 4; i >= 1; --i) {
 			if (result.tables[i][result.indexes[i]].present) {
 				result.physicalTables[i - 1] = (void*)((uint64_t)result.tables[i][result.indexes[i]].physicalAddress << pageSizeShift);
+				result.cached[i - 1] = (result.tables[i][result.indexes[i]].cacheDisable & 1) ? false : true;
 			} else {
 				break;
 			}
@@ -654,13 +664,14 @@ void displayCrawlPageTablesResult(void *virtualAddress) {
 	for (int i = 4; i >= 0; --i) {
 		terminalPrintSpaces4();
 		terminalPrintDecimal(i);
-		terminalPrintSpaces4();
 		terminalPrintChar(' ');
 		terminalPrintHex(&result.tables[i], sizeof(result.tables[i]));
 		terminalPrintChar(' ');
 		terminalPrintHex(&result.physicalTables[i], sizeof(result.physicalTables[i]));
 		terminalPrintChar(' ');
 		terminalPrintHex(&result.indexes[i], sizeof(result.indexes[i]));
+		terminalPrintChar(' ');
+		terminalPrintDecimal(result.cached[i]);
 		terminalPrintChar('\n');
 	}
 }

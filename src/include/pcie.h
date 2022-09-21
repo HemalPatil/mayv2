@@ -27,7 +27,7 @@ struct PCIeSegmentGroupEntry {
 } __attribute__((packed));
 typedef struct PCIeSegmentGroupEntry PCIeSegmentGroupEntry;
 
-struct PCIeConfigurationBaseHeader {
+struct PCIeBaseHeader {
 	uint16_t vendorId;
 	uint16_t deviceId;
 	uint16_t command;
@@ -41,13 +41,13 @@ struct PCIeConfigurationBaseHeader {
 	uint8_t headerType;
 	uint8_t bist;
 } __attribute__((packed));
-typedef struct PCIeConfigurationBaseHeader PCIeConfigurationBaseHeader;
+typedef struct PCIeBaseHeader PCIeBaseHeader;
 
 struct PCIeFunction {
 	uint8_t bus;
 	uint8_t device;
 	uint8_t function;
-	PCIeConfigurationBaseHeader *configurationSpace;
+	PCIeBaseHeader *configurationSpace;
 	struct PCIeFunction *next;
 };
 typedef struct PCIeFunction PCIeFunction;

@@ -5,6 +5,7 @@
 
 #define VBE_LINEAR_FRAME_BUFFER_AVAILABLE 0x80
 
+// Taken from https://wiki.osdev.org/User:Omarrx024/VESA_Tutorial
 struct VBEModeInfo {
 	uint16_t attributes;		// deprecated, only bit 7 should be of interest to you, and it indicates the mode supports a linear frame buffer.
 	uint8_t windowA;			// deprecated

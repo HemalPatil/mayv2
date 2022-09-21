@@ -8,7 +8,7 @@
 
 static bool enumerateBus(uint64_t baseAddress, uint8_t bus);
 static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device);
-static bool enumerateFunction(uint8_t function, PCIeConfigurationBaseHeader *pcieHeader);
+static bool enumerateFunction(uint8_t function, PCIeBaseHeader *pcieHeader);
 static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8_t function);
 
 static const char* const initPciStr = "Enumerating PCIe devices";
@@ -18,7 +18,7 @@ static const char* const busesStr = " buses ";
 static const char* const baseStr = " base address ";
 static const char* const busStr = "Bus ";
 static const char* const deviceStr = " device ";
-static const char* const multiStr = " multi";
+static const char* const multiStr = " multi function";
 static const char* const funcStr = "Function ";
 
 static PCIeFunction *current = NULL;
@@ -71,7 +71,7 @@ static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8
 	if (
 		requestResult.address != INVALID_ADDRESS &&
 		requestResult.allocatedCount == 1 &&
-		mapVirtualPages(requestResult.address, (void*) functionAddress, 1)
+		mapVirtualPages(requestResult.address, (void*) functionAddress, 1, MEMORY_REQUEST_CACHE_DISABLE)
 	) {
 		return requestResult.address;
 	}
@@ -87,7 +87,7 @@ static bool enumerateBus(uint64_t baseAddress, uint8_t bus) {
 	return true;
 }
 
-static bool enumerateFunction(uint8_t function, PCIeConfigurationBaseHeader *pcieHeader) {
+static bool enumerateFunction(uint8_t function, PCIeBaseHeader *pcieHeader) {
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
@@ -108,7 +108,7 @@ static bool enumerateFunction(uint8_t function, PCIeConfigurationBaseHeader *pci
 
 static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 	uint8_t function = 0;
-	PCIeConfigurationBaseHeader *pcieHeader = (PCIeConfigurationBaseHeader*) mapBDFPage(baseAddress, bus, device, function);
+	PCIeBaseHeader *pcieHeader = (PCIeBaseHeader*) mapBDFPage(baseAddress, bus, device, function);
 	if (!pcieHeader) {
 		terminalPrintSpaces4();
 		terminalPrintSpaces4();
@@ -154,7 +154,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 	if (pcieHeader->headerType & PCI_MULTI_FUNCTION_DEVICE) {
 		// TODO: complete multi function device enumeration
 		for (function = 1; function < PCI_FUNCTION_COUNT; ++function) {
-			pcieHeader = (PCIeConfigurationBaseHeader*) mapBDFPage(baseAddress, bus, device, function);
+			pcieHeader = (PCIeBaseHeader*) mapBDFPage(baseAddress, bus, device, function);
 			if (!pcieHeader) {
 				terminalPrintSpaces4();
 				terminalPrintSpaces4();
