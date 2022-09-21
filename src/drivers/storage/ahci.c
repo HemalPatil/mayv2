@@ -14,6 +14,8 @@ static const char* const probingPortsStr = "Enumerating and configuring ports";
 static const char* const configuringStr = "Configuring port ";
 static const char* const configuredStr = "Ports configured";
 
+bool ahciAtapiRead(AHCIController *controller, AHCIDevice *device, size_t startSector, size_t count, void *buffer);
+
 AHCIController *ahciControllers = NULL;
 
 bool initializeAHCI(PCIeFunction *pcieFunction) {
@@ -117,8 +119,7 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 		return false;
 	}
 	memset(requestResult.address, 0, pageSize);
-	PML4CrawlResult crawl = crawlPageTables(requestResult.address);
-	if (!ahciRead(currentController, bootCd, 144, pageSize / AHCI_SECTOR_SIZE, crawl.physicalTables[0])) {
+	if (!ahciAtapiRead(currentController, bootCd, 36, 1, requestResult.address)) {
 		return false;
 	}
 	terminalPrintChar('[');
@@ -131,6 +132,109 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 	hangSystem(true);
 
 	terminalPrintString(initAhciCompleteStr, strlen(initAhciCompleteStr));
+	return true;
+}
+
+size_t findFreeCommandSlot(AHCIDevice *device) {
+	uint32_t slots = device->port->commandIssue | device->port->sataActive;
+	for (size_t i = 0; i < 32; ++i) {
+		if ((slots & 1) == 0) {
+			return i;
+		}
+		slots >>= 1;
+	}
+	return SIZE_MAX;
+}
+
+bool ahciAtapiRead(AHCIController *controller, AHCIDevice *device, size_t startSector, size_t sectorCount, void *buffer) {
+	// Make sure buffer is mapped to a physical page and page boundary aligned
+	PML4CrawlResult crawl = crawlPageTables(buffer);
+	if (crawl.physicalTables[0] == INVALID_ADDRESS || crawl.indexes[0] != 0) {
+		return false;
+	}
+
+	// Busy wait till port is busy
+	size_t spin = 0;
+	while (
+		(spin < SIZE_MAX / 2) &&
+		(device->port->taskFileData & (AHCI_DEVICE_BUSY | AHCI_DEVICE_DRQ))
+	) {
+		++spin;
+	}
+	if (spin == SIZE_MAX / 2) {
+		return false;
+	}
+	terminalPrintString("read", 4);
+
+	// Clear pending interrupts
+	device->port->interruptStatus = ~((uint32_t)0);
+	size_t freeSlot = findFreeCommandSlot(device);
+	if (freeSlot == SIZE_MAX) {
+		return false;
+	}
+
+	// Refer section 5.5.1 and 5.6.2.4 of AHCI specification https://www.intel.com.au/content/dam/www/public/us/en/documents/technical-specifications/serial-ata-ahci-spec-rev1-3-1.pdf
+	device->commandHeaders[freeSlot].prdtLength = 1;
+	device->commandHeaders[freeSlot].commandFisLength = sizeof(AHCIFISRegisterH2D) / sizeof(uint32_t);
+	device->commandHeaders[freeSlot].atapi = 1;
+	device->commandHeaders[freeSlot].write = 0;
+
+	memset(device->commandTables[freeSlot], 0, sizeof(AHCICommandTable) + (device->commandHeaders[freeSlot].prdtLength - 1) * sizeof(AHCIPRDTEntry));
+	terminalPrintString("mems", 4);
+	device->commandTables[freeSlot]->prdtEntries[0].dataBase = (uint32_t)(uint64_t)crawl.physicalTables[0];
+	if (controller->hba->hostCapabilities.bit64Addressing) {
+		device->commandTables[freeSlot]->prdtEntries[0].dataBaseUpper = (uint32_t)((uint64_t)crawl.physicalTables[0] >> 32);
+	}
+	device->commandTables[freeSlot]->prdtEntries[0].byteCount = 2048 - 1;
+	device->commandTables[freeSlot]->prdtEntries[0].interruptOnCompletion = 1;
+
+	AHCIFISRegisterH2D *commandFis = (AHCIFISRegisterH2D*)&device->commandTables[freeSlot]->commandFIS;
+	memset(commandFis, 0, sizeof(AHCIFISRegisterH2D));
+	commandFis->fisType = AHCI_FIS_TYPE_REG_H2D;
+	commandFis->commandControl = 1;
+	commandFis->command = AHCI_COMMAND_ATAPI_PACKET;
+
+	// Set DMA bit and DMA direction (1 = device to host) bit in the features
+	// Refer section 7.18.3 and 7.18.4 in https://people.freebsd.org/~imp/asiabsdcon2015/works/d2161r5-ATAATAPI_Command_Set_-_3.pdf
+	commandFis->featureLow = 5;
+
+	// Fill the ACMD block with SCSI read(12) command
+	// The LBA and sector count fields are in big-endian
+	// Refer 3.17 READ(12) section in https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf
+	device->commandTables[freeSlot]->atapiCommand[0] = ATAPI_READTOC;
+	device->commandTables[freeSlot]->atapiCommand[1] = 0;
+	device->commandTables[freeSlot]->atapiCommand[2] = (uint8_t)((startSector >> 24) & 0xff);
+	device->commandTables[freeSlot]->atapiCommand[3] = (uint8_t)((startSector >> 16) & 0xff);
+	device->commandTables[freeSlot]->atapiCommand[4] = (uint8_t)((startSector >> 8) & 0xff);
+	device->commandTables[freeSlot]->atapiCommand[5] = (uint8_t)(startSector & 0xff);
+	device->commandTables[freeSlot]->atapiCommand[6] = (uint8_t)((sectorCount >> 24) & 0xff);
+	device->commandTables[freeSlot]->atapiCommand[7] = (uint8_t)((sectorCount >> 16) & 0xff);
+	device->commandTables[freeSlot]->atapiCommand[8] = (uint8_t)((sectorCount >> 8) & 0xff);
+	device->commandTables[freeSlot]->atapiCommand[9] = (uint8_t)(sectorCount & 0xff);
+	device->commandTables[freeSlot]->atapiCommand[10] = 0;
+	device->commandTables[freeSlot]->atapiCommand[11] = 0;
+	device->commandTables[freeSlot]->atapiCommand[12] = 0;
+	device->commandTables[freeSlot]->atapiCommand[13] = 0;
+	device->commandTables[freeSlot]->atapiCommand[14] = 0;
+	device->commandTables[freeSlot]->atapiCommand[15] = 0;
+
+	terminalPrintDecimal(device->port->commandIssue);
+	device->port->commandIssue = 1 << freeSlot;
+	terminalPrintDecimal(device->port->commandIssue);
+	terminalPrintString("issu", 4);
+
+	spin = 0;
+	while (spin < 1000000) {
+		// FIXME: enable AHCI interrupts
+		if (device->port->interruptStatus & AHCI_TASK_FILE_ERROR) {
+			terminalPrintString("iser", 4);
+			return false;
+		}
+		++spin;
+	}
+	terminalPrintDecimal(device->port->commandIssue);
+	terminalPrintString("rddn", 4);
+
 	return true;
 }
 

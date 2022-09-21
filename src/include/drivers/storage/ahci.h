@@ -4,8 +4,11 @@
 #include <stddef.h>
 #include <pcie.h>
 
+#define ATAPI_READTOC 0xa8
+
 #define AHCI_COMMAND_LIST_SIZE 1024
 #define AHCI_COMMAND_READ_DMA_EX 0x25
+#define AHCI_COMMAND_ATAPI_PACKET 0xa0
 
 #define AHCI_DEVICE_BUSY 0x80
 #define AHCI_DEVICE_DRQ 0x08
@@ -51,7 +54,7 @@ struct PCIeAHCIHeader {
 } __attribute__((packed));
 typedef struct PCIeAHCIHeader PCIeAHCIHeader;
 
-// Refer AHCI spec https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/serial-ata-ahci-spec-rev1_1.pdf
+// Refer AHCI spec https://www.intel.com.au/content/dam/www/public/us/en/documents/technical-specifications/serial-ata-ahci-spec-rev1-3-1.pdf
 struct AHCIPortStatus {
 	uint8_t deviceDetection : 4;
 	uint8_t interfaceSpeed : 4;
@@ -201,7 +204,7 @@ struct AHCIPRDTEntry {
 	uint32_t dataBaseUpper;
 	uint32_t reserved0;
 	uint32_t byteCount : 22;
-	uint32_t reserved1 : 9;
+	uint16_t reserved1 : 9;
 	uint8_t interruptOnCompletion : 1;
 } __attribute__((packed));
 typedef struct AHCIPRDTEntry AHCIPRDTEntry;
