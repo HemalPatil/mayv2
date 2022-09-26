@@ -5,5 +5,8 @@
 #define IRQ_KEYBOARD 1
 #define IRQ_AHCI 9
 
-extern void endInterrupt();
+extern size_t availableInterrupt;
+
+extern void acknowledgeLocalApicInterrupt();
 extern bool initializeInterrupts();
+extern void keyboardHandler();

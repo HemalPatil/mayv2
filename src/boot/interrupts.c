@@ -10,29 +10,30 @@ static const char* const initIntrStr = "Initializing interrupts";
 static const char* const intrInitCompleteStr = "Interrupts initialized\n\n";
 static const char* const enablingKeyStr = "Setting up keyboard interrupts";
 
+size_t availableInterrupt = 0x20;
+
 bool initializeInterrupts() {
 	terminalPrintString(initIntrStr, strlen(initIntrStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
 
 	// Enable keyboard interrupt
-	// ISR for keyboard interrupts is at offset 0x20 in the IDT64
 	terminalPrintSpaces4();
 	terminalPrintString(enablingKeyStr, strlen(enablingKeyStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	IOAPICRedirectionEntry keyEntry = readIoRedirectionEntry(IRQ_KEYBOARD);
-	keyEntry.vector = 0x20;
+	installIdt64Entry(availableInterrupt, &keyboardHandler);
+	keyEntry.vector = availableInterrupt;
 	keyEntry.deliveryMode = 0;
 	keyEntry.destinationMode = 0;
 	keyEntry.pinPolarity = 0;
 	keyEntry.triggerMode = 0;
 	keyEntry.mask = 0;
-	// FIXME: assumes CPU 0 is the boot and current CPU
-	keyEntry.destination = 0;
+	keyEntry.destination = bootCpu;
 	writeIoRedirectionEntry(IRQ_KEYBOARD, keyEntry);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
-
+	++availableInterrupt;
 	terminalPrintSpaces4();
 	enableInterrupts();
 
@@ -40,6 +41,6 @@ bool initializeInterrupts() {
 	return true;
 }
 
-void endInterrupt() {
+void acknowledgeLocalApicInterrupt() {
 	getLocalApic()->endOfInterrupt = 0;
 }

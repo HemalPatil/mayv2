@@ -29,30 +29,9 @@
 
 #define AHCI_SECTOR_SIZE 512
 
-#define AHCI_TASK_FILE_ERROR (1 << 30)
-
-struct PCIeAHCIHeader {
-	PCIeBaseHeader basePcieHeader;
-	uint32_t bar0;
-	uint32_t bar1;
-	uint32_t bar2;
-	uint32_t bar3;
-	uint32_t bar4;
-	uint32_t bar5;
-	uint32_t cardBusCis;
-	uint16_t subsystemVendorId;
-	uint16_t subsystemId;
-	uint32_t expansionRomBaseAddress;
-	uint8_t capabilities;
-	uint8_t reserved0;
-	uint16_t reserved1;
-	uint32_t reserved2;
-	uint8_t interruptLine;
-	uint8_t interruptPin;
-	uint8_t minGrant;
-	uint8_t maxLatency;
-} __attribute__((packed));
-typedef struct PCIeAHCIHeader PCIeAHCIHeader;
+#define AHCI_MODE ((uint32_t)1 << 31)
+#define AHCI_GHC_INTERRUPT_ENABLE ((uint32_t)1 << 1)
+#define AHCI_TASK_FILE_ERROR ((uint32_t)1 << 30)
 
 // Refer AHCI spec https://www.intel.com.au/content/dam/www/public/us/en/documents/technical-specifications/serial-ata-ahci-spec-rev1-3-1.pdf
 struct AHCIPortStatus {
@@ -237,6 +216,8 @@ typedef struct AHCIController AHCIController;
 
 extern AHCIController *ahciControllers;
 
+extern void ahciMsiHandler();
+extern void ahciMsiHandlerWrapper();
 extern bool ahciRead(AHCIController *controller, AHCIDevice *device, size_t startSector, size_t count, void *buffer);
 extern bool configureAhciDevice(AHCIController *controller, AHCIDevice *device);
 extern bool initializeAHCI(PCIeFunction *pcieFunction);

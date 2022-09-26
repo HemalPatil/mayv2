@@ -55,16 +55,20 @@ idtDescriptor:
 	interruptsEnabledStr db 'Enabled interrupts', 10, 0
 	pageFaultStr db 'Page Fault! Tried to access ', 0
 	keyboardStr db 'key', 0
+	invalidInterruptStr db 'Invalid interrupt number [', 0
 
 section .text
 	extern doneStr
 	extern ellipsisStr
-	extern endInterrupt
+	extern acknowledgeLocalApicInterrupt
+	extern hangSystem
 	extern terminalPrintChar
+	extern terminalPrintDecimal
 	extern terminalPrintHex
 	extern terminalPrintString
-	global setupIdt64
 	global enableInterrupts
+	global installIdt64Entry
+	global setupIdt64
 setupIdt64:
 	mov rdi, idtLoading
 	mov rsi, 11
@@ -109,6 +113,31 @@ fillOffsets:
 	mov [rdx + 8], eax
 	ret
 
+installIdt64Entry:
+	cmp rdi, 255
+	jge installIdt64EntryInvalidInterrupt
+	cmp rdi, 32
+	jl installIdt64EntryInvalidInterrupt
+	mov rax, rdi
+	shl rax, 4
+	mov rdx, IDT_START
+	add rdx, rax
+	mov rax, rsi
+	call fillOffsets
+	ret
+installIdt64EntryInvalidInterrupt:
+	push rdi
+	mov rdi, invalidInterruptStr
+	mov rsi, 26
+	call terminalPrintString
+	pop rdi
+	call terminalPrintDecimal
+	mov rdi, ']'
+	call terminalPrintChar
+	mov rdi, 1
+	call hangSystem
+	ret
+
 enableInterrupts:
 	sti
 	mov rdi, interruptsEnabledStr
@@ -148,7 +177,7 @@ keyboardHandler:
 	mov rdi, keyboardStr
 	mov rsi, 3
 	call terminalPrintString
-	call endInterrupt
+	call acknowledgeLocalApicInterrupt
 	iretq
 
 defaultInterruptHandler:
