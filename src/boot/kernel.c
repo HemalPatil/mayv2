@@ -75,31 +75,31 @@ void kernelMain(
 		kernelPanic();
 	}
 
+	// Setup basic hardware interrupts
+	if (!initializeInterrupts()) {
+		kernelPanic();
+	}
+
 	// Start drivers for PCIe devices
 	// TODO: the if-else will become very complicated
-	PCIeFunction *pcieFunction = pcieFunctions;
-	while (pcieFunction) {
-		bool (*initializer)(PCIeFunction *pcieFunction) = INVALID_ADDRESS;
-		if (
-			pcieFunction->configurationSpace->class == PCI_CLASS_STORAGE &&
-			pcieFunction->configurationSpace->subClass == PCI_SUBCLASS_SATA &&
-			pcieFunction->configurationSpace->progIf == PCI_PROG_AHCI
-		) {
-			initializer = &initializeAHCI;
-		}
-		if (initializer != INVALID_ADDRESS && !((*initializer)(pcieFunction))) {
-			kernelPanic();
-		}
-		pcieFunction = pcieFunction->next;
-	}
+	// PCIeFunction *pcieFunction = pcieFunctions;
+	// while (pcieFunction) {
+	// 	bool (*initializer)(PCIeFunction *pcieFunction) = INVALID_ADDRESS;
+	// 	if (
+	// 		pcieFunction->configurationSpace->class == PCI_CLASS_STORAGE &&
+	// 		pcieFunction->configurationSpace->subClass == PCI_SUBCLASS_SATA &&
+	// 		pcieFunction->configurationSpace->progIf == PCI_PROG_AHCI
+	// 	) {
+	// 		initializer = &initializeAHCI;
+	// 	}
+	// 	if (initializer != INVALID_ADDRESS && !((*initializer)(pcieFunction))) {
+	// 		kernelPanic();
+	// 	}
+	// 	pcieFunction = pcieFunction->next;
+	// }
 
 	// Set up graphical video mode
 	// if (!setupGraphicalVideoMode()) {
-	// 	kernelPanic();
-	// }
-
-	// Setup basic hardware interrupts
-	// if (!initializeInterrupts()) {
 	// 	kernelPanic();
 	// }
 }

@@ -41,12 +41,6 @@ pageFaultDescriptor:
 	dq 0
 	dq 0
 
-	times 512 - ($-$$) db 0		; Skip first 32 reserved interrupts/exception
-
-keyboardDescriptor:
-	dq 0
-	dq 0
-
 	times 4096 - ($-$$) db 0	; Make the 64-bit IDT 4 KiB long
 IDT_END:
 
@@ -59,18 +53,21 @@ idtDescriptor:
 	idtLoadingStr db 'Loading IDT', 0
 	interruptsEnabledStr db 'Enabled interrupts', 10, 0
 	pageFaultStr db 'Page Fault! Tried to access ', 0
-	keyboardStr db 'key', 0
 	invalidOpcodeStr db 'Invalid opcode', 0
+	invalidInterruptStr db 'Invalid interrupt number [', 0
 
 section .text
 	extern doneStr
 	extern ellipsisStr
-	extern endInterrupt
+	extern acknowledgeLocalApicInterrupt
+	extern hangSystem
 	extern terminalPrintChar
+	extern terminalPrintDecimal
 	extern terminalPrintHex
 	extern terminalPrintString
-	global setupIdt64
 	global enableInterrupts
+	global installIdt64Entry
+	global setupIdt64
 setupIdt64:
 	mov rdi, idtLoadingStr
 	mov rsi, 11
@@ -95,9 +92,6 @@ setupIdt64DescriptorLoop:
 	mov rdx, doubleFaultDescriptor
 	mov rax, doubleFaultHandler
 	call fillOffsets
-	mov rdx, keyboardDescriptor
-	mov rax, keyboardHandler
-	call fillOffsets
 	mov rdx, invalidOpcodeDescriptor
 	mov rax, invalidOpcodeHandler
 	call fillOffsets
@@ -116,6 +110,31 @@ fillOffsets:
 	mov [rdx + 6], ax
 	shr rax, 16
 	mov [rdx + 8], eax
+	ret
+
+installIdt64Entry:
+	cmp rdi, 255
+	jge installIdt64EntryInvalidInterrupt
+	cmp rdi, 32
+	jl installIdt64EntryInvalidInterrupt
+	mov rax, rdi
+	shl rax, 4
+	mov rdx, IDT_START
+	add rdx, rax
+	mov rax, rsi
+	call fillOffsets
+	ret
+installIdt64EntryInvalidInterrupt:
+	push rdi
+	mov rdi, invalidInterruptStr
+	mov rsi, 26
+	call terminalPrintString
+	pop rdi
+	call terminalPrintDecimal
+	mov rdi, ']'
+	call terminalPrintChar
+	mov rdi, 1
+	call hangSystem
 	ret
 
 enableInterrupts:
@@ -150,14 +169,6 @@ pageFaultHandler:
 	pop rax
 	mov rdi, 10
 	call terminalPrintChar
-	iretq
-
-keyboardHandler:
-	in al, 0x60
-	mov rdi, keyboardStr
-	mov rsi, 3
-	call terminalPrintString
-	call endInterrupt
 	iretq
 
 defaultInterruptHandler:
