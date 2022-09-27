@@ -1,7 +1,7 @@
 [bits 64]
 
 section .rodata:
-	loadSse2Str db 'Loading SSE2', 0
+	enableSse4Str db 'Enabling SSE4', 0
 
 section .data
 align 16
@@ -14,9 +14,9 @@ section .text
 	extern failedStr
 	extern terminalPrintChar
 	extern terminalPrintString
-	global setupSse2
-setupSse2:
-	mov rdi, loadSse2Str
+	global enableSse4
+enableSse4:
+	mov rdi, enableSse4Str
 	mov rsi, 12
 	call terminalPrintString
 	mov rdi, [ellipsisStr]
@@ -24,22 +24,45 @@ setupSse2:
 	call terminalPrintString
 	mov eax, 1
 	cpuid
+	; Check CLFLUSH
 	mov eax, edx
 	shr eax, 19
 	and eax, 1
-	jz noSse2
+	jz noSse4
+	; Check FXSAVE, FXRESTOR
 	mov eax, edx
 	shr eax, 24
 	and eax, 1
-	jz noSse2
+	jz noSse4
+	; Check SSE
 	mov  eax, edx
 	shr eax, 25
 	and eax, 1
-	jz noSse2
+	jz noSse4
+	; Check SSE2
 	mov  eax, edx
 	shr eax, 26
 	and eax, 1
-	jz noSse2
+	jz noSse4
+	; Check SSE3
+	mov eax, ecx
+	and eax, 1
+	jz noSse4
+	; Check SSSE3
+	mov eax, ecx
+	shr eax, 9
+	and eax, 1
+	jz noSse4
+	; Check SSE4.1
+	mov eax, ecx
+	shr eax, 19
+	and eax, 1
+	jz noSse4
+	; Check SSE4.2
+	mov eax, ecx
+	shr eax, 20
+	and eax, 1
+	jz noSse4
 	mov rax, cr0
 	and ax, 0xfffb		; clear coprocessor emulation CR0.EM
 	or ax, 0x2			; set coprocessor monitoring CR0.MP
@@ -54,7 +77,7 @@ setupSse2:
 	call terminalPrintChar
 	mov rax, 1
 	ret
-noSse2:
+noSse4:
 	mov rdi, [failedStr]
 	mov rsi, 6
 	call terminalPrintString

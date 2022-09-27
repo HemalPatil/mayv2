@@ -7,7 +7,7 @@
 #include <kernel.h>
 #include <pcie.h>
 #include <phymemmgmt.h>
-#include <sse2.h>
+#include <sse4.h>
 #include <string.h>
 #include <terminal.h>
 #include <tss64.h>
@@ -56,7 +56,7 @@ void kernelMain(
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();
 	setupIdt64();
-	if (!setupSse2()) {
+	if (!enableSse4()) {
 		kernelPanic();
 	}
 	terminalPrintChar('\n');
