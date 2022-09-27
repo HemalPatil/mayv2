@@ -1,5 +1,6 @@
 #include <apic.h>
 #include <drivers/storage/ahci.h>
+#include <drivers/timers/hpet.h>
 #include <elf64.h>
 #include <heapmemmgmt.h>
 #include <idt64.h>
@@ -70,28 +71,32 @@ void kernelMain(
 		kernelPanic();
 	}
 
-	// Enumerate PCIe devices
-	if (!enumeratePCIe()) {
+	if (!initializeHpet()) {
 		kernelPanic();
 	}
 
-	// Start drivers for PCIe devices
-	// TODO: the if-else will become very complicated
-	PCIeFunction *pcieFunction = pcieFunctions;
-	while (pcieFunction) {
-		bool (*initializer)(PCIeFunction *pcieFunction) = INVALID_ADDRESS;
-		if (
-			pcieFunction->configurationSpace->class == PCI_CLASS_STORAGE &&
-			pcieFunction->configurationSpace->subClass == PCI_SUBCLASS_SATA &&
-			pcieFunction->configurationSpace->progIf == PCI_PROG_AHCI
-		) {
-			initializer = &initializeAHCI;
-		}
-		if (initializer != INVALID_ADDRESS && !((*initializer)(pcieFunction))) {
-			kernelPanic();
-		}
-		pcieFunction = pcieFunction->next;
-	}
+	// Enumerate PCIe devices
+	// if (!enumeratePCIe()) {
+	// 	kernelPanic();
+	// }
+
+	// // Start drivers for PCIe devices
+	// // TODO: the if-else will become very complicated
+	// PCIeFunction *pcieFunction = pcieFunctions;
+	// while (pcieFunction) {
+	// 	bool (*initializer)(PCIeFunction *pcieFunction) = INVALID_ADDRESS;
+	// 	if (
+	// 		pcieFunction->configurationSpace->class == PCI_CLASS_STORAGE &&
+	// 		pcieFunction->configurationSpace->subClass == PCI_SUBCLASS_SATA &&
+	// 		pcieFunction->configurationSpace->progIf == PCI_PROG_AHCI
+	// 	) {
+	// 		initializer = &initializeAHCI;
+	// 	}
+	// 	if (initializer != INVALID_ADDRESS && !((*initializer)(pcieFunction))) {
+	// 		kernelPanic();
+	// 	}
+	// 	pcieFunction = pcieFunction->next;
+	// }
 
 	// Set up graphical video mode
 	// if (!setupGraphicalVideoMode()) {

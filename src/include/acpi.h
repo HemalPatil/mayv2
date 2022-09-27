@@ -55,11 +55,11 @@ struct RSDPDescriptor2 {
 } __attribute__((packed));
 typedef struct RSDPDescriptor2 RSDPDescriptor2;
 
-extern ACPISDTHeader *apic;
-extern ACPISDTHeader *hpet;
-extern ACPISDTHeader *mcfg;
+extern ACPISDTHeader *apicSdtHeader;
+extern ACPISDTHeader *hpetSdtHeader;
+extern ACPISDTHeader *mcfgSdtHeader;
 extern RSDPDescriptor2 *rsdp;
-extern ACPISDTHeader *ssdt;
+extern ACPISDTHeader *ssdtHeader;
 extern ACPISDTHeader *xsdt;
 
 extern ACPISDTHeader* findAcpiTable(ACPISDTHeader *xsdt, uint32_t signature);
