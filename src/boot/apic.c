@@ -263,3 +263,7 @@ size_t getCpuCount() {
 LocalAPIC* getLocalApic() {
 	return localApic;
 }
+
+void acknowledgeLocalApicInterrupt() {
+	localApic->endOfInterrupt = 0;
+}

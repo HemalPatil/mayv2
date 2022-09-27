@@ -56,6 +56,10 @@ idtDescriptor:
 	invalidOpcodeStr db 'Invalid opcode', 0
 	invalidInterruptStr db 'Invalid interrupt number [', 0
 
+section .data
+	global availableInterrupt
+	availableInterrupt dq 0x20
+
 section .text
 	extern doneStr
 	extern ellipsisStr

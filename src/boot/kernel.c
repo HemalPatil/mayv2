@@ -1,9 +1,9 @@
 #include <apic.h>
+#include <drivers/ps2/keyboard.h>
 #include <drivers/storage/ahci.h>
 #include <elf64.h>
 #include <heapmemmgmt.h>
 #include <idt64.h>
-#include <interrupts.h>
 #include <kernel.h>
 #include <pcie.h>
 #include <phymemmgmt.h>
@@ -70,13 +70,15 @@ void kernelMain(
 		kernelPanic();
 	}
 
-	// Enumerate PCIe devices
-	if (!enumeratePCIe()) {
+	// Setup basic hardware interrupts
+	if (!initializePs2Keyboard()) {
 		kernelPanic();
 	}
+	enableInterrupts();
+	terminalPrintChar('\n');
 
-	// Setup basic hardware interrupts
-	if (!initializeInterrupts()) {
+	// Enumerate PCIe devices
+	if (!enumeratePCIe()) {
 		kernelPanic();
 	}
 
