@@ -23,6 +23,12 @@ section .IDT64
 	global IDT_END
 
 IDT_START:
+	times 96 - ($-$$) db 0		; Skip first 6 interrupts/exception
+
+invalidOpcodeDescriptor:
+	dq 0
+	dq 0
+
 	times 128 - ($-$$) db 0		; Skip first 8 interrupts/exception
 
 doubleFaultDescriptor:
@@ -50,11 +56,11 @@ idtDescriptor:
 	idt64Base dq IDT_START
 	defaultInterruptStr db 'Default interrupt handler!', 10, 0
 	doubleFaultStr db 'Double Fault!', 10, 0
-	idtLoading db 'Loading IDT', 0
-	idtLoaded db 'IDT loaded', 10, 0
+	idtLoadingStr db 'Loading IDT', 0
 	interruptsEnabledStr db 'Enabled interrupts', 10, 0
 	pageFaultStr db 'Page Fault! Tried to access ', 0
 	keyboardStr db 'key', 0
+	invalidOpcodeStr db 'Invalid opcode', 0
 
 section .text
 	extern doneStr
@@ -66,7 +72,7 @@ section .text
 	global setupIdt64
 	global enableInterrupts
 setupIdt64:
-	mov rdi, idtLoading
+	mov rdi, idtLoadingStr
 	mov rsi, 11
 	call terminalPrintString
 	mov rdi, [ellipsisStr]
@@ -91,6 +97,9 @@ setupIdt64DescriptorLoop:
 	call fillOffsets
 	mov rdx, keyboardDescriptor
 	mov rax, keyboardHandler
+	call fillOffsets
+	mov rdx, invalidOpcodeDescriptor
+	mov rax, invalidOpcodeHandler
 	call fillOffsets
 	mov rax, idtDescriptor
 	lidt [rax]	; load the IDT
@@ -155,5 +164,15 @@ defaultInterruptHandler:
 	mov rdi, defaultInterruptStr
 	mov rsi, 27
 	call terminalPrintString
+	pop r8	; Pop the 64 bit error code in thrashable register
+	iretq
+
+invalidOpcodeHandler:
+	mov rdi, invalidOpcodeStr
+	mov rsi, 14
+	call terminalPrintString
+	; TODO: better recovery from invalid opcode
+	cli
+	hlt
 	pop r8	; Pop the 64 bit error code in thrashable register
 	iretq
