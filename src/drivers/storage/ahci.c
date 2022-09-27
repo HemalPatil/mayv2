@@ -17,13 +17,95 @@ static const char* const probingPortsStr = "Enumerating and configuring ports";
 static const char* const configuringStr = "Configuring port ";
 static const char* const configuredStr = "Ports configured";
 static const char* const checkMsiStr = "Checking MSI capability";
+static const char* const tfeStr = "AHCI task file error caused by commands ";
+static const char* const tfeUnsolicitedStr = "AHCI unsolicited task file error ";
+static const char* const d2hUnsolicitedStr = "AHCI unsolicited register D2H FIS ";
+static const char* const atDeviceStr = "at device";
 
-bool ahciAtapiRead(AHCIController *controller, AHCIDevice *device, size_t startSector, size_t count, void *buffer);
+bool ahciAtapiRead(
+	AHCIController *controller,
+	AHCIDevice *device,
+	size_t startSector,
+	size_t sectorCount,
+	void *buffer,
+	void (*callback)()
+);
 
 AHCIController *ahciControllers = NULL;
 
+void callback() {
+	terminalPrintString("callback", 8);
+}
+
+void callback2() {
+	terminalPrintString("callback2", 9);
+}
+
+void ahciDeviceMsiHandler(AHCIDevice *device) {
+	uint32_t interruptStatus = device->port->interruptStatus;
+	device->port->interruptStatus = interruptStatus;
+	uint32_t completedCommands = ~device->port->commandIssue & device->runningCommands;
+	terminalPrintHex(&interruptStatus, sizeof(interruptStatus));
+	terminalPrintHex(&device->port->interruptStatus, sizeof(device->port->interruptStatus));
+
+	if (interruptStatus & AHCI_TASK_FILE_ERROR) {
+		// Find which command caused the error
+		if (completedCommands) {
+			terminalPrintString(tfeStr, strlen(tfeStr));
+			terminalPrintHex(&completedCommands, sizeof(completedCommands));
+		} else {
+			terminalPrintString(tfeUnsolicitedStr, strlen(tfeUnsolicitedStr));
+		}
+		terminalPrintString(atDeviceStr, strlen(atDeviceStr));
+		terminalPrintChar(' ');
+		terminalPrintHex(&device, sizeof(device));
+		terminalPrintChar('\n');
+	}
+
+	if (interruptStatus & AHCI_REGISTER_D2H) {
+		if (completedCommands) {
+			// terminalPrintString("cc", 2);
+			for (size_t i = 0; i < AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader); ++i) {
+				// TODO: maybe check for received FIS status
+				uint32_t commandBit = (uint32_t)1 << i;
+				if (completedCommands & commandBit) {
+					device->runningCommands &= ~commandBit;
+					// TODO: should schedule the callback on some thread instead of sync execution
+					(*device->commandCallbacks[i])();
+					device->commandCallbacks[i] = NULL;
+				}
+			}
+		} else {
+			terminalPrintString(d2hUnsolicitedStr, strlen(d2hUnsolicitedStr));
+			terminalPrintString(atDeviceStr, strlen(atDeviceStr));
+			terminalPrintChar(' ');
+			terminalPrintHex(&device, sizeof(device));
+			terminalPrintChar('\n');
+		}
+	}
+	terminalPrintChar('\n');
+}
+
 void ahciMsiHandler() {
-	terminalPrintString("msii", 4);
+	AHCIController *currentController = ahciControllers;
+	terminalPrintString("msi", 3);
+	while (currentController) {
+		uint32_t interruptStatus = currentController->hba->interruptStatus;
+		if (interruptStatus) {
+			// If any port needs servicing write its value back to hba->interruptStatus
+			currentController->hba->interruptStatus = interruptStatus;
+			terminalPrintString("msiack", 6);
+			for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
+				if (
+					interruptStatus & ((uint32_t)1 << i) &&
+					currentController->devices[i]
+				) {
+					ahciDeviceMsiHandler(currentController->devices[i]);
+				}
+			}
+		}
+		currentController = currentController->next;
+	}
 	acknowledgeLocalApicInterrupt();
 }
 
@@ -42,18 +124,6 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 		terminalPrintString(okStr, strlen(okStr));
 		terminalPrintChar('\n');
 	}
-	// pcieFunction->msi64->messageAddress = c1phy;
-	// pcieFunction->msi64->data = 0xdead;
-	// pcieFunction->msi64->messageAddress = 0xfee00000;
-	// pcieFunction->msi64->data = 0x20;// | (1 << 15) | (1 << 14);
-	// pcieFunction->msi64->enable = 1;
-	sizeof(PCIeMSICapability);sizeof(PCIeMSI64Capability);
-	terminalPrintDecimal(pcieFunction->msi->multiMessageCapable);
-	terminalPrintDecimal(pcieFunction->msi->multiMessageEnable);
-	terminalPrintDecimal(pcieFunction->msi->bit64Capable);
-	terminalPrintDecimal(pcieFunction->msi->perVectorMasking);
-	terminalPrintHex(&pcieFunction->msi->capabilityId, 1);
-	terminalPrintDecimal(availableInterrupt);
 	if (pcieFunction->msi->bit64Capable) {
 		PCIeMSI64Capability *msi64 = (PCIeMSI64Capability*)pcieFunction->msi;
 		msi64->messageAddress = LOCAL_APIC_DEFAULT_ADDRESS;
@@ -63,16 +133,11 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 		pcieFunction->msi->messageAddress = LOCAL_APIC_DEFAULT_ADDRESS;
 		pcieFunction->msi->data = availableInterrupt;
 		pcieFunction->msi->enable = 1;
-		// terminalPrintHex(&msi->mask, sizeof(msi->mask));
-		// terminalPrintHex(&msi->pending, sizeof(msi->pending));
-		terminalPrintString("no64", 4);
 	}
-	terminalPrintDecimal(availableInterrupt);
 	installIdt64Entry(availableInterrupt, &ahciMsiHandlerWrapper);
 	++availableInterrupt;
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
-	// hangSystem(true);
 
 	// Map the HBA control registers to kernel address space
 	terminalPrintSpaces4(4);
@@ -90,7 +155,10 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 		currentController = currentController->next;
 	}
 	PCIeType0Header *ahciHeader = (PCIeType0Header*)(pcieFunction->configurationSpace);
-	PageRequestResult requestResult = requestVirtualPages(2, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS | MEMORY_REQUEST_CACHE_DISABLE);
+	PageRequestResult requestResult = requestVirtualPages(
+		2,
+		MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS | MEMORY_REQUEST_CACHE_DISABLE
+	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 2 ||
@@ -100,10 +168,10 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 		return false;
 	}
 	currentController->hba = requestResult.address;
-	// PML4CrawlResult r = crawlPageTables(currentController->hba);
-	// terminalPrintHex(&currentController->hba, sizeof(currentController->hba));
-	// terminalPrintHex(&r.physicalTables[0], sizeof(r.physicalTables[0]));
 	currentController->deviceCount = 0;
+	for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
+		currentController->devices[i] = NULL;
+	}
 	currentController->next = NULL;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
@@ -112,15 +180,10 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 	terminalPrintSpaces4(4);
 	terminalPrintString(ahciSwitchStr, strlen(ahciSwitchStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	terminalPrintDecimal(currentController->hba->hostCapabilities.fisSwitchingSupport);
-	terminalPrintString("ghc", 3);
-	terminalPrintHex(&currentController->hba->globalHostControl, sizeof(currentController->hba->globalHostControl));
 	if (!currentController->hba->hostCapabilities.ahciOnly) {
 		currentController->hba->globalHostControl |= AHCI_MODE;
 	}
 	currentController->hba->globalHostControl |= AHCI_GHC_INTERRUPT_ENABLE;
-	terminalPrintString("ghc", 3);
-	terminalPrintHex(&currentController->hba->globalHostControl, sizeof(currentController->hba->globalHostControl));
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -140,6 +203,13 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 			AHCIDevice *ahciDevice = kernelMalloc(sizeof(AHCIDevice));
 			ahciDevice->portNumber = i;
 			ahciDevice->port = &currentController->hba->ports[i];
+			ahciDevice->runningCommands = 0;
+			ahciDevice->commandHeaders = NULL;
+			ahciDevice->fisBase = NULL;
+			for (size_t j = 0; j < AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader); ++j) {
+				ahciDevice->commandTables[j] = NULL;
+				ahciDevice->commandCallbacks[i] = NULL;
+			}
 			currentController->devices[currentController->deviceCount] = ahciDevice;
 			switch (ahciDevice->port->signature) {
 				case AHCI_PORT_SIGNATURE_SATA:
@@ -153,7 +223,10 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 					ahciDevice->type = AHCI_PORT_TYPE_NONE;
 					break;
 			}
-			if (!configureAhciDevice(currentController, ahciDevice)) {
+			if (
+				ahciDevice->type != AHCI_PORT_TYPE_NONE &&
+				!configureAhciDevice(currentController, ahciDevice)
+			) {
 				terminalPrintString(failedStr, strlen(failedStr));
 				terminalPrintChar('\n');
 				return false;
@@ -165,17 +238,23 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 	terminalPrintSpaces4();
 	terminalPrintString(configuredStr, strlen(configuredStr));
 	terminalPrintChar('\n');
-	// hangSystem(true);
 
-	terminalPrintDecimal(ahciHeader->interruptLine);
-	terminalPrintChar('-');
-	terminalPrintDecimal(ahciHeader->interruptPin);
+	terminalPrintHex(&currentController->hba->interruptStatus, sizeof(currentController->hba->interruptStatus));
 	requestResult = requestVirtualPages(1, MEMORY_REQUEST_CONTIGUOUS | MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE | MEMORY_REQUEST_CACHE_DISABLE);
 	if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
 		return false;
 	}
 	memset(requestResult.address, 0, pageSize);
-	if (!ahciAtapiRead(currentController, bootCd, 36, 1, requestResult.address)) {
+	if (!ahciAtapiRead(currentController, bootCd, 36, 1, requestResult.address, &callback)) {
+		return false;
+	}
+	terminalPrintChar('[');
+	terminalPrintString(requestResult.address, 4);
+	terminalPrintChar(']');
+	terminalPrintHex(requestResult.address, 4);
+	terminalPrintHex(&bootCd->port->interruptStatus, 4);
+	terminalPrintHex(&currentController->hba->interruptStatus, 4);
+	if (!ahciAtapiRead(currentController, bootCd, 16, 1, requestResult.address, &callback2)) {
 		return false;
 	}
 	terminalPrintChar('[');
@@ -185,25 +264,18 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 	terminalPrintHex(&bootCd->port->interruptStatus, 4);
 	terminalPrintHex(&currentController->hba->interruptStatus, 4);
 
-	// traverseAddressSpaceList(MEMORY_REQUEST_KERNEL_PAGE, false);
-	// hangSystem(true);
-
 	terminalPrintString(initAhciCompleteStr, strlen(initAhciCompleteStr));
 	return true;
 }
 
-size_t findFreeCommandSlot(AHCIDevice *device) {
-	uint32_t slots = device->port->commandIssue | device->port->sataActive;
-	for (size_t i = 0; i < 32; ++i) {
-		if ((slots & 1) == 0) {
-			return i;
-		}
-		slots >>= 1;
-	}
-	return SIZE_MAX;
-}
-
-bool ahciAtapiRead(AHCIController *controller, AHCIDevice *device, size_t startSector, size_t sectorCount, void *buffer) {
+bool ahciAtapiRead(
+	AHCIController *controller,
+	AHCIDevice *device,
+	size_t startSector,
+	size_t sectorCount,
+	void *buffer,
+	void (*callback)()
+) {
 	// Make sure buffer is mapped to a physical page and page boundary aligned
 	PML4CrawlResult crawl = crawlPageTables(buffer);
 	if (crawl.physicalTables[0] == INVALID_ADDRESS || crawl.indexes[0] != 0) {
@@ -225,7 +297,7 @@ bool ahciAtapiRead(AHCIController *controller, AHCIDevice *device, size_t startS
 
 	// Clear pending interrupts
 	device->port->interruptStatus = ~((uint32_t)0);
-	size_t freeSlot = findFreeCommandSlot(device);
+	size_t freeSlot = findAhciFreeCommandSlot(device);
 	if (freeSlot == SIZE_MAX) {
 		return false;
 	}
@@ -277,6 +349,8 @@ bool ahciAtapiRead(AHCIController *controller, AHCIDevice *device, size_t startS
 
 	terminalPrintDecimal(device->port->commandIssue);
 	device->port->commandIssue = 1 << freeSlot;
+	device->runningCommands = 1 << freeSlot;
+	device->commandCallbacks[freeSlot] = callback;
 	terminalPrintDecimal(device->port->commandIssue);
 	terminalPrintString("issu", 4);
 
@@ -301,8 +375,6 @@ bool configureAhciDevice(AHCIController *controller, AHCIDevice *device) {
 	terminalPrintString(configuringStr, strlen(configuringStr));
 	terminalPrintDecimal(device->portNumber);
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	// terminalPrintChar('\n');
-	// listUsedPhysicalBuddies(0);
 	stopAhciCommand(device);
 
 	// Request a page where the command list (1024 bytes) and received FISes (256 bytes) can be placed
@@ -323,12 +395,6 @@ bool configureAhciDevice(AHCIController *controller, AHCIDevice *device) {
 	if (controller->hba->hostCapabilities.bit64Addressing) {
 		device->port->commandListBaseUpper = (uint32_t)(phyAddr >> 32);
 	}
-	// terminalPrintSpaces4();
-	// terminalPrintSpaces4();
-	// terminalPrintSpaces4();
-	// terminalPrintHex(&device->commandHeaders, sizeof(device->commandHeaders));
-	// terminalPrintHex(&device->port->commandListBase, 8);
-	// terminalPrintChar('\n');
 	phyAddr += AHCI_COMMAND_LIST_SIZE;
 	virAddr += AHCI_COMMAND_LIST_SIZE;
 	device->fisBase = (void*)virAddr;
@@ -336,12 +402,6 @@ bool configureAhciDevice(AHCIController *controller, AHCIDevice *device) {
 	if (controller->hba->hostCapabilities.bit64Addressing) {
 		device->port->fisBaseUpper = (uint32_t)(phyAddr >> 32);
 	}
-	// terminalPrintSpaces4();
-	// terminalPrintSpaces4();
-	// terminalPrintSpaces4();
-	// terminalPrintHex(&device->fisBase, sizeof(device->fisBase));
-	// terminalPrintHex(&device->port->fisBase, 8);
-	// terminalPrintChar('\n');
 
 	// There are AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader) i.e. 32 command tables
 	// PRDT entry size is 16 bytes
@@ -357,7 +417,6 @@ bool configureAhciDevice(AHCIController *controller, AHCIDevice *device) {
 	if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 2) {
 		return false;
 	}
-	// displayCrawlPageTablesResult(requestResult.address);
 	crawlResult = crawlPageTables(requestResult.address);
 	phyAddr = (uint64_t)crawlResult.physicalTables[0];
 	virAddr = (uint64_t)requestResult.address;
@@ -370,15 +429,10 @@ bool configureAhciDevice(AHCIController *controller, AHCIDevice *device) {
 		if (controller->hba->hostCapabilities.bit64Addressing) {
 			device->commandHeaders[i].commandTableBaseUpper = (uint32_t)(phyAddr >> 32);
 		}
-		// if (i == 0) {
-		// 	terminalPrintHex(&device->commandTables[i], sizeof(device->commandTables[i]));
-		// 	terminalPrintHex(&device->commandHeaders[i].commandTableBase, 8);
-		// 	(i & 1) ? terminalPrintChar('\n') : terminalPrintChar(' ');
-		// }
 		phyAddr += commandTableSize;
 		virAddr += commandTableSize;
 	}
-	device->port->interruptEnable = 1;
+	device->port->interruptEnable = (AHCI_TASK_FILE_ERROR | AHCI_REGISTER_D2H);
 
 	startAhciCommand(device);
 	terminalPrintString(doneStr, strlen(doneStr));
@@ -403,4 +457,15 @@ void stopAhciCommand(AHCIDevice *device) {
 	) {
 		// Busy wait till the HBA is receiving FIS or running some command
 	}
+}
+
+size_t findAhciFreeCommandSlot(AHCIDevice *device) {
+	uint32_t slots = device->port->commandIssue | device->port->sataActive;
+	for (size_t i = 0; i < AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader); ++i) {
+		if ((slots & 1) == 0) {
+			return i;
+		}
+		slots >>= 1;
+	}
+	return SIZE_MAX;
 }

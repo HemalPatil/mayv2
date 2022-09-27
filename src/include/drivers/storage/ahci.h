@@ -32,6 +32,7 @@
 #define AHCI_MODE ((uint32_t)1 << 31)
 #define AHCI_GHC_INTERRUPT_ENABLE ((uint32_t)1 << 1)
 #define AHCI_TASK_FILE_ERROR ((uint32_t)1 << 30)
+#define AHCI_REGISTER_D2H 1
 
 // Refer AHCI spec https://www.intel.com.au/content/dam/www/public/us/en/documents/technical-specifications/serial-ata-ahci-spec-rev1-3-1.pdf
 struct AHCIPortStatus {
@@ -203,6 +204,8 @@ struct AHCIDevice {
 	AHCICommandHeader *commandHeaders;
 	void *fisBase;
 	AHCICommandTable *commandTables[AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader)];
+	uint32_t runningCommands;
+	void (*commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader)])();
 };
 typedef struct AHCIDevice AHCIDevice;
 
@@ -216,10 +219,12 @@ typedef struct AHCIController AHCIController;
 
 extern AHCIController *ahciControllers;
 
+extern void ahciDeviceMsiHandler(AHCIDevice *device);
 extern void ahciMsiHandler();
 extern void ahciMsiHandlerWrapper();
 extern bool ahciRead(AHCIController *controller, AHCIDevice *device, size_t startSector, size_t count, void *buffer);
 extern bool configureAhciDevice(AHCIController *controller, AHCIDevice *device);
+extern size_t findAhciFreeCommandSlot(AHCIDevice *device);
 extern bool initializeAHCI(PCIeFunction *pcieFunction);
 extern void startAhciCommand(AHCIDevice *device);
 extern void stopAhciCommand(AHCIDevice *device);
