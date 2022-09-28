@@ -4,7 +4,7 @@
 
 // keyboard.c
 extern bool initializePs2Keyboard();
-extern void keyboardHandler();
+extern void ps2KeyboardHandler();
 
 // keyboardasm.asm
-extern void keyboardHandlerWrapper();
+extern void ps2KeyboardHandlerWrapper();

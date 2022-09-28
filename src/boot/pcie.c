@@ -36,8 +36,8 @@ bool enumeratePCIe() {
 	current->configurationSpace = INVALID_ADDRESS;
 	current->next = NULL;
 	pcieFunctions = current;
-	size_t groupCount = (mcfg->length - sizeof(ACPISDTHeader) - sizeof(uint64_t)) / sizeof(PCIeSegmentGroupEntry);
-	PCIeSegmentGroupEntry *groupEntries = (PCIeSegmentGroupEntry*)((uint64_t)mcfg + sizeof(ACPISDTHeader) + sizeof(uint64_t));
+	size_t groupCount = (mcfgSdtHeader->length - sizeof(ACPISDTHeader) - sizeof(uint64_t)) / sizeof(PCIeSegmentGroupEntry);
+	PCIeSegmentGroupEntry *groupEntries = (PCIeSegmentGroupEntry*)((uint64_t)mcfgSdtHeader + sizeof(ACPISDTHeader) + sizeof(uint64_t));
 	for (size_t i = 0; i < groupCount; ++i) {
 		terminalPrintSpaces4();
 		terminalPrintString(segmentStr, strlen(segmentStr));

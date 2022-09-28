@@ -13,7 +13,7 @@ bool initializePs2Keyboard() {
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 
 	IOAPICRedirectionEntry keyEntry = readIoRedirectionEntry(IRQ_KEYBOARD);
-	installIdt64Entry(availableInterrupt, &keyboardHandlerWrapper);
+	installIdt64Entry(availableInterrupt, &ps2KeyboardHandlerWrapper);
 	keyEntry.vector = availableInterrupt;
 	keyEntry.deliveryMode = 0;
 	keyEntry.destinationMode = 0;
@@ -29,7 +29,7 @@ bool initializePs2Keyboard() {
 	return true;
 }
 
-void keyboardHandler() {
+void ps2KeyboardHandler() {
 	terminalPrintString(keyStr, strlen(keyStr));
 	acknowledgeLocalApicInterrupt();
 }

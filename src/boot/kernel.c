@@ -1,6 +1,7 @@
 #include <apic.h>
 #include <drivers/ps2/keyboard.h>
 #include <drivers/storage/ahci.h>
+#include <drivers/timers/hpet.h>
 #include <elf64.h>
 #include <heapmemmgmt.h>
 #include <idt64.h>
@@ -70,6 +71,11 @@ void kernelMain(
 		kernelPanic();
 	}
 
+	// Get at least 1 periodic 64-bit edge-triggered HPET
+	if (!initializeHpet()) {
+		kernelPanic();
+	}
+
 	// Setup basic hardware interrupts
 	if (!initializePs2Keyboard()) {
 		kernelPanic();
@@ -84,21 +90,21 @@ void kernelMain(
 
 	// Start drivers for PCIe devices
 	// TODO: the if-else will become very complicated
-	// PCIeFunction *pcieFunction = pcieFunctions;
-	// while (pcieFunction) {
-	// 	bool (*initializer)(PCIeFunction *pcieFunction) = INVALID_ADDRESS;
-	// 	if (
-	// 		pcieFunction->configurationSpace->class == PCI_CLASS_STORAGE &&
-	// 		pcieFunction->configurationSpace->subClass == PCI_SUBCLASS_SATA &&
-	// 		pcieFunction->configurationSpace->progIf == PCI_PROG_AHCI
-	// 	) {
-	// 		initializer = &initializeAHCI;
-	// 	}
-	// 	if (initializer != INVALID_ADDRESS && !((*initializer)(pcieFunction))) {
-	// 		kernelPanic();
-	// 	}
-	// 	pcieFunction = pcieFunction->next;
-	// }
+	PCIeFunction *pcieFunction = pcieFunctions;
+	while (pcieFunction) {
+		bool (*initializer)(PCIeFunction *pcieFunction) = INVALID_ADDRESS;
+		if (
+			pcieFunction->configurationSpace->class == PCI_CLASS_STORAGE &&
+			pcieFunction->configurationSpace->subClass == PCI_SUBCLASS_SATA &&
+			pcieFunction->configurationSpace->progIf == PCI_PROG_AHCI
+		) {
+			initializer = &initializeAHCI;
+		}
+		if (initializer != INVALID_ADDRESS && !((*initializer)(pcieFunction))) {
+			kernelPanic();
+		}
+		pcieFunction = pcieFunction->next;
+	}
 
 	// Set up graphical video mode
 	// if (!setupGraphicalVideoMode()) {

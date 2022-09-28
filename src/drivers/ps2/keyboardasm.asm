@@ -1,10 +1,10 @@
 [bits 64]
 
 section .text
-	extern keyboardHandler
+	extern ps2KeyboardHandler
 	extern terminalPrintString
-	global keyboardHandlerWrapper
-keyboardHandlerWrapper:
+	global ps2KeyboardHandlerWrapper
+ps2KeyboardHandlerWrapper:
 	in al, 0x60
-	call keyboardHandler
+	call ps2KeyboardHandler
 	iretq
