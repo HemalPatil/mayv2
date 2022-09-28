@@ -23,6 +23,12 @@ section .IDT64
 	global IDT_END
 
 IDT_START:
+	times 96 - ($-$$) db 0		; Skip first 6 interrupts/exception
+
+invalidOpcodeDescriptor:
+	dq 0
+	dq 0
+
 	times 128 - ($-$$) db 0		; Skip first 8 interrupts/exception
 
 doubleFaultDescriptor:
@@ -35,12 +41,6 @@ pageFaultDescriptor:
 	dq 0
 	dq 0
 
-	times 512 - ($-$$) db 0		; Skip first 32 reserved interrupts/exception
-
-keyboardDescriptor:
-	dq 0
-	dq 0
-
 	times 4096 - ($-$$) db 0	; Make the 64-bit IDT 4 KiB long
 IDT_END:
 
@@ -50,12 +50,15 @@ idtDescriptor:
 	idt64Base dq IDT_START
 	defaultInterruptStr db 'Default interrupt handler!', 10, 0
 	doubleFaultStr db 'Double Fault!', 10, 0
-	idtLoading db 'Loading IDT', 0
-	idtLoaded db 'IDT loaded', 10, 0
+	idtLoadingStr db 'Loading IDT', 0
 	interruptsEnabledStr db 'Enabled interrupts', 10, 0
 	pageFaultStr db 'Page Fault! Tried to access ', 0
-	keyboardStr db 'key', 0
+	invalidOpcodeStr db 'Invalid opcode', 0
 	invalidInterruptStr db 'Invalid interrupt number [', 0
+
+section .data
+	global availableInterrupt
+	availableInterrupt dq 0x20
 
 section .text
 	extern doneStr
@@ -70,7 +73,7 @@ section .text
 	global installIdt64Entry
 	global setupIdt64
 setupIdt64:
-	mov rdi, idtLoading
+	mov rdi, idtLoadingStr
 	mov rsi, 11
 	call terminalPrintString
 	mov rdi, [ellipsisStr]
@@ -93,8 +96,8 @@ setupIdt64DescriptorLoop:
 	mov rdx, doubleFaultDescriptor
 	mov rax, doubleFaultHandler
 	call fillOffsets
-	mov rdx, keyboardDescriptor
-	mov rax, keyboardHandler
+	mov rdx, invalidOpcodeDescriptor
+	mov rax, invalidOpcodeHandler
 	call fillOffsets
 	mov rax, idtDescriptor
 	lidt [rax]	; load the IDT
@@ -172,17 +175,19 @@ pageFaultHandler:
 	call terminalPrintChar
 	iretq
 
-keyboardHandler:
-	in al, 0x60
-	mov rdi, keyboardStr
-	mov rsi, 3
-	call terminalPrintString
-	call acknowledgeLocalApicInterrupt
-	iretq
-
 defaultInterruptHandler:
 	mov rdi, defaultInterruptStr
 	mov rsi, 27
 	call terminalPrintString
+	pop r8	; Pop the 64 bit error code in thrashable register
+	iretq
+
+invalidOpcodeHandler:
+	mov rdi, invalidOpcodeStr
+	mov rsi, 14
+	call terminalPrintString
+	; TODO: better recovery from invalid opcode
+	cli
+	hlt
 	pop r8	; Pop the 64 bit error code in thrashable register
 	iretq

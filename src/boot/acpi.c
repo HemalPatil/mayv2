@@ -7,11 +7,11 @@
 
 static RSDPDescriptor2* searchRsdp();
 
-ACPISDTHeader *apic = NULL;
-ACPISDTHeader *hpet = NULL;
-ACPISDTHeader *mcfg = NULL;
+ACPISDTHeader *apicSdtHeader = NULL;
+ACPISDTHeader *hpetSdtHeader = NULL;
+ACPISDTHeader *mcfgSdtHeader = NULL;
 RSDPDescriptor2 *rsdp = NULL;
-ACPISDTHeader *ssdt = NULL;
+ACPISDTHeader *ssdtHeader = NULL;
 ACPISDTHeader *xsdt = NULL;
 
 static const char* const parsingAcpiStr = "Parsing ACPI3";
@@ -150,14 +150,14 @@ bool parseAcpi3() {
 		return false;
 	}
 	// Copy the tables to heap
-	apic = kernelMalloc(oldApic->length);
-	memcpy(apic, oldApic, oldApic->length);
-	hpet = kernelMalloc(oldHpet->length);
-	memcpy(hpet, oldHpet, oldHpet->length);
-	mcfg = kernelMalloc(oldMcfg->length);
-	memcpy(mcfg, oldMcfg, oldMcfg->length);
-	ssdt = kernelMalloc(oldSsdt->length);
-	memcpy(ssdt, oldSsdt, oldSsdt->length);
+	apicSdtHeader = kernelMalloc(oldApic->length);
+	memcpy(apicSdtHeader, oldApic, oldApic->length);
+	hpetSdtHeader = kernelMalloc(oldHpet->length);
+	memcpy(hpetSdtHeader, oldHpet, oldHpet->length);
+	mcfgSdtHeader = kernelMalloc(oldMcfg->length);
+	memcpy(mcfgSdtHeader, oldMcfg, oldMcfg->length);
+	ssdtHeader = kernelMalloc(oldSsdt->length);
+	memcpy(ssdtHeader, oldSsdt, oldSsdt->length);
 	// Free the kernel page used for parsing XSDT
 	freeVirtualPages((void*)((uint64_t)oldXsdt & phyMemBuddyMasks[0]), 1, MEMORY_REQUEST_KERNEL_PAGE);
 	terminalPrintString(doneStr, strlen(doneStr));

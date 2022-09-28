@@ -3,7 +3,6 @@
 #include <drivers/storage/ahci.h>
 #include <heapmemmgmt.h>
 #include <idt64.h>
-#include <interrupts.h>
 #include <kernel.h>
 #include <string.h>
 #include <terminal.h>

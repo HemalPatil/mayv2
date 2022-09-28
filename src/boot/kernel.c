@@ -1,12 +1,14 @@
 #include <apic.h>
+#include <drivers/ps2/keyboard.h>
 #include <drivers/storage/ahci.h>
+#include <drivers/timers/hpet.h>
 #include <elf64.h>
 #include <heapmemmgmt.h>
 #include <idt64.h>
-#include <interrupts.h>
 #include <kernel.h>
 #include <pcie.h>
 #include <phymemmgmt.h>
+#include <sse4.h>
 #include <string.h>
 #include <terminal.h>
 #include <tss64.h>
@@ -55,6 +57,9 @@ void kernelMain(
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();
 	setupIdt64();
+	if (!enableSse4()) {
+		kernelPanic();
+	}
 	terminalPrintChar('\n');
 
 	if (!parseAcpi3()) {
@@ -66,13 +71,20 @@ void kernelMain(
 		kernelPanic();
 	}
 
-	// Enumerate PCIe devices
-	if (!enumeratePCIe()) {
+	// Get at least 1 periodic 64-bit edge-triggered HPET
+	if (!initializeHpet()) {
 		kernelPanic();
 	}
 
 	// Setup basic hardware interrupts
-	if (!initializeInterrupts()) {
+	if (!initializePs2Keyboard()) {
+		kernelPanic();
+	}
+	enableInterrupts();
+	terminalPrintChar('\n');
+
+	// Enumerate PCIe devices
+	if (!enumeratePCIe()) {
 		kernelPanic();
 	}
 

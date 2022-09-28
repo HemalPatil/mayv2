@@ -47,7 +47,7 @@ bool initializeApic() {
 	terminalPrintSpaces4();
 	terminalPrintString(checkingApicStr, strlen(checkingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!isApicPresent() || apic == NULL || apic == INVALID_ADDRESS) {
+	if (!isApicPresent() || apicSdtHeader == NULL || apicSdtHeader == INVALID_ADDRESS) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(presentStr, strlen(presentStr));
@@ -62,7 +62,7 @@ bool initializeApic() {
 	terminalPrintString(parsingApicStr, strlen(parsingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
-	uint32_t *localApicAddress = (uint32_t*)((uint64_t)apic + sizeof(ACPISDTHeader));
+	uint32_t *localApicAddress = (uint32_t*)((uint64_t)apicSdtHeader + sizeof(ACPISDTHeader));
 	localApicPhysicalAddress = (void*)(uint64_t)(*localApicAddress);
 	apicFlags = *(localApicAddress + 1);
 	terminalPrintSpaces4();
@@ -72,7 +72,7 @@ bool initializeApic() {
 	terminalPrintString(flagsStr, strlen(flagsStr));
 	terminalPrintHex(&apicFlags, sizeof(apicFlags));
 	terminalPrintString(lengthStr, strlen(lengthStr));
-	terminalPrintHex(&apic->length, sizeof(apic->length));
+	terminalPrintHex(&apicSdtHeader->length, sizeof(apicSdtHeader->length));
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
@@ -81,8 +81,8 @@ bool initializeApic() {
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
 	terminalPrintString(entryHeaderStr, strlen(entryHeaderStr));
-	uint64_t apicEnd = (uint64_t)apic + apic->length;
-	APICEntryHeader *entry = (APICEntryHeader*)((uint64_t)apic + sizeof(ACPISDTHeader) + sizeof(*localApicAddress) + sizeof(apicFlags));
+	uint64_t apicEnd = (uint64_t)apicSdtHeader + apicSdtHeader->length;
+	APICEntryHeader *entry = (APICEntryHeader*)((uint64_t)apicSdtHeader + sizeof(ACPISDTHeader) + sizeof(*localApicAddress) + sizeof(apicFlags));
 	APICEntryHeader *reEntry = entry;
 	while ((uint64_t)entry < apicEnd) {
 		terminalPrintSpaces4();
@@ -262,4 +262,8 @@ size_t getCpuCount() {
 
 LocalAPIC* getLocalApic() {
 	return localApic;
+}
+
+void acknowledgeLocalApicInterrupt() {
+	localApic->endOfInterrupt = 0;
 }
