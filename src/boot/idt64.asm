@@ -189,5 +189,4 @@ invalidOpcodeHandler:
 	; TODO: better recovery from invalid opcode
 	cli
 	hlt
-	pop r8	; Pop the 64 bit error code in thrashable register
 	iretq

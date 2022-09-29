@@ -29,21 +29,28 @@ bool ahciAtapiRead(
 	void *buffer,
 	void (*callback)()
 );
+bool ahciIdentifySataDevice(AHCIController *controller, AHCIDevice *device);
 
 AHCIController *ahciControllers = NULL;
 
+bool callback1Called = false;
+bool callback2Called = false;
+
 void callback() {
-	terminalPrintString("callback", 8);
+	callback1Called = true;
+	terminalPrintString("\ncallback\n", 10);
 }
 
 void callback2() {
-	terminalPrintString("callback2", 9);
+	callback2Called = true;
+	terminalPrintString("\ncallback2\n", 11);
 }
 
 void ahciDeviceMsiHandler(AHCIDevice *device) {
 	uint32_t interruptStatus = device->port->interruptStatus;
 	device->port->interruptStatus = interruptStatus;
 	uint32_t completedCommands = ~device->port->commandIssue & device->runningCommands;
+	terminalPrintString(" pis", 4);
 	terminalPrintHex(&interruptStatus, sizeof(interruptStatus));
 	terminalPrintHex(&device->port->interruptStatus, sizeof(device->port->interruptStatus));
 
@@ -70,7 +77,12 @@ void ahciDeviceMsiHandler(AHCIDevice *device) {
 				if (completedCommands & commandBit) {
 					device->runningCommands &= ~commandBit;
 					// TODO: should schedule the callback on some thread instead of sync execution
-					(*device->commandCallbacks[i])();
+					if (
+						device->commandCallbacks[i] != NULL &&
+						device->commandCallbacks[i] != INVALID_ADDRESS
+					) {
+						(*device->commandCallbacks[i])();
+					}
 					device->commandCallbacks[i] = NULL;
 				}
 			}
@@ -86,14 +98,15 @@ void ahciDeviceMsiHandler(AHCIDevice *device) {
 }
 
 void ahciMsiHandler() {
+	acknowledgeLocalApicInterrupt();
 	AHCIController *currentController = ahciControllers;
-	terminalPrintString("msi", 3);
+	terminalPrintString("msi ", 5);
 	while (currentController) {
 		uint32_t interruptStatus = currentController->hba->interruptStatus;
 		if (interruptStatus) {
 			// If any port needs servicing write its value back to hba->interruptStatus
 			currentController->hba->interruptStatus = interruptStatus;
-			terminalPrintString("msiack", 6);
+			terminalPrintString("msiack ", 7);
 			for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
 				if (
 					interruptStatus & ((uint32_t)1 << i) &&
@@ -105,7 +118,6 @@ void ahciMsiHandler() {
 		}
 		currentController = currentController->next;
 	}
-	acknowledgeLocalApicInterrupt();
 }
 
 bool initializeAHCI(PCIeFunction *pcieFunction) {
@@ -193,6 +205,7 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 	terminalPrintChar('\n');
 	uint32_t portsImplemented = currentController->hba->portsImplemented;
 	AHCIDevice *bootCd;
+	AHCIDevice *hdd;
 	for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
 		if (
 			(portsImplemented & 1) &&
@@ -200,6 +213,7 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 			currentController->hba->ports[i].sataStatus.powerMgmt == AHCI_PORT_ACTIVE
 		) {
 			AHCIDevice *ahciDevice = kernelMalloc(sizeof(AHCIDevice));
+			ahciDevice->info = NULL;
 			ahciDevice->portNumber = i;
 			ahciDevice->port = &currentController->hba->ports[i];
 			ahciDevice->runningCommands = 0;
@@ -213,6 +227,7 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 			switch (ahciDevice->port->signature) {
 				case AHCI_PORT_SIGNATURE_SATA:
 					ahciDevice->type = AHCI_PORT_TYPE_SATA;
+					hdd = ahciDevice;
 					break;
 				case AHCI_PORT_SIGNATURE_SATAPI:
 					ahciDevice->type = AHCI_PORT_TYPE_SATAPI;
@@ -238,32 +253,179 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 	terminalPrintString(configuredStr, strlen(configuredStr));
 	terminalPrintChar('\n');
 
-	terminalPrintHex(&currentController->hba->interruptStatus, sizeof(currentController->hba->interruptStatus));
-	requestResult = requestVirtualPages(1, MEMORY_REQUEST_CONTIGUOUS | MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE | MEMORY_REQUEST_CACHE_DISABLE);
-	if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
+	// if (!ahciIdentifySataDevice(currentController, hdd)) {
+	// 	return false;
+	// }
+
+	if (!ahciIdentifySatapiDevice(currentController, bootCd)) {
 		return false;
 	}
-	memset(requestResult.address, 0, pageSize);
-	if (!ahciAtapiRead(currentController, bootCd, 36, 1, requestResult.address, &callback)) {
-		return false;
-	}
-	terminalPrintChar('[');
-	terminalPrintString(requestResult.address, 4);
-	terminalPrintChar(']');
-	terminalPrintHex(requestResult.address, 4);
-	terminalPrintHex(&bootCd->port->interruptStatus, 4);
-	terminalPrintHex(&currentController->hba->interruptStatus, 4);
-	if (!ahciAtapiRead(currentController, bootCd, 16, 1, requestResult.address, &callback2)) {
-		return false;
-	}
-	terminalPrintChar('[');
-	terminalPrintString(requestResult.address, 4);
-	terminalPrintChar(']');
-	terminalPrintHex(requestResult.address, 4);
-	terminalPrintHex(&bootCd->port->interruptStatus, 4);
-	terminalPrintHex(&currentController->hba->interruptStatus, 4);
+
+	// terminalPrintString("op1 hbais", 9);
+	// terminalPrintHex(&currentController->hba->interruptStatus, sizeof(currentController->hba->interruptStatus));
+	// requestResult = requestVirtualPages(1, MEMORY_REQUEST_CONTIGUOUS | MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE | MEMORY_REQUEST_CACHE_DISABLE);
+	// if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
+	// 	return false;
+	// }
+	// memset(requestResult.address, 0, pageSize);
+	// if (!ahciAtapiRead(currentController, bootCd, 40, 1, requestResult.address, &callback)) {
+	// 	return false;
+	// }
+	// // terminalPrintChar('[');
+	// // terminalPrintString(requestResult.address, 4);
+	// // terminalPrintChar(']');
+	// // terminalPrintHex(requestResult.address, 4);
+	// terminalPrintString("op1d\n", 5);
+	
+	// // terminalPrintHex(&bootCd->port->interruptStatus, 4);
+	// terminalPrintString("op2 hbais", 9);
+	// terminalPrintHex(&currentController->hba->interruptStatus, sizeof(currentController->hba->interruptStatus));
+	// requestResult = requestVirtualPages(1, MEMORY_REQUEST_CONTIGUOUS | MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE | MEMORY_REQUEST_CACHE_DISABLE);
+	// if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
+	// 	return false;
+	// }
+	// memset(requestResult.address, 0, pageSize);
+	// if (!ahciAtapiRead(currentController, bootCd, 16, 1, requestResult.address, &callback2)) {
+	// 	return false;
+	// }
+	// // terminalPrintChar('[');
+	// // terminalPrintString(requestResult.address, 4);
+	// // terminalPrintChar(']');
+	// // terminalPrintHex(requestResult.address, 4);
+	// terminalPrintString("op2d\n", 5);
+	// // terminalPrintHex(&bootCd->port->interruptStatus, 4);
+	// // terminalPrintHex(&currentController->hba->interruptStatus, 4);
 
 	terminalPrintString(initAhciCompleteStr, strlen(initAhciCompleteStr));
+
+	volatile size_t spinner = 0;
+	while (spinner < 10000000) {
+		++spinner;
+	}
+	terminalPrintDecimal(callback1Called);
+	terminalPrintDecimal(callback2Called);
+
+	// terminalPrintHex(&hdd->info->WordsPerLogicalSector[0], 4);
+	// terminalPrintChar('\n');
+	// terminalPrintDecimal(hdd->info->GeneralConfiguration.DeviceType);
+	// terminalPrintChar('\n');
+	// terminalPrintDecimal(hdd->info->PhysicalLogicalSectorSize.MultipleLogicalSectorsPerPhysicalSector);
+	// terminalPrintChar('\n');
+	// terminalPrintDecimal(hdd->info->PhysicalLogicalSectorSize.LogicalSectorLongerThan256Words);
+	// terminalPrintChar('\n');
+	// terminalPrintDecimal(hdd->info->PhysicalLogicalSectorSize.LogicalSectorsPerPhysicalSector);
+	// terminalPrintChar('\n');
+	// terminalPrintHex(&hdd->info->NumCylinders, sizeof(hdd->info->NumCylinders));
+	// terminalPrintChar('\n');
+	// terminalPrintHex(&hdd->info->NumHeads, sizeof(hdd->info->NumHeads));
+	// terminalPrintChar('\n');
+	// terminalPrintHex(&hdd->info->Max48BitLBA[0], 8);
+	// terminalPrintChar('\n');
+
+	terminalPrintHex(&bootCd->info->wordsPerLogicalSector, 4);
+	terminalPrintChar('\n');
+	terminalPrintDecimal(bootCd->info->generalConfiguration.deviceType);
+	terminalPrintChar('\n');
+	terminalPrintDecimal(bootCd->info->physicalLogicalSectorSize.multipleLogicalSectorsPerPhysicalSector);
+	terminalPrintChar('\n');
+	terminalPrintDecimal(bootCd->info->physicalLogicalSectorSize.logicalSectorLongerThan256Words);
+	terminalPrintChar('\n');
+	terminalPrintDecimal(bootCd->info->physicalLogicalSectorSize.logicalSectorsPerPhysicalSector);
+	terminalPrintChar('\n');
+	terminalPrintHex(&bootCd->info->cylinderCount, sizeof(bootCd->info->cylinderCount));
+	terminalPrintChar('\n');
+	terminalPrintHex(&bootCd->info->headCount, sizeof(bootCd->info->headCount));
+	terminalPrintChar('\n');
+	terminalPrintHex(&bootCd->info->max48BitLBA[0], 8);
+	terminalPrintChar('\n');
+
+	// terminalPrintHex(bootCd->info, 512);
+	return true;
+}
+
+bool ahciIdentifySataDevice(AHCIController *controller, AHCIDevice *device) {
+	terminalPrintString("iden1", 5);
+	if (device->type != AHCI_PORT_TYPE_SATA) {
+		return false;
+	}
+	terminalPrintString("iden2", 5);
+
+	device->info = kernelMalloc(512);
+	PML4CrawlResult crawl = crawlPageTables(device->info);
+	if (crawl.physicalTables[0] == INVALID_ADDRESS || crawl.indexes[0] % 2 != 0) {
+		return false;
+	}
+	uint64_t bufferPhyAddr = (uint64_t)crawl.physicalTables[0] + crawl.indexes[0];
+
+	size_t freeSlot = findAhciFreeCommandSlot(device);
+	if (freeSlot == SIZE_MAX) {
+		return false;
+	}
+	device->commandHeaders[freeSlot].prdtLength = 1;
+	device->commandHeaders[freeSlot].commandFisLength = sizeof(AHCIFISRegisterH2D) / sizeof(uint32_t);
+	device->commandHeaders[freeSlot].atapi = 0;
+	device->commandHeaders[freeSlot].write = 0;
+	terminalPrintString("iden", 4);
+
+	memset(device->commandTables[freeSlot], 0, sizeof(AHCICommandTable) + (device->commandHeaders[freeSlot].prdtLength - 1) * sizeof(AHCIPRDTEntry));
+	device->commandTables[freeSlot]->prdtEntries[0].dataBase = (uint32_t)bufferPhyAddr;
+	if (controller->hba->hostCapabilities.bit64Addressing) {
+		device->commandTables[freeSlot]->prdtEntries[0].dataBaseUpper = (uint32_t)(bufferPhyAddr >> 32);
+	}
+	device->commandTables[freeSlot]->prdtEntries[0].byteCount = 511;
+	device->commandTables[freeSlot]->prdtEntries[0].interruptOnCompletion = 1;
+
+	AHCIFISRegisterH2D *commandFis = (AHCIFISRegisterH2D*)&device->commandTables[freeSlot]->commandFIS;
+	memset(commandFis, 0, sizeof(AHCIFISRegisterH2D));
+	commandFis->fisType = AHCI_FIS_TYPE_REG_H2D;
+	commandFis->commandControl = 1;
+	commandFis->command = 0xec;
+
+	device->port->commandIssue = 1 << freeSlot;
+	device->runningCommands |= 1 << freeSlot;
+
+	return true;
+}
+
+bool ahciIdentifySatapiDevice(AHCIController *controller, AHCIDevice *device) {
+	if (device->type != AHCI_PORT_TYPE_SATAPI) {
+		return false;
+	}
+
+	device->info = kernelMalloc(512);
+	PML4CrawlResult crawl = crawlPageTables(device->info);
+	if (crawl.physicalTables[0] == INVALID_ADDRESS || crawl.indexes[0] % 2 != 0) {
+		return false;
+	}
+	uint64_t bufferPhyAddr = (uint64_t)crawl.physicalTables[0] + crawl.indexes[0];
+
+	size_t freeSlot = findAhciFreeCommandSlot(device);
+	if (freeSlot == SIZE_MAX) {
+		return false;
+	}
+	device->commandHeaders[freeSlot].prdtLength = 1;
+	device->commandHeaders[freeSlot].commandFisLength = sizeof(AHCIFISRegisterH2D) / sizeof(uint32_t);
+	device->commandHeaders[freeSlot].atapi = 1;
+	device->commandHeaders[freeSlot].write = 0;
+
+	memset(device->commandTables[freeSlot], 0, sizeof(AHCICommandTable) + (device->commandHeaders[freeSlot].prdtLength - 1) * sizeof(AHCIPRDTEntry));
+	device->commandTables[freeSlot]->prdtEntries[0].dataBase = (uint32_t)bufferPhyAddr;
+	if (controller->hba->hostCapabilities.bit64Addressing) {
+		device->commandTables[freeSlot]->prdtEntries[0].dataBaseUpper = (uint32_t)(bufferPhyAddr >> 32);
+	}
+	device->commandTables[freeSlot]->prdtEntries[0].byteCount = 511;
+	device->commandTables[freeSlot]->prdtEntries[0].interruptOnCompletion = 1;
+
+	AHCIFISRegisterH2D *commandFis = (AHCIFISRegisterH2D*)&device->commandTables[freeSlot]->commandFIS;
+	memset(commandFis, 0, sizeof(AHCIFISRegisterH2D));
+	commandFis->fisType = AHCI_FIS_TYPE_REG_H2D;
+	commandFis->commandControl = 1;
+	commandFis->command = 0xa1;
+	commandFis->featureLow = 5;
+
+	device->port->commandIssue = 1 << freeSlot;
+	device->runningCommands |= 1 << freeSlot;
+
 	return true;
 }
 
@@ -275,31 +437,35 @@ bool ahciAtapiRead(
 	void *buffer,
 	void (*callback)()
 ) {
-	// Make sure buffer is mapped to a physical page and page boundary aligned
+	// Make sure buffer is mapped to a physical page and word boundary aligned
 	PML4CrawlResult crawl = crawlPageTables(buffer);
-	if (crawl.physicalTables[0] == INVALID_ADDRESS || crawl.indexes[0] != 0) {
+	if (crawl.physicalTables[0] == INVALID_ADDRESS || crawl.indexes[0] % 2 != 0) {
 		return false;
 	}
+	uint64_t bufferPhyAddr = (uint64_t)crawl.physicalTables[0] + crawl.indexes[0];
 
-	// Busy wait till port is busy
-	size_t spin = 0;
-	while (
-		(spin < SIZE_MAX / 2) &&
-		(device->port->taskFileData & (AHCI_DEVICE_BUSY | AHCI_DEVICE_DRQ))
-	) {
-		++spin;
-	}
-	if (spin == SIZE_MAX / 2) {
-		return false;
-	}
-	terminalPrintString("read", 4);
+	// // Busy wait till port is busy
+	// size_t spin = 0;
+	// while (
+	// 	(spin < SIZE_MAX / 2) &&
+	// 	(device->port->taskFileData & (AHCI_DEVICE_BUSY | AHCI_DEVICE_DRQ))
+	// ) {
+	// 	++spin;
+	// }
+	// if (spin == SIZE_MAX / 2) {
+	// 	return false;
+	// }
+	terminalPrintString("\nread ", 6);
 
 	// Clear pending interrupts
-	device->port->interruptStatus = ~((uint32_t)0);
+	// device->port->interruptStatus = ~((uint32_t)0);
 	size_t freeSlot = findAhciFreeCommandSlot(device);
 	if (freeSlot == SIZE_MAX) {
 		return false;
 	}
+	terminalPrintString("freeslot", 8);
+	terminalPrintDecimal(freeSlot);
+	terminalPrintChar(' ');
 
 	// Refer section 5.5.1 and 5.6.2.4 of AHCI specification https://www.intel.com.au/content/dam/www/public/us/en/documents/technical-specifications/serial-ata-ahci-spec-rev1-3-1.pdf
 	device->commandHeaders[freeSlot].prdtLength = 1;
@@ -308,10 +474,9 @@ bool ahciAtapiRead(
 	device->commandHeaders[freeSlot].write = 0;
 
 	memset(device->commandTables[freeSlot], 0, sizeof(AHCICommandTable) + (device->commandHeaders[freeSlot].prdtLength - 1) * sizeof(AHCIPRDTEntry));
-	terminalPrintString("mems", 4);
-	device->commandTables[freeSlot]->prdtEntries[0].dataBase = (uint32_t)(uint64_t)crawl.physicalTables[0];
+	device->commandTables[freeSlot]->prdtEntries[0].dataBase = (uint32_t)bufferPhyAddr;
 	if (controller->hba->hostCapabilities.bit64Addressing) {
-		device->commandTables[freeSlot]->prdtEntries[0].dataBaseUpper = (uint32_t)((uint64_t)crawl.physicalTables[0] >> 32);
+		device->commandTables[freeSlot]->prdtEntries[0].dataBaseUpper = (uint32_t)(bufferPhyAddr >> 32);
 	}
 	device->commandTables[freeSlot]->prdtEntries[0].byteCount = 2048 - 1;
 	device->commandTables[freeSlot]->prdtEntries[0].interruptOnCompletion = 1;
@@ -346,24 +511,24 @@ bool ahciAtapiRead(
 	device->commandTables[freeSlot]->atapiCommand[14] = 0;
 	device->commandTables[freeSlot]->atapiCommand[15] = 0;
 
-	terminalPrintDecimal(device->port->commandIssue);
+	terminalPrintHex(&device->port->commandIssue, sizeof(device->port->commandIssue));
 	device->port->commandIssue = 1 << freeSlot;
-	device->runningCommands = 1 << freeSlot;
+	device->runningCommands |= 1 << freeSlot;
 	device->commandCallbacks[freeSlot] = callback;
-	terminalPrintDecimal(device->port->commandIssue);
-	terminalPrintString("issu", 4);
+	terminalPrintHex(&device->port->commandIssue, sizeof(device->port->commandIssue));
+	terminalPrintString(" issu ", 6);
 
-	spin = 0;
-	while (spin < 1000000) {
-		// FIXME: enable AHCI interrupts
-		if (device->port->interruptStatus & AHCI_TASK_FILE_ERROR) {
-			terminalPrintString("iser", 4);
-			return false;
-		}
-		++spin;
-	}
-	terminalPrintDecimal(device->port->commandIssue);
-	terminalPrintString("rddn", 4);
+	// spin = 0;
+	// while (spin < 1000000) {
+	// 	// FIXME: enable AHCI interrupts
+	// 	if (device->port->interruptStatus & AHCI_TASK_FILE_ERROR) {
+	// 		terminalPrintString("iser", 4);
+	// 		return false;
+	// 	}
+	// 	++spin;
+	// }
+	terminalPrintHex(&device->port->commandIssue, sizeof(device->port->commandIssue));
+	terminalPrintString("rddn\n", 5);
 
 	return true;
 }
@@ -459,12 +624,16 @@ void stopAhciCommand(AHCIDevice *device) {
 }
 
 size_t findAhciFreeCommandSlot(AHCIDevice *device) {
-	uint32_t slots = device->port->commandIssue | device->port->sataActive;
+	terminalPrintString("\nfind", 5);
+	uint32_t slots = device->port->commandIssue | device->port->sataActive | device->runningCommands;
+	terminalPrintHex(&slots, sizeof(slots));
 	for (size_t i = 0; i < AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader); ++i) {
 		if ((slots & 1) == 0) {
+			terminalPrintString("findd\n", 6);
 			return i;
 		}
 		slots >>= 1;
 	}
+	terminalPrintString("findd\n", 6);
 	return SIZE_MAX;
 }
