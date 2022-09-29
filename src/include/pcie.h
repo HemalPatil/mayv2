@@ -38,7 +38,7 @@ struct PCIeBaseHeader {
 	uint8_t revisionId;
 	uint8_t progIf;
 	uint8_t subClass;
-	uint8_t class;
+	uint8_t mainClass;
 	uint8_t cacheLineSize;
 	uint8_t latencyTimer;
 	uint8_t headerType;

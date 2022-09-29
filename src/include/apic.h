@@ -94,7 +94,7 @@ union IOAPICRedirectionEntry {
 };
 typedef union IOAPICRedirectionEntry IOAPICRedirectionEntry;
 
-// apic.c
+// apic.cpp
 extern uint8_t bootCpu;
 
 extern void acknowledgeLocalApicInterrupt();
@@ -107,5 +107,5 @@ extern void writeIoApic(const uint8_t offset, const uint32_t value);
 extern void writeIoRedirectionEntry(const uint8_t irq, const IOAPICRedirectionEntry entry);
 
 // apicasm.asm
-extern void disableLegacyPic();
-extern bool isApicPresent();
+extern "C" void disableLegacyPic();
+extern "C" bool isApicPresent();

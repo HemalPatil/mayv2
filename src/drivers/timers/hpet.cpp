@@ -70,7 +70,7 @@ bool initializeHpet() {
 	terminalPrintSpaces4();
 	terminalPrintString(periodicTimerStr, strlen(periodicTimerStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	for (size_t i = 0; i < hpet->timerCount + 1; ++i) {
+	for (size_t i = 0; i < (size_t)hpet->timerCount + 1; ++i) {
 		if (
 			hpet->timers[i].bit64Capable &&
 			!hpet->timers[i].interruptType &&
@@ -101,8 +101,11 @@ bool initializeHpet() {
 	writeIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER, keyEntry);
 	++availableInterrupt;
 	// HPET registers must be written 8-byte boundaries hence setting the bit fields directly is not possible
-	uint64_t *configure = (uint64_t*)hpetPeriodicTimer;
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
+	uint64_t *configure = (uint64_t*)(void*)hpetPeriodicTimer;
 	*configure |= ((IRQ_HPET_PERIODIC_TIMER << 9) | HPET_TIMER_PERIODIC | HPET_TIMER_PERIODIC_INTERVAL);
+	#pragma GCC diagnostic pop
 
 	terminalPrintString(initCompleteStr, strlen(initCompleteStr));
 	return true;

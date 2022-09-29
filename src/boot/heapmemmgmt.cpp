@@ -8,8 +8,8 @@
 
 static HeapEntry* nextHeapEntry(HeapHeader *heap, HeapEntry *heapEntry);
 
-HeapHeader *heapRegionsList = INVALID_ADDRESS;
-HeapHeader *latestHeapSearched = INVALID_ADDRESS;
+HeapHeader *heapRegionsList = (HeapHeader*)INVALID_ADDRESS;
+HeapHeader *latestHeapSearched = (HeapHeader*)INVALID_ADDRESS;
 
 static const char* const initHeapStr = "Initializing dynamic memory management";
 static const char* const initHeapCompleteStr = "Dynamic memory management initialized\n\n";
@@ -49,13 +49,13 @@ bool initializeDynamicMemory() {
 	VirtualMemNode *lists[2] = { kernelAddressSpaceList, generalAddressSpaceList };
 	VirtualMemNode *newLists[2] = { NULL, NULL };
 	for (size_t i = 0; i < 2; ++i) {
-		VirtualMemNode *current = kernelMalloc(sizeof(VirtualMemNode));
+		VirtualMemNode *current = (VirtualMemNode*)kernelMalloc(sizeof(VirtualMemNode));
 		memcpy(current, lists[i], sizeof(VirtualMemNode));
 		newLists[i] = current;
 		VirtualMemNode *newPrevious = current;
 		VirtualMemNode *oldCurrent = lists[i]->next;
 		while (oldCurrent) {
-			current = kernelMalloc(sizeof(VirtualMemNode));
+			current = (VirtualMemNode*)kernelMalloc(sizeof(VirtualMemNode));
 			memcpy(current, oldCurrent, sizeof(VirtualMemNode));
 			newPrevious->next = current;
 			current->previous = newPrevious;

@@ -16,13 +16,13 @@
 #define L32K64_SCRATCH_BASE 0x80000
 #define L32K64_SCRATCH_LENGTH 0x10000
 
-// kernel.c
+// kernel.cpp
 // do not expose the kernelMain to other files
 extern InfoTable *infoTable;
 
-extern void kernelPanic();
+extern "C" void kernelPanic();
 
 
 // kernelasm.asm
-extern void flushTLB(void *newPml4Root);
-extern void hangSystem(bool disableInterrupts);
+extern "C" void flushTLB(void *newPml4Root);
+extern "C" void hangSystem(bool disableInterrupts);

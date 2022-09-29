@@ -23,6 +23,10 @@
 #define TERMINAL_COLOUR_YELLOW		0xe
 #define TERMINAL_COLOUR_BWHITE		0xf
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern bool isTerminalMode();
 extern void terminalClearLine(size_t lineNumber);
 extern void terminalClearScreen();
@@ -36,3 +40,7 @@ extern void terminalScroll(size_t lineCount);
 extern void terminalSetBgColour(uint8_t colour);
 extern void terminalSetCursorPosition(size_t x, size_t y);
 extern void terminalSetTextColour(uint8_t colour);
+
+#ifdef __cplusplus
+}
+#endif

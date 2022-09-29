@@ -126,7 +126,7 @@ bool parseAcpi3() {
 		return false;
 	}
 	// Copy the XSDT to heap
-	xsdt = kernelMalloc(oldXsdt->length);
+	xsdt = (ACPISDTHeader*)kernelMalloc(oldXsdt->length);
 	memcpy(xsdt, oldXsdt, oldXsdt->length);
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
@@ -150,13 +150,13 @@ bool parseAcpi3() {
 		return false;
 	}
 	// Copy the tables to heap
-	apicSdtHeader = kernelMalloc(oldApic->length);
+	apicSdtHeader = (ACPISDTHeader*)kernelMalloc(oldApic->length);
 	memcpy(apicSdtHeader, oldApic, oldApic->length);
-	hpetSdtHeader = kernelMalloc(oldHpet->length);
+	hpetSdtHeader = (ACPISDTHeader*)kernelMalloc(oldHpet->length);
 	memcpy(hpetSdtHeader, oldHpet, oldHpet->length);
-	mcfgSdtHeader = kernelMalloc(oldMcfg->length);
+	mcfgSdtHeader = (ACPISDTHeader*)kernelMalloc(oldMcfg->length);
 	memcpy(mcfgSdtHeader, oldMcfg, oldMcfg->length);
-	ssdtHeader = kernelMalloc(oldSsdt->length);
+	ssdtHeader = (ACPISDTHeader*)kernelMalloc(oldSsdt->length);
 	memcpy(ssdtHeader, oldSsdt, oldSsdt->length);
 	// Free the kernel page used for parsing XSDT
 	freeVirtualPages((void*)((uint64_t)oldXsdt & phyMemBuddyMasks[0]), 1, MEMORY_REQUEST_KERNEL_PAGE);
@@ -181,7 +181,7 @@ ACPISDTHeader* findAcpiTable(ACPISDTHeader *xsdt, uint32_t signature) {
 			return table;
 		}
 	}
-	return INVALID_ADDRESS;
+	return (ACPISDTHeader*)INVALID_ADDRESS;
 }
 
 // Adds up all the bytes in an ACPI table and returns true only if the checksum is 0

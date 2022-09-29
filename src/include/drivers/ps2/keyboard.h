@@ -2,9 +2,9 @@
 
 #define IRQ_KEYBOARD 1
 
-// keyboard.c
+// keyboard.cpp
 extern bool initializePs2Keyboard();
-extern void ps2KeyboardHandler();
+extern "C" void ps2KeyboardHandler();
 
 // keyboardasm.asm
-extern void ps2KeyboardHandlerWrapper();
+extern "C" void ps2KeyboardHandlerWrapper();

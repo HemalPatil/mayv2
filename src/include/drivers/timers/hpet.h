@@ -73,12 +73,12 @@ struct HPETRegisters {
 } __attribute__((packed));
 typedef struct HPETRegisters HPETRegisters;
 
-// hpet.c
+// hpet.cpp
 extern HPETRegisters *hpet;
 extern HPETTimer *hpetPeriodicTimer;
 
-extern void hpetHandler();
+extern "C" void hpetHandler();
 extern bool initializeHpet();
 
 // hpetasm.asm
-extern void hpetHandlerWrapper();
+extern "C" void hpetHandlerWrapper();
