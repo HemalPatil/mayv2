@@ -24,7 +24,7 @@ C_WARNINGS := -Wall -Wextra
 
 # Necessary flags and compiler and linker names required for generating binaries for x64
 CC64 := x86_64-elf-gcc
-CC64_FLAGS := --std=c++20 -ffreestanding -mcmodel=kernel -m64 -march=x86-64 -mno-red-zone -msse4.2 -nostdlib -lgcc -I$(INCLUDE_DIR)
+CC64_FLAGS := --std=c++20 -ffreestanding -fno-exceptions -fno-rtti -mcmodel=kernel -m64 -march=x86-64 -mno-red-zone -msse4.2 -nostdlib -lgcc -I$(INCLUDE_DIR)
 
 # The directory structure in the above root directories
 SRC_DIRECTORIES := $(shell find $(SRC_DIR) -type d -printf "%d\t%P\n" | sort -nk1 | cut -f2-)
