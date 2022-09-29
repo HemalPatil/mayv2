@@ -12,23 +12,27 @@
 #define MEMORY_REQUEST_KERNEL_PAGE 2
 #define PML4T_RECURSIVE_ENTRY 510
 
-struct PML4CrawlResult {
-	size_t indexes[5];
-	bool isCanonical;
-	PML4E* physicalTables[5];
-	PML4E* tables[5];
-	bool cached[5];
-};
-typedef struct PML4CrawlResult PML4CrawlResult;
+class PML4CrawlResult {
+	public:
+		size_t indexes[5];
+		bool isCanonical;
+		PML4E* physicalTables[5];
+		PML4E* tables[5];
+		bool cached[5];
 
-struct VirtualMemNode {
-	bool available;
-	void *base;
-	size_t pageCount;
-	struct VirtualMemNode *next;
-	struct VirtualMemNode *previous;
+		PML4CrawlResult(void* virtualAddress);
 };
-typedef struct VirtualMemNode VirtualMemNode;
+
+class VirtualMemNode {
+	public:
+		bool available;
+		void *base;
+		size_t pageCount;
+		VirtualMemNode *next;
+		VirtualMemNode *previous;
+
+		VirtualMemNode();
+};
 
 extern VirtualMemNode *generalAddressSpaceList;
 extern VirtualMemNode *kernelAddressSpaceList;
@@ -39,7 +43,6 @@ extern const uint64_t ptMask;
 extern const uint64_t virtualPageIndexMask;
 extern const size_t virtualPageIndexShift;
 
-extern PML4CrawlResult crawlPageTables(void *virtualAddress);
 extern void displayCrawlPageTablesResult(void *virtualAddress);
 extern bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags);
 extern bool initializeVirtualMemory(void *usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount);

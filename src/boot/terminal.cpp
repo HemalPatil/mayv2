@@ -29,6 +29,8 @@ static uint16_t cursorPortIndex = 0x3d5;
 static const char* const hexPalette = "0123456789ABCDEF";
 static const char* const spaces4 = "    ";
 
+extern "C" {
+
 // Check if video mode is 80x25 VGA
 bool isTerminalMode() {
 	// FIXME: Add functionality to actually check if the mode is the assumed one
@@ -168,4 +170,6 @@ void terminalPrintHex(void* value, size_t size) {
 	}
 	terminalPrintString(hexValue, size * 2);
 	terminalPrintChar(']');
+}
+
 }

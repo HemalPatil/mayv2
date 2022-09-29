@@ -2,8 +2,8 @@
 
 #include <stddef.h>
 
-extern size_t availableInterrupt;
+extern "C" size_t availableInterrupt;
 
-extern void enableInterrupts();
-extern void installIdt64Entry(size_t interruptNumber, void* handler);
-extern void setupIdt64();
+extern "C" void enableInterrupts();
+extern "C" void installIdt64Entry(size_t interruptNumber, void (*handler)());
+extern "C" void setupIdt64();

@@ -9,9 +9,6 @@ kernelStack:
 
 section .lowerhalf
 	extern gdtDescriptor
-	extern idtDescriptor
-	extern GDT_START
-	extern TSS_START
 	global kernelStart
 
 ; rdi will have the address of the info table, DO NOT trash it

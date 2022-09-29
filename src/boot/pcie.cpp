@@ -32,8 +32,8 @@ bool enumeratePCIe() {
 	terminalPrintChar('\n');
 
 	// FIXME: should verify the MCFG checksum
-	current = kernelMalloc(sizeof(PCIeFunction));
-	current->configurationSpace = INVALID_ADDRESS;
+	current = (PCIeFunction*)kernelMalloc(sizeof(PCIeFunction));
+	current->configurationSpace = (PCIeBaseHeader*)INVALID_ADDRESS;
 	current->next = NULL;
 	pcieFunctions = current;
 	size_t groupCount = (mcfgSdtHeader->length - sizeof(ACPISDTHeader) - sizeof(uint64_t)) / sizeof(PCIeSegmentGroupEntry);
@@ -94,12 +94,12 @@ static bool enumerateFunction(uint8_t function, PCIeBaseHeader *pcieHeader, PCIe
 	terminalPrintString(funcStr, strlen(funcStr));
 	terminalPrintDecimal(function);
 	terminalPrintChar(' ');
-	terminalPrintHex(&pcieHeader->class, sizeof(pcieHeader->class));
+	terminalPrintHex(&pcieHeader->mainClass, sizeof(pcieHeader->mainClass));
 	terminalPrintChar(':');
 	terminalPrintHex(&pcieHeader->subClass, sizeof(pcieHeader->subClass));
 	terminalPrintChar(':');
 	terminalPrintHex(&pcieHeader->progIf, sizeof(pcieHeader->progIf));
-	if (pcieHeader->class == PCI_CLASS_BRIDGE && pcieHeader->subClass == PCI_SUBCLASS_PCI_BRIDGE) {
+	if (pcieHeader->mainClass == PCI_CLASS_BRIDGE && pcieHeader->subClass == PCI_SUBCLASS_PCI_BRIDGE) {
 		// FIXME: should enumerate secondary bus
 	}
 
@@ -172,7 +172,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 	if (!enumerateFunction(function, pcieHeader, &msi64)) {
 		return false;
 	}
-	current->next = kernelMalloc(sizeof(PCIeFunction));
+	current->next = (PCIeFunction*)kernelMalloc(sizeof(PCIeFunction));
 	current = current->next;
 	current->bus = bus;
 	current->device = device;
@@ -202,7 +202,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 			if (!enumerateFunction(function, pcieHeader, &msi64)) {
 				return false;
 			}
-			current->next = kernelMalloc(sizeof(PCIeFunction));
+			current->next = (PCIeFunction*)kernelMalloc(sizeof(PCIeFunction));
 			current = current->next;
 			current->bus = bus;
 			current->device = device;
