@@ -253,9 +253,9 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 	terminalPrintString(configuredStr, strlen(configuredStr));
 	terminalPrintChar('\n');
 
-	// if (!ahciIdentifySataDevice(currentController, hdd)) {
-	// 	return false;
-	// }
+	if (!ahciIdentifySataDevice(currentController, hdd)) {
+		return false;
+	}
 
 	if (!ahciIdentifySatapiDevice(currentController, bootCd)) {
 		return false;
@@ -305,22 +305,22 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 	terminalPrintDecimal(callback1Called);
 	terminalPrintDecimal(callback2Called);
 
-	// terminalPrintHex(&hdd->info->WordsPerLogicalSector[0], 4);
-	// terminalPrintChar('\n');
-	// terminalPrintDecimal(hdd->info->GeneralConfiguration.DeviceType);
-	// terminalPrintChar('\n');
-	// terminalPrintDecimal(hdd->info->PhysicalLogicalSectorSize.MultipleLogicalSectorsPerPhysicalSector);
-	// terminalPrintChar('\n');
-	// terminalPrintDecimal(hdd->info->PhysicalLogicalSectorSize.LogicalSectorLongerThan256Words);
-	// terminalPrintChar('\n');
-	// terminalPrintDecimal(hdd->info->PhysicalLogicalSectorSize.LogicalSectorsPerPhysicalSector);
-	// terminalPrintChar('\n');
-	// terminalPrintHex(&hdd->info->NumCylinders, sizeof(hdd->info->NumCylinders));
-	// terminalPrintChar('\n');
-	// terminalPrintHex(&hdd->info->NumHeads, sizeof(hdd->info->NumHeads));
-	// terminalPrintChar('\n');
-	// terminalPrintHex(&hdd->info->Max48BitLBA[0], 8);
-	// terminalPrintChar('\n');
+	terminalPrintHex(&hdd->info->wordsPerLogicalSector, 4);
+	terminalPrintChar('\n');
+	terminalPrintDecimal(hdd->info->generalConfiguration.deviceType);
+	terminalPrintChar('\n');
+	terminalPrintDecimal(hdd->info->physicalLogicalSectorSize.multipleLogicalSectorsPerPhysicalSector);
+	terminalPrintChar('\n');
+	terminalPrintDecimal(hdd->info->physicalLogicalSectorSize.logicalSectorLongerThan256Words);
+	terminalPrintChar('\n');
+	terminalPrintDecimal(hdd->info->physicalLogicalSectorSize.logicalSectorsPerPhysicalSector);
+	terminalPrintChar('\n');
+	terminalPrintHex(&hdd->info->cylinderCount, sizeof(hdd->info->cylinderCount));
+	terminalPrintChar('\n');
+	terminalPrintHex(&hdd->info->headCount, sizeof(hdd->info->headCount));
+	terminalPrintChar('\n');
+	terminalPrintHex(&hdd->info->max48BitLBA, 8);
+	terminalPrintChar('\n');
 
 	terminalPrintHex(&bootCd->info->wordsPerLogicalSector, 4);
 	terminalPrintChar('\n');
@@ -336,7 +336,7 @@ bool initializeAHCI(PCIeFunction *pcieFunction) {
 	terminalPrintChar('\n');
 	terminalPrintHex(&bootCd->info->headCount, sizeof(bootCd->info->headCount));
 	terminalPrintChar('\n');
-	terminalPrintHex(&bootCd->info->max48BitLBA[0], 8);
+	terminalPrintHex(&bootCd->info->max48BitLBA, 8);
 	terminalPrintChar('\n');
 
 	// terminalPrintHex(bootCd->info, 512);

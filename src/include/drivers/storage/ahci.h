@@ -447,7 +447,7 @@ struct AHCIIdentifyDeviceData {
 	uint16_t streamingTransferTimeDMA;
 	uint16_t streamingAccessLatencyDMAPIO;
 	uint32_t streamingPerfGranularity;
-	uint32_t max48BitLBA[2];
+	uint64_t max48BitLBA;
 	uint16_t streamingTransferTime;
 	uint16_t dsmCap;
 	struct {
@@ -570,8 +570,7 @@ struct AHCIIdentifyDeviceData {
 } __attribute__((packed));
 typedef struct AHCIIdentifyDeviceData AHCIIdentifyDeviceData;
 
-struct AHCIDevice
-{
+struct AHCIDevice {
 	uint8_t type;
 	uint8_t portNumber;
 	volatile AHCIPort *port;
@@ -584,8 +583,7 @@ struct AHCIDevice
 };
 typedef struct AHCIDevice AHCIDevice;
 
-struct AHCIController
-{
+struct AHCIController {
 	volatile AHCIHostBusAdapter *hba;
 	size_t deviceCount;
 	AHCIDevice *devices[AHCI_PORT_COUNT];
