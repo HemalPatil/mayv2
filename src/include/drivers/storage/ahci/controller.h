@@ -2,10 +2,18 @@
 
 #include <drivers/storage/ahci.h>
 
-class AHCIController {
-	public:
-		volatile AHCIHostBusAdapter *hba;
+class AHCI::Controller {
+	private:
+		volatile HostBusAdapter *hba;
 		size_t deviceCount;
-		AHCIDevice *devices[AHCI_PORT_COUNT];
-		AHCIController *next;
+		Device *devices[AHCI_PORT_COUNT];
+		Controller *next;
+
+	public:
+		Controller();
+		bool initialize(PCIeFunction *pcieFunction);
+
+	friend void ::ahciMsiHandler();
+	friend bool initialize(PCIeFunction *pcieFunction);
+	friend class Device;
 };

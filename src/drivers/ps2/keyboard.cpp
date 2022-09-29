@@ -12,6 +12,7 @@ bool initializePs2Keyboard() {
 	terminalPrintString(initIntrStr, strlen(initIntrStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 
+	terminalPrintHex(&availableInterrupt, 1);
 	IOAPICRedirectionEntry keyEntry = readIoRedirectionEntry(IRQ_KEYBOARD);
 	installIdt64Entry(availableInterrupt, &ps2KeyboardHandlerWrapper);
 	keyEntry.vector = availableInterrupt;

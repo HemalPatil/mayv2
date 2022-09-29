@@ -2,17 +2,24 @@
 
 #include <drivers/storage/ahci.h>
 
-class AHCIDevice {
+class AHCI::Device {
 	public:
 		uint8_t type;
 		uint8_t portNumber;
-		volatile AHCIPort *port;
-		AHCICommandHeader *commandHeaders;
+		volatile Port *port;
+		CommandHeader *commandHeaders;
 		void *fisBase;
-		AHCICommandTable *commandTables[AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader)];
+		CommandTable *commandTables[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
 		uint32_t runningCommands;
-		void (*commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader)])();
-		AHCIIdentifyDeviceData *info;
+		void (*commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)])();
+		IdentifyDeviceData *info;
+		Controller *controller;
 
-		AHCIDevice(AHCIController *controller);
+		Device(Controller *controller);
+		bool initialize();
+		size_t findFreeCommandSlot();
+		void msiHandler();
+		bool identify();
+
+	friend void ::ahciMsiHandler();
 };

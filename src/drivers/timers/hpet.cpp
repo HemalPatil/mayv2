@@ -55,10 +55,7 @@ bool initializeHpet() {
 		terminalPrintChar('\n');
 		return false;
 	}
-	terminalPrintDecimal(hpetTable->comparatorCount);
 	terminalPrintString(okStr, strlen(okStr));
-	terminalPrintDecimal(hpet->timerCount);
-	terminalPrintHex(&hpet->period, sizeof(hpet->period));
 	terminalPrintChar('\n');
 
 	terminalPrintSpaces4();
@@ -90,6 +87,7 @@ bool initializeHpet() {
 	terminalPrintChar('\n');
 
 	IOAPICRedirectionEntry keyEntry = readIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER);
+	terminalPrintHex(&availableInterrupt, 1);
 	installIdt64Entry(availableInterrupt, &hpetHandlerWrapper);
 	keyEntry.vector = availableInterrupt;
 	keyEntry.deliveryMode = 0;
