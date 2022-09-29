@@ -1,7 +1,7 @@
 #include <acpi.h>
 #include <apic.h>
 #include <drivers/ps2/keyboard.h>
-// #include <drivers/storage/ahci.h>
+#include <drivers/storage/ahci.h>
 #include <drivers/timers/hpet.h>
 #include <heapmemmgmt.h>
 #include <idt64.h>

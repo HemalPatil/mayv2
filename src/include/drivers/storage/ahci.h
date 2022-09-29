@@ -1,8 +1,8 @@
 #pragma once
 
+#include <pcie.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <pcie.h>
 
 #define ATAPI_READTOC 0xa8
 
@@ -570,26 +570,8 @@ struct AHCIIdentifyDeviceData {
 } __attribute__((packed));
 typedef struct AHCIIdentifyDeviceData AHCIIdentifyDeviceData;
 
-struct AHCIDevice {
-	uint8_t type;
-	uint8_t portNumber;
-	volatile AHCIPort *port;
-	AHCICommandHeader *commandHeaders;
-	void *fisBase;
-	AHCICommandTable *commandTables[AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader)];
-	uint32_t runningCommands;
-	void (*commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(AHCICommandHeader)])();
-	AHCIIdentifyDeviceData *info;
-};
-typedef struct AHCIDevice AHCIDevice;
-
-struct AHCIController {
-	volatile AHCIHostBusAdapter *hba;
-	size_t deviceCount;
-	AHCIDevice *devices[AHCI_PORT_COUNT];
-	struct AHCIController *next;
-};
-typedef struct AHCIController AHCIController;
+class AHCIDevice;
+class AHCIController;
 
 extern AHCIController *ahciControllers;
 
