@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+extern "C" {
+
 size_t strlen(const char* str) {
 	size_t length = 0;
 	while (*str++) {
@@ -27,8 +29,8 @@ void* memcpy(void *dest, void *src, size_t n) {
 	if (dest == src) {
 		return dest;
 	}
-	uint64_t *d8 = dest;
-	uint64_t *s8 = src;
+	uint64_t *d8 = (uint64_t*)dest;
+	uint64_t *s8 = (uint64_t*)src;
 	size_t iters = n / sizeof(uint64_t);
 	size_t remaining = n - iters * sizeof(uint64_t);
 	for (size_t i = 0; i < iters; ++i, ++d8, ++s8) {
@@ -46,7 +48,7 @@ void* memset(void *address, int data, size_t length) {
 	// Set in blocks of 8 bytes first because it's most efficient in 64-bit mode
 	// Set the rest in bytes
 	// TODO: probably can be improved by copying at 8 byte boundaries first
-	uint64_t *a8 = address;
+	uint64_t *a8 = (uint64_t*)address;
 	uint64_t d8 = 0;
 	uint8_t d = data & 0xff;
 	for (size_t i = 0; i < 8; ++i) {
@@ -63,4 +65,6 @@ void* memset(void *address, int data, size_t length) {
 		*a = d;
 	}
 	return address;
+}
+
 }
