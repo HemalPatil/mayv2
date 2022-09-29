@@ -19,6 +19,34 @@ static const char* const listHeapStr = "List of all kernel heap regions\n";
 static const char* const heapHeaderStr = "Heap start           Size                 Count Remaining\n";
 static const char* const invalidFreeStr = "\nInvalid kernelFree operation ";
 
+void *operator new(size_t size) {
+	return kernelMalloc(size);
+}
+
+void *operator new[](size_t size) {
+	return kernelMalloc(size);
+}
+
+void operator delete(void *memory) {
+	kernelFree(memory);
+}
+
+void operator delete[](void *memory) {
+	kernelFree(memory);
+}
+
+// TODO: Do not know the meaning of -Wsized-deallocation but this removes the warning
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+void operator delete(void *memory, size_t size) {
+	kernelFree(memory);
+}
+
+void operator delete[](void *memory, size_t size) {
+	kernelFree(memory);
+}
+#pragma GCC diagnostic pop
+
 bool initializeDynamicMemory() {
 	void *ghostPage = kernelAddressSpaceList;
 	terminalPrintString(initHeapStr, strlen(initHeapStr));
@@ -49,13 +77,13 @@ bool initializeDynamicMemory() {
 	VirtualMemNode *lists[2] = { kernelAddressSpaceList, generalAddressSpaceList };
 	VirtualMemNode *newLists[2] = { NULL, NULL };
 	for (size_t i = 0; i < 2; ++i) {
-		VirtualMemNode *current = (VirtualMemNode*)kernelMalloc(sizeof(VirtualMemNode));
+		VirtualMemNode *current = new VirtualMemNode();
 		memcpy(current, lists[i], sizeof(VirtualMemNode));
 		newLists[i] = current;
 		VirtualMemNode *newPrevious = current;
 		VirtualMemNode *oldCurrent = lists[i]->next;
 		while (oldCurrent) {
-			current = (VirtualMemNode*)kernelMalloc(sizeof(VirtualMemNode));
+			current = new VirtualMemNode();
 			memcpy(current, oldCurrent, sizeof(VirtualMemNode));
 			newPrevious->next = current;
 			current->previous = newPrevious;

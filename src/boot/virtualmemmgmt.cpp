@@ -320,7 +320,7 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 	if (flags & MEMORY_REQUEST_CONTIGUOUS) {
 		bestFit->available = false;
 		if (bestFit->pageCount != count) {
-			VirtualMemNode *newNode = (VirtualMemNode*)kernelMalloc(sizeof(VirtualMemNode));
+			VirtualMemNode *newNode = new VirtualMemNode();
 			newNode->available = true;
 			newNode->base = (void*)((uint64_t)bestFit->base + count * pageSize);
 			newNode->pageCount = bestFit->pageCount - count;
@@ -392,9 +392,9 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 				// Region to be freed fits exactly in current block
 				current->available = true;
 			} else {
-				VirtualMemNode *newNode1 = (VirtualMemNode*)kernelMalloc(sizeof(VirtualMemNode));
-				VirtualMemNode *newNode2 = (VirtualMemNode*)kernelMalloc(sizeof(VirtualMemNode));
-				VirtualMemNode *newNode3 = (VirtualMemNode*)kernelMalloc(sizeof(VirtualMemNode));
+				VirtualMemNode *newNode1 = new VirtualMemNode();
+				VirtualMemNode *newNode2 = new VirtualMemNode();
+				VirtualMemNode *newNode3 = new VirtualMemNode();
 				newNode1->available = false;
 				newNode1->base = current->base;
 				newNode1->pageCount = (vBeg - cBeg) / pageSize;
@@ -416,7 +416,7 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 				if (newNode3->next) {
 					newNode3->next->previous = newNode3;
 				}
-				kernelFree(current);
+				delete current;
 				if (!newNode1->previous) {
 					// newNode1 and by implication current is the first node in the list
 					// current is already freed
@@ -429,7 +429,7 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 				if (newNode1->pageCount == 0) {
 					// Region to be freed is at the beginning of the current block
 					newNode2->previous = newNode1->previous;
-					kernelFree(newNode1);
+					delete newNode1;
 					if (newNode2->previous) {
 						newNode2->previous->next = newNode2;
 					} else {
@@ -447,7 +447,7 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 					if (newNode2->next) {
 						newNode2->next->previous = newNode2;
 					}
-					kernelFree(newNode3);
+					delete newNode3;
 				}
 			}
 			if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
@@ -475,7 +475,7 @@ static void defragAddressSpaceList(VirtualMemNode *list) {
 			if (list->next) {
 				list->next->previous = list;
 			}
-			kernelFree(nextBlock);
+			delete nextBlock;
 		} else {
 			// Move to the next block
 			list = list->next;

@@ -143,9 +143,9 @@ bool initializeApic() {
 	}
 	// Go through the table once again and copy the entries to their own arrays
 	entry = reEntry;
-	cpuEntries = (APICCPUEntry*)kernelMalloc(cpuCount * sizeof(APICCPUEntry));
-	ioApicEntries = (APICIOEntry*)kernelMalloc(ioApicCount * sizeof(APICIOEntry));
-	interruptOverrideEntries = (APICInterruptSourceOverrideEntry*)kernelMalloc(interruptOverrideCount * sizeof(APICInterruptSourceOverrideEntry));
+	cpuEntries = new APICCPUEntry[cpuCount];
+	ioApicEntries = new APICIOEntry[ioApicCount];
+	interruptOverrideEntries = new APICInterruptSourceOverrideEntry[interruptOverrideCount];
 	size_t cI = 0, ioI = 0, inI = 0;
 	while ((uint64_t)entry < apicEnd) {
 		if (entry->type == APIC_TYPE_CPU) {

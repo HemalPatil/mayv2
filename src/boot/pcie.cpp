@@ -32,7 +32,8 @@ bool enumeratePCIe() {
 	terminalPrintChar('\n');
 
 	// FIXME: should verify the MCFG checksum
-	current = (PCIeFunction*)kernelMalloc(sizeof(PCIeFunction));
+	// Create a first dummy entry that will be deleted later
+	current = new PCIeFunction();
 	current->configurationSpace = (PCIeBaseHeader*)INVALID_ADDRESS;
 	current->next = NULL;
 	pcieFunctions = current;
@@ -55,11 +56,14 @@ bool enumeratePCIe() {
 			}
 		}
 	}
+	// Delete the first dummy entry
+	current = pcieFunctions;
 	if (pcieFunctions->next) {
 		pcieFunctions = pcieFunctions->next;
 	} else {
 		pcieFunctions = NULL;
 	}
+	delete current;
 
 	terminalPrintString(initPciCompleteStr, strlen(initPciCompleteStr));
 	return true;
@@ -172,7 +176,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 	if (!enumerateFunction(function, pcieHeader, &msi64)) {
 		return false;
 	}
-	current->next = (PCIeFunction*)kernelMalloc(sizeof(PCIeFunction));
+	current->next = new PCIeFunction();
 	current = current->next;
 	current->bus = bus;
 	current->device = device;
@@ -202,7 +206,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 			if (!enumerateFunction(function, pcieHeader, &msi64)) {
 				return false;
 			}
-			current->next = (PCIeFunction*)kernelMalloc(sizeof(PCIeFunction));
+			current->next = new PCIeFunction();
 			current = current->next;
 			current->bus = bus;
 			current->device = device;
