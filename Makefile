@@ -14,7 +14,7 @@ NASM_BIN := nasm -f bin -o
 NASM32 := nasm -f elf32 -o
 NASM64 := nasm -f elf64 -o
 
-# Utility to create the ISO image from the actual folder
+# Utility to create the ISO image
 ISO_MAKER := genisoimage
 
 # Necessary flags and compiler and linker names required for generating binaries for x86
