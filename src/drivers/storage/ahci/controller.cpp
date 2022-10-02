@@ -86,7 +86,9 @@ bool AHCI::Controller::initialize(PCIeFunction *pcieFunction) {
 					ahciDevice->type != AHCI_PORT_TYPE_NONE &&
 					!(
 						ahciDevice->initialize() &&
-						ahciDevice->identify()
+						ahciDevice->identify([]() -> void {
+							terminalPrintString("callback", 8);
+						})
 					)
 				) {
 					terminalPrintString(failedStr, strlen(failedStr));

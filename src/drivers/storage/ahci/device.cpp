@@ -16,7 +16,7 @@ void AHCI::Device::msiHandler() {
 	Device *thisDevice = this;
 	uint32_t interruptStatus = this->port->interruptStatus;
 	this->port->interruptStatus = interruptStatus;
-	uint32_t completedCommands = ~this->port->commandIssue & this->runningCommands;
+	uint32_t completedCommands = ~this->port->commandIssue & this->runningCommandsBitmap;
 	terminalPrintString(" pis", 4);
 	terminalPrintHex(&interruptStatus, sizeof(interruptStatus));
 	terminalPrintHex((void*)&this->port->interruptStatus, sizeof(this->port->interruptStatus));
@@ -42,7 +42,7 @@ void AHCI::Device::msiHandler() {
 				// TODO: maybe check for received FIS status
 				uint32_t commandBit = (uint32_t)1 << i;
 				if (completedCommands & commandBit) {
-					this->runningCommands &= ~commandBit;
+					this->runningCommandsBitmap &= ~commandBit;
 					// TODO: should schedule the callback on some thread instead of sync execution
 					if (
 						this->commandCallbacks[i] != NULL &&
@@ -64,7 +64,7 @@ void AHCI::Device::msiHandler() {
 	terminalPrintChar('\n');
 }
 
-bool AHCI::Device::identify() {
+bool AHCI::Device::identify(void (*callback)()) {
 	terminalPrintString("iden1", 5);
 	if (this->type == AHCI_PORT_TYPE_NONE) {
 		return false;
@@ -102,7 +102,8 @@ bool AHCI::Device::identify() {
 	commandFis->commandControl = 1;
 	commandFis->command = (this->type == AHCI_PORT_TYPE_SATAPI) ? AHCI_IDENTIFY_PACKET_DEVICE : AHCI_IDENTIFY_DEVICE;
 
-	this->runningCommands |= 1 << freeSlot;
+	this->runningCommandsBitmap |= 1 << freeSlot;
+	this->commandCallbacks[freeSlot] = callback;
 	this->port->commandIssue = 1 << freeSlot;
 
 	return true;
@@ -205,7 +206,7 @@ bool AHCI::Device::initialize() {
 
 size_t AHCI::Device::findFreeCommandSlot() {
 	terminalPrintString("\nfind", 5);
-	uint32_t slots = this->port->commandIssue | this->port->sataActive | this->runningCommands;
+	uint32_t slots = this->port->commandIssue | this->port->sataActive | this->runningCommandsBitmap;
 	terminalPrintHex(&slots, sizeof(slots));
 	for (size_t i = 0; i < AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader); ++i) {
 		if ((slots & 1) == 0) {
@@ -228,7 +229,7 @@ AHCI::Device::Device(Controller *controller) {
 		this->commandTables[i] = NULL;
 		this->commandCallbacks[i] = NULL;
 	}
-	this->runningCommands = 0;
+	this->runningCommandsBitmap = 0;
 	this->info = NULL;
 	this->controller = controller;
 }
