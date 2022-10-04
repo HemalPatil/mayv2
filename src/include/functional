@@ -1,0 +1,46 @@
+#pragma once
+
+#include <memory>
+
+namespace std {
+	template <typename T>
+	class function;
+
+	template <typename ReturnType, typename... ArgTypes>
+	class function<ReturnType(ArgTypes...)> {
+		private:
+			class ICallable {
+				public:
+					virtual ~ICallable() = default;
+					virtual ReturnType invoke(ArgTypes...) = 0;
+			};
+
+			template <typename T>
+			class CallableImpl : public ICallable {
+				private:
+					T callableT;
+
+				public:
+					CallableImpl(const T &t) : callableT(t) { }
+
+					~CallableImpl() override = default;
+
+					ReturnType invoke(ArgTypes ...args) override {
+						return this->callableT(args...);
+					}
+			};
+
+			std::unique_ptr<ICallable> callable;
+
+		public:
+			template <typename T>
+			function& operator=(T t) {
+				this->callable = std::make_unique<CallableImpl<T>>(t);
+				return *this;
+			}
+
+			ReturnType operator()(ArgTypes ...args) const {
+				return callable->invoke(args...);
+			}
+	};
+}

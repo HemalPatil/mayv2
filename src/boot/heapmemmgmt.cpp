@@ -60,7 +60,7 @@ bool initializeDynamicMemory() {
 	heapRegionsList->entryCount = 0;
 	heapRegionsList->size = HEAP_NEW_REGION_SIZE;
 	heapRegionsList->remaining = heapRegionsList->size - sizeof(HeapHeader) - sizeof(HeapEntry);
-	heapRegionsList->next = heapRegionsList->previous = NULL;
+	heapRegionsList->next = heapRegionsList->previous = nullptr;
 	latestHeapSearched = heapRegionsList;
 	HeapEntry *freeEntry = (HeapEntry*)((uint64_t)heapRegionsList + sizeof(HeapHeader));
 	freeEntry->signature = HEAP_ENTRY_FREE;
@@ -75,7 +75,7 @@ bool initializeDynamicMemory() {
 	terminalPrintString(movingVirMemListsStr, strlen(movingVirMemListsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	VirtualMemNode *lists[2] = { kernelAddressSpaceList, generalAddressSpaceList };
-	VirtualMemNode *newLists[2] = { NULL, NULL };
+	VirtualMemNode *newLists[2] = { nullptr, nullptr };
 	for (size_t i = 0; i < 2; ++i) {
 		VirtualMemNode *current = new VirtualMemNode();
 		memcpy(current, lists[i], sizeof(VirtualMemNode));
@@ -129,7 +129,7 @@ void listAllHeapRegions() {
 void* kernelMalloc(size_t count) {
 	// FIXME: All heap regions are currently of size 2MiB so serving more than that is not possible
 	if (count == 0 || count >= HEAP_NEW_REGION_SIZE - sizeof(HeapHeader)) {
-		return NULL;
+		return nullptr;
 	}
 
 	// Align count to HEAP_MIN_BLOCK_SIZE
@@ -145,8 +145,8 @@ void* kernelMalloc(size_t count) {
 		if (count <= heap->remaining) {
 			HeapEntry *heapEntry = heap->latestEntrySearched;
 			bool freeEntryFound = true;
-			// lastEntrySearched is guaranteed to be NULL or point to a free area in the heap
-			if (heapEntry == NULL || count > heapEntry->size) {
+			// lastEntrySearched is guaranteed to be nullptr or point to a free area in the heap
+			if (heapEntry == nullptr || count > heapEntry->size) {
 				// Search through all the entries in the heap and find the first fit
 				heapEntry = (HeapEntry*)((uint64_t)heap + sizeof(HeapHeader));
 				freeEntryFound = false;
@@ -167,16 +167,16 @@ void* kernelMalloc(size_t count) {
 				void *mallocedValue = (void*)((uint64_t)heapEntry + sizeof(HeapEntry));
 				heap->entryTable[heap->entryCount - 1] = mallocedValue;
 				HeapEntry *newEntry = nextHeapEntry(heap, heapEntry);
-				if (newEntry == NULL) {
+				if (newEntry == nullptr) {
 					// mallocedValue is the last entry
 					heap->remaining = 0;
-					heap->latestEntrySearched = NULL;
+					heap->latestEntrySearched = nullptr;
 				} else if (newEntry->signature != HEAP_ENTRY_USED) {
 					newEntry->signature = HEAP_ENTRY_FREE;
 					newEntry->size = originalSize - count - sizeof(HeapEntry);
 					heap->latestEntrySearched = newEntry;
 				} else {
-					heap->latestEntrySearched = NULL;
+					heap->latestEntrySearched = nullptr;
 				}
 				return mallocedValue;
 			}
@@ -186,7 +186,7 @@ void* kernelMalloc(size_t count) {
 
 	// Traversed all the heap regions but couldn't find a free region big enough
 	// TODO: Create a new heap region and use that
-	return NULL;
+	return nullptr;
 }
 
 void kernelFree(void *address) {
@@ -229,7 +229,7 @@ static HeapEntry* nextHeapEntry(HeapHeader *heap, HeapEntry *heapEntry) {
 	uint64_t heapEnd = (uint64_t)heap + heap->size;
 	uint64_t newHeapEntry = (uint64_t)heapEntry + sizeof(HeapEntry) + heapEntry->size;
 	if (newHeapEntry >= heapEnd || heapEnd - newHeapEntry - sizeof(HeapEntry) < HEAP_MIN_BLOCK_SIZE) {
-		return NULL;
+		return nullptr;
 	}
 	return (HeapEntry*)newHeapEntry;
 }

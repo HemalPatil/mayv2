@@ -16,7 +16,7 @@ static const char* const msiInstallingStr = "Installing AHCI MSI handler";
 static size_t msiInterrupt = SIZE_MAX;
 static size_t controllerCount = 0;
 
-AHCI::Controller *AHCI::controllers = NULL;
+AHCI::Controller *AHCI::controllers = nullptr;
 
 void ahciMsiHandler() {
 	acknowledgeLocalApicInterrupt();

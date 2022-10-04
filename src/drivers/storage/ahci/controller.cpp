@@ -6,7 +6,11 @@
 #include <kernel.h>
 #include <string.h>
 #include <terminal.h>
+// #include <utility>
 #include <virtualmemmgmt.h>
+
+#include <memory>
+#include <type_traits>
 
 static const char* const mappingHbaStr = "Mapping HBA control registers to kernel address space";
 static const char* const ahciSwitchStr = "Switching to AHCI mode";
@@ -14,12 +18,12 @@ static const char* const probingPortsStr = "Enumerating and configuring ports";
 static const char* const configuredStr = "Ports configured";
 
 AHCI::Controller::Controller() {
-	this->hba = NULL;
+	this->hba = nullptr;
 	this->deviceCount = 0;
 	for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
-		this->devices[i] = NULL;
+		this->devices[i] = nullptr;
 	}
-	this->next = NULL;
+	this->next = nullptr;
 }
 
 bool AHCI::Controller::initialize(PCIeFunction *pcieFunction) {
@@ -67,7 +71,7 @@ bool AHCI::Controller::initialize(PCIeFunction *pcieFunction) {
 			this->hba->ports[i].sataStatus.deviceDetection == AHCI_PORT_DEVICE_PRESENT &&
 			this->hba->ports[i].sataStatus.powerMgmt == AHCI_PORT_ACTIVE
 		) {
-			Device *ahciDevice = NULL;
+			Device *ahciDevice = nullptr;
 			switch (this->hba->ports[i].signature) {
 				case AHCI_PORT_SIGNATURE_SATA:
 					ahciDevice = new SataDevice(this);
@@ -82,13 +86,16 @@ bool AHCI::Controller::initialize(PCIeFunction *pcieFunction) {
 				ahciDevice->portNumber = i;
 				ahciDevice->port = &this->hba->ports[i];
 				this->devices[this->deviceCount] = ahciDevice;
+				// std::function<void()> cb;
+				// cb = [ahciDevice]() -> void {
+				// 			terminalPrintString("callback", 8);
+				// 			terminalPrintDecimal(ahciDevice->info->physicalLogicalSectorSize.logicalSectorLongerThan256Words);
+				// 		};
 				if (
 					ahciDevice->type != AHCI_PORT_TYPE_NONE &&
 					!(
 						ahciDevice->initialize() &&
-						ahciDevice->identify([]() -> void {
-							terminalPrintString("callback", 8);
-						})
+						ahciDevice->identify()
 					)
 				) {
 					terminalPrintString(failedStr, strlen(failedStr));

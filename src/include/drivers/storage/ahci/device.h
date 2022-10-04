@@ -1,6 +1,8 @@
 #pragma once
 
 #include <drivers/storage/ahci.h>
+// #include <functional>
+// #include <memory>
 
 class AHCI::Device {
 	private:
@@ -10,7 +12,7 @@ class AHCI::Device {
 		void *fisBase;
 		CommandTable *commandTables[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
 		uint32_t runningCommandsBitmap;
-		void (*commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)])();
+		// std::function<void()> commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
 		IdentifyDeviceData *info;
 		Controller *controller;
 
@@ -22,7 +24,7 @@ class AHCI::Device {
 		bool initialize();
 		size_t findFreeCommandSlot();
 		void msiHandler();
-		bool identify(void (*callback)());
+		bool identify();
 
 	friend void ::ahciMsiHandler();
 	friend class Controller;

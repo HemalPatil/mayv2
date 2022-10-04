@@ -43,14 +43,14 @@ void AHCI::Device::msiHandler() {
 				uint32_t commandBit = (uint32_t)1 << i;
 				if (completedCommands & commandBit) {
 					this->runningCommandsBitmap &= ~commandBit;
-					// TODO: should schedule the callback on some thread instead of sync execution
-					if (
-						this->commandCallbacks[i] != NULL &&
-						this->commandCallbacks[i] != INVALID_ADDRESS
-					) {
-						(*this->commandCallbacks[i])();
-					}
-					this->commandCallbacks[i] = NULL;
+					// // TODO: should schedule the callback on some thread instead of sync execution
+					// if (
+					// 	this->commandCallbacks[i] != nullptr &&
+					// 	this->commandCallbacks[i] != INVALID_ADDRESS
+					// ) {
+					// 	(*this->commandCallbacks[i])();
+					// }
+					// this->commandCallbacks[i] = nullptr;
 				}
 			}
 		} else {
@@ -64,7 +64,7 @@ void AHCI::Device::msiHandler() {
 	terminalPrintChar('\n');
 }
 
-bool AHCI::Device::identify(void (*callback)()) {
+bool AHCI::Device::identify() {
 	terminalPrintString("iden1", 5);
 	if (this->type == AHCI_PORT_TYPE_NONE) {
 		return false;
@@ -103,7 +103,8 @@ bool AHCI::Device::identify(void (*callback)()) {
 	commandFis->command = (this->type == AHCI_PORT_TYPE_SATAPI) ? AHCI_IDENTIFY_PACKET_DEVICE : AHCI_IDENTIFY_DEVICE;
 
 	this->runningCommandsBitmap |= 1 << freeSlot;
-	this->commandCallbacks[freeSlot] = callback;
+	// this->commandCallbacks[freeSlot] = callback;
+	// this->commandCallbacks[freeSlot] = nullptr;
 	this->port->commandIssue = 1 << freeSlot;
 
 	return true;
@@ -222,14 +223,14 @@ size_t AHCI::Device::findFreeCommandSlot() {
 AHCI::Device::Device(Controller *controller) {
 	this->type = AHCI_PORT_TYPE_NONE;
 	this->portNumber = UINT8_MAX;
-	this->port = NULL;
-	this->commandHeaders = NULL;
-	this->fisBase = NULL;
+	this->port = nullptr;
+	this->commandHeaders = nullptr;
+	this->fisBase = nullptr;
 	for (size_t i = 0; i < AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader); ++i) {
-		this->commandTables[i] = NULL;
-		this->commandCallbacks[i] = NULL;
+		this->commandTables[i] = nullptr;
+		// this->commandCallbacks[i] = nullptr;
 	}
 	this->runningCommandsBitmap = 0;
-	this->info = NULL;
+	this->info = nullptr;
 	this->controller = controller;
 }

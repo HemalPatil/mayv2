@@ -13,14 +13,14 @@ uint8_t bootCpu = 0xff;
 
 static uint32_t apicFlags = 0;
 static size_t cpuCount = 0;
-static APICCPUEntry *cpuEntries = NULL;
+static APICCPUEntry *cpuEntries = nullptr;
 static size_t interruptOverrideCount = 0;
-static APICInterruptSourceOverrideEntry *interruptOverrideEntries = NULL;
+static APICInterruptSourceOverrideEntry *interruptOverrideEntries = nullptr;
 static size_t ioApicCount = 0;
-static APICIOEntry *ioApicEntries = NULL;
-static void *localApicPhysicalAddress = NULL;
-static LocalAPIC *localApic = NULL;
-static void *ioApic = NULL;
+static APICIOEntry *ioApicEntries = nullptr;
+static void *localApicPhysicalAddress = nullptr;
+static LocalAPIC *localApic = nullptr;
+static void *ioApic = nullptr;
 
 static const char* const initApicStr = "Initializing APIC";
 static const char* const apicInitCompleteStr = "APIC initialized\n\n";
@@ -47,7 +47,7 @@ bool initializeApic() {
 	terminalPrintSpaces4();
 	terminalPrintString(checkingApicStr, strlen(checkingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!isApicPresent() || apicSdtHeader == NULL || apicSdtHeader == INVALID_ADDRESS) {
+	if (!isApicPresent() || apicSdtHeader == nullptr || apicSdtHeader == INVALID_ADDRESS) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(presentStr, strlen(presentStr));

@@ -22,9 +22,9 @@ static const char* const multiStr = " multi function";
 static const char* const funcStr = "Function ";
 static const char* const nonMsiStr = "non-MSI";
 
-static PCIeFunction *current = NULL;
+static PCIeFunction *current = nullptr;
 
-PCIeFunction *pcieFunctions = NULL;
+PCIeFunction *pcieFunctions = nullptr;
 
 bool enumeratePCIe() {
 	terminalPrintString(initPciStr, strlen(initPciStr));
@@ -35,7 +35,7 @@ bool enumeratePCIe() {
 	// Create a first dummy entry that will be deleted later
 	current = new PCIeFunction();
 	current->configurationSpace = (PCIeBaseHeader*)INVALID_ADDRESS;
-	current->next = NULL;
+	current->next = nullptr;
 	pcieFunctions = current;
 	size_t groupCount = (mcfgSdtHeader->length - sizeof(ACPISDTHeader) - sizeof(uint64_t)) / sizeof(PCIeSegmentGroupEntry);
 	PCIeSegmentGroupEntry *groupEntries = (PCIeSegmentGroupEntry*)((uint64_t)mcfgSdtHeader + sizeof(ACPISDTHeader) + sizeof(uint64_t));
@@ -61,7 +61,7 @@ bool enumeratePCIe() {
 	if (pcieFunctions->next) {
 		pcieFunctions = pcieFunctions->next;
 	} else {
-		pcieFunctions = NULL;
+		pcieFunctions = nullptr;
 	}
 	delete current;
 
@@ -79,7 +79,7 @@ static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8
 	) {
 		return requestResult.address;
 	}
-	return NULL;
+	return nullptr;
 }
 
 static bool enumerateBus(uint64_t baseAddress, uint8_t bus) {
@@ -128,7 +128,7 @@ static bool enumerateFunction(uint8_t function, PCIeBaseHeader *pcieHeader, PCIe
 		}
 	}
 	msiNotFound:
-		*msi = NULL;
+		*msi = nullptr;
 		terminalPrintChar(' ');
 		terminalPrintString(nonMsiStr, strlen(nonMsiStr));
 
@@ -183,7 +183,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 	current->function = function;
 	current->configurationSpace = pcieHeader;
 	current->msi = msi;
-	current->next = NULL;
+	current->next = nullptr;
 	if (pcieHeader->headerType & PCI_MULTI_FUNCTION_DEVICE) {
 		// TODO: complete multi function device enumeration
 		for (function = 1; function < PCI_FUNCTION_COUNT; ++function) {
@@ -213,7 +213,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 			current->function = function;
 			current->configurationSpace = pcieHeader;
 			current->msi = msi;
-			current->next = NULL;
+			current->next = nullptr;
 		}
 	}
 	return true;
