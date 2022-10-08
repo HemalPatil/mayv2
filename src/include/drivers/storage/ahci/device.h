@@ -1,7 +1,7 @@
 #pragma once
 
 #include <drivers/storage/ahci.h>
-// #include <functional>
+#include <functional.cpp>
 // #include <memory>
 
 class AHCI::Device {
@@ -12,7 +12,7 @@ class AHCI::Device {
 		void *fisBase;
 		CommandTable *commandTables[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
 		uint32_t runningCommandsBitmap;
-		// std::function<void()> commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
+		std::function<void()> commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
 		IdentifyDeviceData *info;
 		Controller *controller;
 

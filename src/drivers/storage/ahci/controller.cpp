@@ -9,8 +9,8 @@
 // #include <utility>
 #include <virtualmemmgmt.h>
 
-#include <memory>
-#include <type_traits>
+// #include <memory.cpp>
+// #include <type_traits>
 
 static const char* const mappingHbaStr = "Mapping HBA control registers to kernel address space";
 static const char* const ahciSwitchStr = "Switching to AHCI mode";
@@ -86,11 +86,11 @@ bool AHCI::Controller::initialize(PCIeFunction *pcieFunction) {
 				ahciDevice->portNumber = i;
 				ahciDevice->port = &this->hba->ports[i];
 				this->devices[this->deviceCount] = ahciDevice;
-				// std::function<void()> cb;
-				// cb = [ahciDevice]() -> void {
-				// 			terminalPrintString("callback", 8);
-				// 			terminalPrintDecimal(ahciDevice->info->physicalLogicalSectorSize.logicalSectorLongerThan256Words);
-				// 		};
+				std::function<void()> cb;
+				cb = [ahciDevice]() -> void {
+							terminalPrintString("callback", 8);
+							terminalPrintDecimal(ahciDevice->info->physicalLogicalSectorSize.logicalSectorLongerThan256Words);
+						};
 				if (
 					ahciDevice->type != AHCI_PORT_TYPE_NONE &&
 					!(
