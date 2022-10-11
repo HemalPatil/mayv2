@@ -131,8 +131,6 @@ bool initializePhysicalMemory(
 // Unsafe to call this function until virtual memory manager is initialized
 PageRequestResult requestPhysicalPages(size_t count, uint8_t flags) {
 	PageRequestResult result;
-	result.address = INVALID_ADDRESS;
-	result.allocatedCount = 0;
 	// FIXME: handle requests for sizes > 2MiB i.e. 512 count
 	// FIXME: handle contiguous allocation
 	if (

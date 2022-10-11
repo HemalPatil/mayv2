@@ -8,7 +8,7 @@
 
 static bool enumerateBus(uint64_t baseAddress, uint8_t bus);
 static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device);
-static bool enumerateFunction(uint8_t function, PCIeBaseHeader *pcieHeader, PCIeMSI64Capability **msi64);
+static bool enumerateFunction(uint8_t function, PCIeBaseHeader *pcieHeader, PCIeMSICapability **msi);
 static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8_t function);
 
 static const char* const initPciStr = "Enumerating PCIe devices";
@@ -18,13 +18,13 @@ static const char* const busesStr = " buses ";
 static const char* const baseStr = " base address ";
 static const char* const busStr = "Bus ";
 static const char* const deviceStr = " device ";
-static const char* const multiStr = " multi";
+static const char* const multiStr = " multi function";
 static const char* const funcStr = "Function ";
-static const char* const nonMsi64Str = "non-MSI64";
+static const char* const nonMsiStr = "non-MSI";
 
-static PCIeFunction *current = NULL;
+static PCIeFunction *current = nullptr;
 
-PCIeFunction *pcieFunctions = NULL;
+PCIeFunction *pcieFunctions = nullptr;
 
 bool enumeratePCIe() {
 	terminalPrintString(initPciStr, strlen(initPciStr));
@@ -35,7 +35,7 @@ bool enumeratePCIe() {
 	// Create a first dummy entry that will be deleted later
 	current = new PCIeFunction();
 	current->configurationSpace = (PCIeBaseHeader*)INVALID_ADDRESS;
-	current->next = NULL;
+	current->next = nullptr;
 	pcieFunctions = current;
 	size_t groupCount = (mcfgSdtHeader->length - sizeof(ACPISDTHeader) - sizeof(uint64_t)) / sizeof(PCIeSegmentGroupEntry);
 	PCIeSegmentGroupEntry *groupEntries = (PCIeSegmentGroupEntry*)((uint64_t)mcfgSdtHeader + sizeof(ACPISDTHeader) + sizeof(uint64_t));
@@ -61,7 +61,7 @@ bool enumeratePCIe() {
 	if (pcieFunctions->next) {
 		pcieFunctions = pcieFunctions->next;
 	} else {
-		pcieFunctions = NULL;
+		pcieFunctions = nullptr;
 	}
 	delete current;
 
@@ -79,7 +79,7 @@ static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8
 	) {
 		return requestResult.address;
 	}
-	return NULL;
+	return nullptr;
 }
 
 static bool enumerateBus(uint64_t baseAddress, uint8_t bus) {
@@ -91,7 +91,7 @@ static bool enumerateBus(uint64_t baseAddress, uint8_t bus) {
 	return true;
 }
 
-static bool enumerateFunction(uint8_t function, PCIeBaseHeader *pcieHeader, PCIeMSI64Capability **msi64) {
+static bool enumerateFunction(uint8_t function, PCIeBaseHeader *pcieHeader, PCIeMSICapability **msi) {
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
@@ -110,27 +110,27 @@ static bool enumerateFunction(uint8_t function, PCIeBaseHeader *pcieHeader, PCIe
 	// Enumerate all capabilities and find MSI64 (64-bit capable message signaled interrupt capability)
 	if (pcieHeader->status & PCI_CAPABILITIES_LIST_AVAILABLE) {
 		uint8_t capabilityOffset = ((PCIeType0Header*)pcieHeader)->capabilities;
-		bool msi64Found = false;
+		bool msiFound = false;
 		while (capabilityOffset != 0) {
 			uint8_t *capabilityId = (uint8_t*)((uint64_t)pcieHeader + capabilityOffset);
 			if (*capabilityId == PCI_MSI_CAPABAILITY_ID) {
-				*msi64 = (PCIeMSI64Capability*)capabilityId;
-				msi64Found = true;
+				*msi = (PCIeMSICapability*)capabilityId;
+				msiFound = true;
 				break;
 			} else {
 				capabilityOffset = *(capabilityId + 1);
 			}
 		}
-		if (msi64Found) {
+		if (msiFound) {
 			goto enumerateFunctionEnd;
 		} else {
-			goto msi64NotFound;
+			goto msiNotFound;
 		}
 	}
-	msi64NotFound:
-		*msi64 = NULL;
+	msiNotFound:
+		*msi = nullptr;
 		terminalPrintChar(' ');
-		terminalPrintString(nonMsi64Str, strlen(nonMsi64Str));
+		terminalPrintString(nonMsiStr, strlen(nonMsiStr));
 
 	enumerateFunctionEnd:
 		terminalPrintChar('\n');
@@ -172,8 +172,8 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 		terminalPrintString(multiStr, strlen(multiStr));
 	}
 	terminalPrintChar('\n');
-	PCIeMSI64Capability *msi64;
-	if (!enumerateFunction(function, pcieHeader, &msi64)) {
+	PCIeMSICapability *msi;
+	if (!enumerateFunction(function, pcieHeader, &msi)) {
 		return false;
 	}
 	current->next = new PCIeFunction();
@@ -182,8 +182,8 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 	current->device = device;
 	current->function = function;
 	current->configurationSpace = pcieHeader;
-	current->msi64 = msi64;
-	current->next = NULL;
+	current->msi = msi;
+	current->next = nullptr;
 	if (pcieHeader->headerType & PCI_MULTI_FUNCTION_DEVICE) {
 		// TODO: complete multi function device enumeration
 		for (function = 1; function < PCI_FUNCTION_COUNT; ++function) {
@@ -203,7 +203,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 				freeVirtualPages(pcieHeader, 1, MEMORY_REQUEST_KERNEL_PAGE);
 				continue;
 			}
-			if (!enumerateFunction(function, pcieHeader, &msi64)) {
+			if (!enumerateFunction(function, pcieHeader, &msi)) {
 				return false;
 			}
 			current->next = new PCIeFunction();
@@ -212,8 +212,8 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 			current->device = device;
 			current->function = function;
 			current->configurationSpace = pcieHeader;
-			current->msi64 = msi64;
-			current->next = NULL;
+			current->msi = msi;
+			current->next = nullptr;
 		}
 	}
 	return true;

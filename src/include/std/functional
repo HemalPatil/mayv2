@@ -3,6 +3,7 @@
 #include <memory>
 
 namespace std {
+	// std::function taken from https://shaharmike.com/cpp/naive-std-function
 	template <typename T>
 	class function;
 
@@ -12,13 +13,24 @@ namespace std {
 		template <typename T>
 		function& operator=(T t) {
 			callable_ = std::make_unique<CallableT<T>>(t);
-			// std::cout << "cons" << std::endl;
+			return *this;
+		}
+
+		function& operator=(std::nullptr_t) {
+			callable_ = nullptr;
 			return *this;
 		}
 
 		ReturnValue operator()(Args... args) const {
-			// std::cout << "op()" <<std::endl;
+			if (callable_ == nullptr) {
+				// TODO: should throw exception or do something
+				return;
+			}
 			return callable_->Invoke(args...);
+		}
+
+		explicit operator bool() const noexcept {
+			return callable_ != nullptr;
 		}
 
 	private:
@@ -38,7 +50,6 @@ namespace std {
 			~CallableT() override = default;
 
 			ReturnValue Invoke(Args... args) override {
-				// std::cout << "fin" << std::endl;
 				return t_(args...);
 			}
 

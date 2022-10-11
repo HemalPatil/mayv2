@@ -25,13 +25,11 @@ class PML4CrawlResult {
 
 class VirtualMemNode {
 	public:
-		bool available;
-		void *base;
-		size_t pageCount;
-		VirtualMemNode *next;
-		VirtualMemNode *previous;
-
-		VirtualMemNode();
+		bool available = false;
+		void *base = INVALID_ADDRESS;
+		size_t pageCount = 0;
+		VirtualMemNode *next = nullptr;
+		VirtualMemNode *previous = nullptr;
 };
 
 extern VirtualMemNode *generalAddressSpaceList;

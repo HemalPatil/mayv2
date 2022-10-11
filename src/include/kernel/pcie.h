@@ -69,7 +69,23 @@ struct PCIeType0Header {
 } __attribute__((packed));
 typedef struct PCIeType0Header PCIeType0Header;
 
-// Assumes 64-bit addressing is available
+struct PCIeMSICapability {
+	uint8_t capabilityId;
+	uint8_t next;
+	uint8_t enable : 1;
+	uint8_t multiMessageCapable : 3;
+	uint8_t multiMessageEnable : 3;
+	uint8_t bit64Capable : 1;
+	uint8_t perVectorMasking : 1;
+	uint8_t reserved0 : 7;
+	uint32_t messageAddress;
+	uint16_t data;
+	uint16_t reserved1;
+	uint32_t mask;
+	uint32_t pending;
+} __attribute__((packed));
+typedef struct PCIeMSICapability PCIeMSICapability;
+
 struct PCIeMSI64Capability {
 	uint8_t capabilityId;
 	uint8_t next;
@@ -77,9 +93,13 @@ struct PCIeMSI64Capability {
 	uint8_t multiMessageCapable : 3;
 	uint8_t multiMessageEnable : 3;
 	uint8_t bit64Capable : 1;
-	uint8_t reserved0;
+	uint8_t perVectorMasking : 1;
+	uint8_t reserved0 : 7;
 	uint64_t messageAddress;
 	uint16_t data;
+	uint16_t reserved1;
+	uint32_t mask;
+	uint32_t pending;
 } __attribute__((packed));
 typedef struct PCIeMSI64Capability PCIeMSI64Capability;
 
@@ -88,7 +108,7 @@ struct PCIeFunction {
 	uint8_t device;
 	uint8_t function;
 	PCIeBaseHeader *configurationSpace;
-	PCIeMSI64Capability *msi64;
+	PCIeMSICapability *msi;
 	struct PCIeFunction *next;
 };
 typedef struct PCIeFunction PCIeFunction;

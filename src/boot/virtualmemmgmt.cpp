@@ -300,8 +300,6 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 // Unsafe to call this function until dynamic memory manager is initialized
 PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 	PageRequestResult result;
-	result.address = INVALID_ADDRESS;
-	result.allocatedCount = 0;
 	if (count > ((flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
 		return result;
 	}
@@ -603,42 +601,42 @@ bool isCanonicalVirtualAddress(void* address) {
 // if mapping while crawling the PML4 structure is not present for that level
 // If an address is not canonical all levels in physicalTables are set to INVALID_ADDRESS
 PML4CrawlResult::PML4CrawlResult(void *virtualAddress) {
-	isCanonical = false;
+	this->isCanonical = false;
 	uint64_t addr = (uint64_t)virtualAddress & phyMemBuddyMasks[0];
-	indexes[0] = (uint64_t)virtualAddress - addr;
+	this->indexes[0] = (uint64_t)virtualAddress - addr;
 	addr >>= pageSizeShift;
 	for (size_t i = 1; i <= 4; ++i) {
-		indexes[i] = addr & virtualPageIndexMask;
+		this->indexes[i] = addr & virtualPageIndexMask;
 		addr >>= virtualPageIndexShift;
 	}
 
-	tables[0] = (PML4E*)INVALID_ADDRESS;
-	tables[1] = (PML4E*)((uint64_t)ptMask + indexes[4] * GIB_1 + indexes[3] * MIB_2 + indexes[2] * KIB_4);
-	tables[2] = (PML4E*)((uint64_t)pdMask + indexes[4] * MIB_2 + indexes[3] * KIB_4);
-	tables[3] = (PML4E*)((uint64_t)pdptMask + indexes[4] * KIB_4);
-	tables[4] = pml4t;
+	this->tables[0] = (PML4E*)INVALID_ADDRESS;
+	this->tables[1] = (PML4E*)((uint64_t)ptMask + this->indexes[4] * GIB_1 + this->indexes[3] * MIB_2 + this->indexes[2] * KIB_4);
+	this->tables[2] = (PML4E*)((uint64_t)pdMask + this->indexes[4] * MIB_2 + this->indexes[3] * KIB_4);
+	this->tables[3] = (PML4E*)((uint64_t)pdptMask + this->indexes[4] * KIB_4);
+	this->tables[4] = pml4t;
 
-	physicalTables[0] =
-	physicalTables[1] =
-	physicalTables[2] =
-	physicalTables[3] =
-	physicalTables[4] =
+	this->physicalTables[0] =
+	this->physicalTables[1] =
+	this->physicalTables[2] =
+	this->physicalTables[3] =
+	this->physicalTables[4] =
 		(PML4E*)INVALID_ADDRESS;
 
-	cached[0] = 
-	cached[1] = 
-	cached[2] = 
-	cached[3] = 
+	this->cached[0] = 
+	this->cached[1] = 
+	this->cached[2] = 
+	this->cached[3] = 
 		false;
-	cached[4] = (pml4t->cacheDisable & 1) ? false : true;
+	this->cached[4] = (pml4t->cacheDisable & 1) ? false : true;
 
 	if (isCanonicalVirtualAddress(virtualAddress)) {
-		isCanonical = true;
-		physicalTables[4] = (PML4E*) infoTable->pml4tPhysicalAddress;
+		this->isCanonical = true;
+		this->physicalTables[4] = (PML4E*)infoTable->pml4tPhysicalAddress;
 		for (size_t i = 4; i >= 1; --i) {
-			if (tables[i][indexes[i]].present) {
-				physicalTables[i - 1] = (PML4E*)((uint64_t)tables[i][indexes[i]].physicalAddress << pageSizeShift);
-				cached[i - 1] = (tables[i][indexes[i]].cacheDisable & 1) ? false : true;
+			if (this->tables[i][indexes[i]].present) {
+				this->physicalTables[i - 1] = (PML4E*)((uint64_t)this->tables[i][this->indexes[i]].physicalAddress << pageSizeShift);
+				this->cached[i - 1] = (this->tables[i][this->indexes[i]].cacheDisable & 1) ? false : true;
 			} else {
 				break;
 			}
@@ -716,11 +714,4 @@ void traverseAddressSpaceList(uint8_t flags, bool forwardDirection) {
 		terminalPrintChar('\n');
 		list = forwardDirection ? list->next : list->previous;
 	}
-}
-
-VirtualMemNode::VirtualMemNode() {
-	available = false;
-	base = INVALID_ADDRESS;
-	pageCount = 0;
-	next = previous = NULL;
 }

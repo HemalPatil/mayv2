@@ -1,6 +1,7 @@
 #pragma once
 
 #include <acpi.h>
+#include <kernel.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -11,11 +12,11 @@
 #define PHY_MEM_FREE 0
 #define PHY_MEM_USED 1
 
-struct PageRequestResult {
-	void* address;
-	size_t allocatedCount;
+class PageRequestResult {
+	public:
+		void* address = INVALID_ADDRESS;
+		size_t allocatedCount = 0;
 };
-typedef struct PageRequestResult PageRequestResult;
 
 struct PhyMemBuddyBitmapIndex {
 	size_t byte;

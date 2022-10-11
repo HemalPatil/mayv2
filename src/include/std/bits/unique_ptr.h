@@ -424,7 +424,11 @@ namespace std {
       unique_ptr& operator=(const unique_ptr&) = delete;
   };
 
-
+  /// unique_ptr comparison with nullptr
+  template<typename _Tp, typename _Dp>
+    _GLIBCXX_NODISCARD inline bool
+    operator==(const unique_ptr<_Tp, _Dp>& __x, nullptr_t) noexcept
+    { return !__x; }
 
 
 

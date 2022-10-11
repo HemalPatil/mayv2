@@ -36,7 +36,7 @@ BUILD_DIRECTORIES := $(addprefix $(BUILD_DIR)/,$(SRC_DIRECTORIES))
 # Source files
 C_FILES := $(shell find $(addprefix $(SRC_DIR)/,$(SRC_DIRECTORIES)) $(UTILITIES_DIR) -type f -name "*.c")
 CPP_FILES := $(shell find $(addprefix $(SRC_DIR)/,$(SRC_DIRECTORIES)) $(UTILITIES_DIR) -type f -name "*.cpp")
-HEADER_FILES := $(shell find $(addprefix $(SRC_DIR)/,$(SRC_DIRECTORIES)) $(UTILITIES_DIR) -type f -name "*.h")
+HEADER_FILES := $(shell find $(KERNEL_INCLUDE_DIR) $(STD_INCLUDE_DIR) -type f)
 ASM_FILES := $(shell find $(addprefix $(SRC_DIR)/,$(SRC_DIRECTORIES)) $(UTILITIES_DIR) -type f -name "*.asm")
 ALL_SRC_FILES := $(C_FILES) $(CPP_FILES) $(HEADER_FILES) $(ASM_FILES)
 
