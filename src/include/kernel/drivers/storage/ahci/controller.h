@@ -14,4 +14,6 @@ class AHCI::Controller {
 
 	friend void ::ahciMsiHandler();
 	friend class Device;
+	friend class SataDevice;
+	friend class SatapiDevice;
 };

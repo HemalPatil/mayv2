@@ -10,20 +10,19 @@ class AHCI::Device {
 			Sata,
 			Satapi
 		};
+		using CommandCallback = std::function<void()>;
 
-	private:
+	protected:
 		size_t portNumber;
 		volatile Port *port;
 		CommandHeader *commandHeaders;
 		void *fisBase;
 		CommandTable *commandTables[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
 		uint32_t runningCommandsBitmap;
-		std::function<void()> commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
+		CommandCallback commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
 		IdentifyDeviceData *info;
 		Controller *controller;
 		size_t sectorSize;
-
-	protected:
 		Type type;
 
 	public:
@@ -32,7 +31,7 @@ class AHCI::Device {
 		bool identify();
 		bool initialize();
 		void msiHandler();
-		virtual bool read(size_t startSector, size_t count, void *buffer) = 0;
+		virtual bool read(size_t startSector, size_t count, void *buffer, const CommandCallback &callback) = 0;
 
 	friend class Controller;
 };

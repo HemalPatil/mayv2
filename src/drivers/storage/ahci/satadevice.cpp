@@ -7,7 +7,7 @@ AHCI::SataDevice::SataDevice(
 	this->type = Type::Sata;
 }
 
-bool AHCI::SataDevice::read(size_t startSector, size_t count, void *buffer) {
+bool AHCI::SataDevice::read(size_t startSector, size_t count, void *buffer, const CommandCallback &callback) {
 	// TODO: complete read implementation
 	return false;
 }

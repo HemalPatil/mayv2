@@ -7,5 +7,5 @@
 class AHCI::SatapiDevice : public AHCI::Device {
 	public:
 		SatapiDevice(Controller *controller, size_t portNumber);
-		bool read(size_t startSector, size_t count, void *buffer) override;
+		bool read(size_t startSector, size_t count, void *buffer, const CommandCallback &callback) override;
 };
