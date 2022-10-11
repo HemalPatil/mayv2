@@ -10,6 +10,7 @@ class AHCI::Controller {
 
 	public:
 		Controller *next;
+		Device* getDevice(size_t portNumber) const;
 		bool initialize(PCIeFunction *pcieFunction);
 
 	friend void ::ahciMsiHandler();

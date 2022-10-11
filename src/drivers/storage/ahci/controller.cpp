@@ -86,3 +86,10 @@ bool AHCI::Controller::initialize(PCIeFunction *pcieFunction) {
 	terminalPrintChar('\n');
 	return true;
 }
+
+AHCI::Device* AHCI::Controller::getDevice(size_t portNumber) const {
+	if (portNumber >= AHCI_PORT_COUNT) {
+		return nullptr;
+	}
+	return this->devices[portNumber];
+}

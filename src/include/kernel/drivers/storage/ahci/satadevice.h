@@ -7,5 +7,5 @@
 class AHCI::SataDevice : public AHCI::Device {
 	public:
 		SataDevice(Controller *controller, size_t portNumber);
-		bool read(size_t startSector, size_t count, void *buffer, const CommandCallback &callback) override;
+		bool read(size_t startSector, size_t sectorCount, void *buffer, const CommandCallback &callback) override;
 };
