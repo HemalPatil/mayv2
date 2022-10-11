@@ -583,7 +583,6 @@ namespace AHCI {
 	extern Controller *controllers;
 
 	extern bool initialize(PCIeFunction *pcieFunction);
-
 }
 
 extern "C" void ahciMsiHandler();

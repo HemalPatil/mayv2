@@ -78,7 +78,7 @@ bool AHCI::Device::identify() {
 	if (this->controller->hba->hostCapabilities.bit64Addressing) {
 		this->commandTables[freeSlot]->prdtEntries[0].dataBaseUpper = (uint32_t)(bufferPhyAddr >> 32);
 	}
-	this->commandTables[freeSlot]->prdtEntries[0].byteCount = 511;
+	this->commandTables[freeSlot]->prdtEntries[0].byteCount = sizeof(IdentifyDeviceData) - 1;
 	this->commandTables[freeSlot]->prdtEntries[0].interruptOnCompletion = 1;
 
 	FIS::RegisterH2D *commandFis = (FIS::RegisterH2D*)&this->commandTables[freeSlot]->commandFIS;
@@ -89,7 +89,7 @@ bool AHCI::Device::identify() {
 
 	this->runningCommandsBitmap |= 1 << freeSlot;
 	this->commandCallbacks[freeSlot] = [this]() {
-		// Read section 7.16.7, 7.16.7.54, 7.16.7.59 of ATA8-ACS spec (https://datasheet.datasheetarchive.com/originals/crawler/ip.cadence.com/775e999e952fda6e9b9a87a34948e130.pdf)
+		// Read section 7.16.7, 7.16.7.54, 7.16.7.59 of ATA8-ACS spec (https://people.freebsd.org/~imp/asiabsdcon2015/works/d2161r5-ATAATAPI_Command_Set_-_3.pdf)
 		// to understand how physical and logical sector size can be determined
 		if (this->info->physicalLogicalSectorSize.valid) {
 			// FIXME: complete sector size determination

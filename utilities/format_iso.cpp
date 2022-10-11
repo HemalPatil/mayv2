@@ -194,6 +194,7 @@ int main(int argc, char *argv[]) {
 		bootBinSeekp += 16;
 	}
 
+	std::cout << "Kernel startSector[" << kernel64Sector << "] sectorCount[" << ceil((double)coreFileSizes[8] / ISO_SECTOR_SIZE) << ']' << std::endl;
 	std::cout << "ISO formatted" << std::endl;
 
 	delete[] isoName;
