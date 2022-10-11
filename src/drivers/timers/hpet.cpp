@@ -16,8 +16,8 @@ static const char* const periodicTimerStr = "Checking for 64-bit capable edge-tr
 static const char* const minTickStr = "Minimum tick ";
 static const char* const hpetStr = "hpet";
 
-HPETRegisters *hpet = NULL;
-HPETTimer *hpetPeriodicTimer = NULL;
+HPETRegisters *hpet = nullptr;
+HPETTimer *hpetPeriodicTimer = nullptr;
 
 bool initializeHpet() {
 	terminalPrintString(initStr, strlen(initStr));

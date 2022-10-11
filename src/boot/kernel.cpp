@@ -28,7 +28,7 @@ void kernelMain(
 	size_t higherHalfSize,
 	void* usablePhyMemStart
 ) {
-	// Be careful of NULL references until the IVTs in
+	// Be careful of nullptr references until the IVTs in
 	// identity mapped page 0 of virtual address space
 	// are moved somewhere else during interrupt initialization
 	infoTable = infoTableAddress;

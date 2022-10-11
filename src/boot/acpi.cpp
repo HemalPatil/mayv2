@@ -7,12 +7,12 @@
 
 static RSDPDescriptor2* searchRsdp();
 
-ACPISDTHeader *apicSdtHeader = NULL;
-ACPISDTHeader *hpetSdtHeader = NULL;
-ACPISDTHeader *mcfgSdtHeader = NULL;
-RSDPDescriptor2 *rsdp = NULL;
-ACPISDTHeader *ssdtHeader = NULL;
-ACPISDTHeader *xsdt = NULL;
+ACPISDTHeader *apicSdtHeader = nullptr;
+ACPISDTHeader *hpetSdtHeader = nullptr;
+ACPISDTHeader *mcfgSdtHeader = nullptr;
+RSDPDescriptor2 *rsdp = nullptr;
+ACPISDTHeader *ssdtHeader = nullptr;
+ACPISDTHeader *xsdt = nullptr;
 
 static const char* const parsingAcpiStr = "Parsing ACPI3";
 static const char* const searchingRsdpStr = "Searching for RSDP";
@@ -207,5 +207,5 @@ static RSDPDescriptor2* searchRsdp() {
 			return (RSDPDescriptor2*)p;
 		}
 	}
-	return NULL;
+	return nullptr;
 }

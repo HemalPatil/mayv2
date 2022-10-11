@@ -214,14 +214,14 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	kernelAddressSpaceList->base = (void*) KERNEL_HIGHERHALF_ORIGIN;
 	kernelAddressSpaceList->pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / pageSize;
 	kernelAddressSpaceList->next = ++current;
-	kernelAddressSpaceList->previous = NULL;
+	kernelAddressSpaceList->previous = nullptr;
 	// Available kernel space
 	current->available = true;
 	current->base = usableKernelSpaceStart;
 	kernelPagesAvailableCount =
 		current->pageCount =
 		((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / pageSize;
-	current->next = NULL;
+	current->next = nullptr;
 	current->previous = kernelAddressSpaceList;
 	++current;
 	// General 0 to L32K64_SCRATCH_BASE used
@@ -230,7 +230,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	generalAddressSpaceList->base = 0;
 	generalAddressSpaceList->pageCount = L32K64_SCRATCH_BASE / pageSize;
 	generalAddressSpaceList->next = ++current;
-	generalAddressSpaceList->previous = NULL;
+	generalAddressSpaceList->previous = nullptr;
 	// General L32K64_SCRATCH_BASE to (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) available
 	current->available = true;
 	current->base = (void*) L32K64_SCRATCH_BASE;
@@ -280,7 +280,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	current->available = true;
 	current->base = (void*)(ptMask + 512 * GIB_1);
 	current->pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
-	current->next = NULL;
+	current->next = nullptr;
 	current->previous = current - 1;
 	generalPagesAvailableCount += current->pageCount;
 	terminalPrintString(doneStr, strlen(doneStr));
@@ -304,12 +304,12 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 		return result;
 	}
 	VirtualMemNode *list = (flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelAddressSpaceList : generalAddressSpaceList;
-	VirtualMemNode *bestFit = NULL, *current = list;
+	VirtualMemNode *bestFit = nullptr, *current = list;
 	while (current) {
 		if (
 			current->available &&
 			current->pageCount >= count &&
-			(bestFit == NULL || bestFit->pageCount > current->pageCount)
+			(bestFit == nullptr || bestFit->pageCount > current->pageCount)
 		) {
 			bestFit = current;
 		}
