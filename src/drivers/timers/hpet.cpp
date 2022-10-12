@@ -89,18 +89,18 @@ bool initializeHpet() {
 	terminalPrintString(presentStr, strlen(presentStr));
 	terminalPrintChar('\n');
 
-	IOAPICRedirectionEntry keyEntry = readIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER);
+	IOAPICRedirectionEntry timerEntry = readIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER);
 	installIdt64Entry(availableInterrupt, &hpetHandlerWrapper);
-	keyEntry.vector = availableInterrupt;
-	keyEntry.deliveryMode = 0;
-	keyEntry.destinationMode = 0;
-	keyEntry.pinPolarity = 0;
-	keyEntry.triggerMode = 0;
-	keyEntry.mask = 0;
-	keyEntry.destination = bootCpu;
-	writeIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER, keyEntry);
+	timerEntry.vector = availableInterrupt;
+	timerEntry.deliveryMode = 0;
+	timerEntry.destinationMode = 0;
+	timerEntry.pinPolarity = 0;
+	timerEntry.triggerMode = 0;
+	timerEntry.mask = 0;
+	timerEntry.destination = bootCpu;
+	writeIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER, timerEntry);
 	++availableInterrupt;
-	// HPET registers must be written 8-byte boundaries hence setting the bit fields directly is not possible
+	// HPET registers must be written at 8-byte boundaries hence setting the bit fields directly is not possible
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 	uint64_t *configure = (uint64_t*)(void*)hpetPeriodicTimer;
