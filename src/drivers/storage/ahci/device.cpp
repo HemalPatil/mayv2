@@ -12,12 +12,12 @@ static const char* const tfeUnsolicitedStr = "AHCI unsolicited task file error "
 static const char* const d2hUnsolicitedStr = "AHCI unsolicited register D2H FIS ";
 static const char* const atDeviceStr = "at device";
 
-bool AHCI::Device::setupRead(size_t sectorCount, void *buffer, size_t &freeSlot) {
+bool AHCI::Device::setupRead(size_t blockCount, void *buffer, size_t &freeSlot) {
 	// Each command has 8 PRDTs (read AHCI::Device::initialize comments to know why 8 PRDTs)
 	// and each PRDT can handle 4MiB i.e. maximum of 32MiB
 	const size_t mib4 = 4 * 1024 * 1024UL;
 	const size_t mib32 = 8 * mib4;
-	const size_t totalBytes = sectorCount * this->sectorSize;
+	const size_t totalBytes = blockCount * this->blockSize;
 	if (totalBytes > mib32) {
 		return false;
 	}
@@ -159,7 +159,7 @@ bool AHCI::Device::identify() {
 			// FIXME: complete sector size determination
 		} else {
 			// Assume sector size of 512 bytes for SATA and 2048 bytes for SATAPI
-			this->sectorSize = this->type == Type::Sata ? 512 : 2048;
+			this->blockSize = this->type == Type::Sata ? 512 : 2048;
 		}
 	};
 	this->port->commandIssue = 1 << freeSlot;
@@ -284,10 +284,6 @@ void AHCI::Device::issueCommand(size_t freeSlot, const CommandCallback &callback
 	this->port->commandIssue = 1 << freeSlot;
 }
 
-size_t AHCI::Device::getSectorSize() const {
-	return this->sectorSize;
-}
-
 AHCI::Device::Type AHCI::Device::getType() const {
 	return this->type;
 }
@@ -304,5 +300,4 @@ AHCI::Device::Device(Controller *controller, size_t portNumber) {
 	this->runningCommandsBitmap = 0;
 	this->info = nullptr;
 	this->controller = controller;
-	this->sectorSize = 0;
 }

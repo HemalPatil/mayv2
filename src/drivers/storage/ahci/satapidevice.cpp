@@ -8,9 +8,9 @@ AHCI::SatapiDevice::SatapiDevice(
 	this->type = Type::Satapi;
 }
 
-bool AHCI::SatapiDevice::read(size_t startSector, size_t sectorCount, void *buffer, const CommandCallback &callback) {
+bool AHCI::SatapiDevice::read(size_t startBlock, size_t blockCount, void *buffer, const CommandCallback &callback) {
 	size_t freeSlot = SIZE_MAX;
-	if (!this->setupRead(sectorCount, buffer, freeSlot)) {
+	if (!this->setupRead(blockCount, buffer, freeSlot)) {
 		return false;
 	}
 
@@ -31,14 +31,14 @@ bool AHCI::SatapiDevice::read(size_t startSector, size_t sectorCount, void *buff
 	// Refer 3.17 READ(12) section in https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf
 	this->commandTables[freeSlot]->atapiCommand[0] = ATAPI_READTOC;
 	this->commandTables[freeSlot]->atapiCommand[1] = 0;
-	this->commandTables[freeSlot]->atapiCommand[2] = (uint8_t)((startSector >> 24) & 0xff);
-	this->commandTables[freeSlot]->atapiCommand[3] = (uint8_t)((startSector >> 16) & 0xff);
-	this->commandTables[freeSlot]->atapiCommand[4] = (uint8_t)((startSector >> 8) & 0xff);
-	this->commandTables[freeSlot]->atapiCommand[5] = (uint8_t)(startSector & 0xff);
-	this->commandTables[freeSlot]->atapiCommand[6] = (uint8_t)((sectorCount >> 24) & 0xff);
-	this->commandTables[freeSlot]->atapiCommand[7] = (uint8_t)((sectorCount >> 16) & 0xff);
-	this->commandTables[freeSlot]->atapiCommand[8] = (uint8_t)((sectorCount >> 8) & 0xff);
-	this->commandTables[freeSlot]->atapiCommand[9] = (uint8_t)(sectorCount & 0xff);
+	this->commandTables[freeSlot]->atapiCommand[2] = (uint8_t)((startBlock >> 24) & 0xff);
+	this->commandTables[freeSlot]->atapiCommand[3] = (uint8_t)((startBlock >> 16) & 0xff);
+	this->commandTables[freeSlot]->atapiCommand[4] = (uint8_t)((startBlock >> 8) & 0xff);
+	this->commandTables[freeSlot]->atapiCommand[5] = (uint8_t)(startBlock & 0xff);
+	this->commandTables[freeSlot]->atapiCommand[6] = (uint8_t)((blockCount >> 24) & 0xff);
+	this->commandTables[freeSlot]->atapiCommand[7] = (uint8_t)((blockCount >> 16) & 0xff);
+	this->commandTables[freeSlot]->atapiCommand[8] = (uint8_t)((blockCount >> 8) & 0xff);
+	this->commandTables[freeSlot]->atapiCommand[9] = (uint8_t)(blockCount & 0xff);
 	this->commandTables[freeSlot]->atapiCommand[10] = 0;
 	this->commandTables[freeSlot]->atapiCommand[11] = 0;
 	this->commandTables[freeSlot]->atapiCommand[12] = 0;

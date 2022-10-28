@@ -12,6 +12,7 @@ class AHCI::Controller {
 		Controller *next;
 		Device* getDevice(size_t portNumber) const;
 		bool initialize(PCIeFunction *pcieFunction);
+		// TODO: implement destructor that releases the virtual pages mapped to the controller's HBA
 
 	friend void ::ahciMsiHandler();
 	friend class Device;

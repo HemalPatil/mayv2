@@ -1,7 +1,10 @@
 #include <acpi.h>
 #include <apic.h>
+#include <drivers/filesystems/iso9660.h>
 #include <drivers/ps2/keyboard.h>
 #include <drivers/storage/ahci.h>
+#include <drivers/storage/ahci/controller.h>
+#include <drivers/storage/ahci/device.h>
 #include <drivers/timers/hpet.h>
 #include <heapmemmgmt.h>
 #include <idt64.h>
@@ -104,6 +107,23 @@ void kernelMain(
 			kernelPanic();
 		}
 		pcieFunction = pcieFunction->next;
+	}
+
+	// Create filesystems
+	AHCI::Controller *c = AHCI::controllers;
+	while (c) {
+		for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
+			AHCI::Device *device = c->getDevice(i);
+			if (device) {
+				// Try with ISO9660 for SATAPI devices first because that is the most likely FS
+				if (AHCI::Device::Type::Satapi == device->getType()) {
+					if (FS::ISO9660::isIso9660(device)) {
+
+					}
+				}
+			}
+		}
+		c = c->next;
 	}
 
 	// Set up graphical video mode

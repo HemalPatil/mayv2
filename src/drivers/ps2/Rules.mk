@@ -1,6 +1,8 @@
 DRIVERS_PS2_ASMOBJFILES := $(patsubst $(SRC_DIR)/drivers/ps2/%.asm,$(BUILD_DIR)/drivers/ps2/%.o,$(shell find $(SRC_DIR)/drivers/ps2 -maxdepth 1 -type f -name "*.asm"))
 DRIVERS_PS2_CPPOBJFILES := $(patsubst $(SRC_DIR)/drivers/ps2/%.cpp,$(BUILD_DIR)/drivers/ps2/%.o,$(shell find $(SRC_DIR)/drivers/ps2 -maxdepth 1 -type f -name "*.cpp"))
 
+DRIVERS_PS2_OBJFILES := $(DRIVERS_PS2_ASMOBJFILES) $(DRIVERS_PS2_CPPOBJFILES)
+
 $(BUILD_DIR)/drivers/ps2/%.o: $(SRC_DIR)/drivers/ps2/%.asm
 	$(NASM64) $@ $^
 
