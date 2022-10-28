@@ -33,9 +33,9 @@
 #define _MOVE_H 1
 
 #include <bits/c++config.h>
-// #if __cplusplus < 201103L
-// # include <bits/concept_check.h>
-// #endif
+#if __cplusplus < 201103L
+# include <bits/concept_check.h>
+#endif
 
 namespace std _GLIBCXX_VISIBILITY(default)
 {

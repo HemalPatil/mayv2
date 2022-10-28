@@ -1031,7 +1031,7 @@ namespace std
 /* #undef _GLIBCXX_HAVE_MACHINE_PARAM_H */
 
 /* Define if mbstate_t exists in wchar.h. */
-#define _GLIBCXX_HAVE_MBSTATE_T 1
+// #define _GLIBCXX_HAVE_MBSTATE_T 1
 
 /* Define to 1 if you have the `memalign' function. */
 #define _GLIBCXX_HAVE_MEMALIGN 1
@@ -1276,7 +1276,7 @@ namespace std
 #define _GLIBCXX_HAVE_VWSCANF 1
 
 /* Define to 1 if you have the <wchar.h> header file. */
-#define _GLIBCXX_HAVE_WCHAR_H 1
+// #define _GLIBCXX_HAVE_WCHAR_H 1
 
 /* Defined if wcstof exists. */
 #define _GLIBCXX_HAVE_WCSTOF 1
@@ -1604,7 +1604,7 @@ namespace std
 #define _GLIBCXX_HAS_GTHREADS 1
 
 /* Define to 1 if a full hosted library is built, or 0 if freestanding. */
-#define _GLIBCXX_HOSTED 1
+// #define _GLIBCXX_HOSTED 1
 
 /* Define if compatibility should be provided for alternative 128-bit long
    double formats. */
@@ -1793,7 +1793,7 @@ namespace std
 #define _GLIBCXX_USE_UTIMENSAT 1
 
 /* Define if code specialized for wchar_t should be used. */
-#define _GLIBCXX_USE_WCHAR_T 1
+// #define _GLIBCXX_USE_WCHAR_T 1
 
 /* Define to 1 if a verbose library is built, or 0 otherwise. */
 #define _GLIBCXX_VERBOSE 1

@@ -1,5 +1,7 @@
 # ignore vscode files
-.vscode
+.vscode/c_cpp_properties.json
+.vscode/settings.json
+.vscode/*.log
 
 # exclude vim temp files
 *~
