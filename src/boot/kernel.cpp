@@ -1,6 +1,5 @@
 #include <acpi.h>
 #include <apic.h>
-// #include <cwchar>
 #include <drivers/ps2/keyboard.h>
 #include <drivers/storage/ahci.h>
 #include <drivers/timers/hpet.h>
@@ -15,8 +14,6 @@
 #include <tss64.h>
 // #include <vbe.h>
 #include <virtualmemmgmt.h>
-
-#include <string>
 
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
 static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
@@ -108,8 +105,6 @@ void kernelMain(
 		}
 		pcieFunction = pcieFunction->next;
 	}
-
-	std::string str1 = "/boot/ap/stage1/bootload.bin";
 
 	// Set up graphical video mode
 	// if (!setupGraphicalVideoMode()) {

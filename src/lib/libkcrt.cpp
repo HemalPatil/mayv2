@@ -1,3 +1,4 @@
+#include <bits/allocator.h>
 #include <kernel.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -101,6 +102,9 @@ void* memset(void *address, int data, size_t length) {
 }
 
 namespace std {
+	// Explicit template instantiation of allocator<char> for std::string
+	template class allocator<char>;
+
 	// Helpers for exception objects in <stdexcept>
 	void __throw_invalid_argument(const char*) {
 		terminalPrintString(invalidArgStr, strlen(invalidArgStr));
