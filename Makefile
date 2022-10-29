@@ -25,7 +25,7 @@ CC32_FLAGS := -ffreestanding -nostdlib -lgcc -I$(KERNEL_INCLUDE_DIR)
 C_WARNINGS := -Wall -Wextra
 
 # Necessary flags and compiler and linker names required for generating binaries for x64
-CC64 := x86_64-elf-gcc
+CC64 := x86_64-elf-g++
 CC64_FLAGS := --std=c++20 -ffreestanding -fno-exceptions -fno-rtti -mcmodel=kernel -m64 -march=x86-64 -mno-red-zone -msse4.2 -nostdlib -lgcc -I$(KERNEL_INCLUDE_DIR) -I$(STD_INCLUDE_DIR)
 
 # The directory structure in the above root directories

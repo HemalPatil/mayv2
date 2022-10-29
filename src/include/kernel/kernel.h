@@ -20,9 +20,9 @@
 // do not expose the kernelMain to other files
 extern InfoTable *infoTable;
 
-extern "C" void kernelPanic();
+extern "C" [[noreturn]] void kernelPanic();
 
 
 // kernelasm.asm
 extern "C" void flushTLB(void *newPml4Root);
-extern "C" void hangSystem(bool disableInterrupts);
+extern "C" [[noreturn]] void hangSystem(bool disableInterrupts);

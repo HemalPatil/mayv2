@@ -31,4 +31,84 @@ namespace std {
       /// @c result_type is the return type
       typedef _Result 	result_type;
     };
+
+#if __cplusplus > 201103L
+  template<typename _Tp = void>
+    struct equal_to;
+
+  template<typename _Tp = void>
+    struct not_equal_to;
+
+  template<typename _Tp = void>
+    struct greater;
+
+  template<typename _Tp = void>
+    struct less;
+
+  template<typename _Tp = void>
+    struct greater_equal;
+
+  template<typename _Tp = void>
+    struct less_equal;
+#endif
+
+  /// One of the @link comparison_functors comparison functors@endlink.
+  template<typename _Tp>
+    struct equal_to : public binary_function<_Tp, _Tp, bool>
+    {
+      _GLIBCXX14_CONSTEXPR
+      bool
+      operator()(const _Tp& __x, const _Tp& __y) const
+      { return __x == __y; }
+    };
+
+  /// One of the @link comparison_functors comparison functors@endlink.
+  template<typename _Tp>
+    struct not_equal_to : public binary_function<_Tp, _Tp, bool>
+    {
+      _GLIBCXX14_CONSTEXPR
+      bool
+      operator()(const _Tp& __x, const _Tp& __y) const
+      { return __x != __y; }
+    };
+
+  /// One of the @link comparison_functors comparison functors@endlink.
+  template<typename _Tp>
+    struct greater : public binary_function<_Tp, _Tp, bool>
+    {
+      _GLIBCXX14_CONSTEXPR
+      bool
+      operator()(const _Tp& __x, const _Tp& __y) const
+      { return __x > __y; }
+    };
+
+  /// One of the @link comparison_functors comparison functors@endlink.
+  template<typename _Tp>
+    struct less : public binary_function<_Tp, _Tp, bool>
+    {
+      _GLIBCXX14_CONSTEXPR
+      bool
+      operator()(const _Tp& __x, const _Tp& __y) const
+      { return __x < __y; }
+    };
+
+  /// One of the @link comparison_functors comparison functors@endlink.
+  template<typename _Tp>
+    struct greater_equal : public binary_function<_Tp, _Tp, bool>
+    {
+      _GLIBCXX14_CONSTEXPR
+      bool
+      operator()(const _Tp& __x, const _Tp& __y) const
+      { return __x >= __y; }
+    };
+
+  /// One of the @link comparison_functors comparison functors@endlink.
+  template<typename _Tp>
+    struct less_equal : public binary_function<_Tp, _Tp, bool>
+    {
+      _GLIBCXX14_CONSTEXPR
+      bool
+      operator()(const _Tp& __x, const _Tp& __y) const
+      { return __x <= __y; }
+    };
 }
