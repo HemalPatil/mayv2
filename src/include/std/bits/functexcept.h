@@ -3,6 +3,18 @@
 namespace std {
 	// Helpers for exception objects in <stdexcept>
 	void
+  __throw_invalid_argument(const char*) __attribute__((__noreturn__));
+
+	void
+  __throw_logic_error(const char*) __attribute__((__noreturn__));
+
+	void
+  __throw_length_error(const char*) __attribute__((__noreturn__));
+
+	void
+  __throw_out_of_range(const char*) __attribute__((__noreturn__));
+
+	void
   __throw_out_of_range_fmt(const char*, ...) __attribute__((__noreturn__))
     __attribute__((__format__(__gnu_printf__, 1, 2)));
 

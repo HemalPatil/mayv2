@@ -40,10 +40,10 @@
 #include <bits/c++config.h>
 #include <ext/numeric_traits.h>
 #include <bits/functexcept.h>
-// #include <cstdlib>
+#include <cstdlib>
 #include <cwchar>
-// #include <cstdio>
-// #include <cerrno>
+#include <cstdio>
+#include <cerrno>
 
 namespace __gnu_cxx _GLIBCXX_VISIBILITY(default)
 {

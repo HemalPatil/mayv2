@@ -1,0 +1,9 @@
+#pragma once
+
+#include <stdarg.h>
+#include <stddef.h>
+
+namespace std {
+	// May need to move this to stdio.h
+	extern "C" int vsnprintf(char *buffer, size_t bufsz, const char *format, va_list vlist );
+}

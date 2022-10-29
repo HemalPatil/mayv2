@@ -1,6 +1,18 @@
+#include <kernel.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
+#include <terminal.h>
+
+static const char* const invalidArgStr = "\nInvalid argument exception\n";
+static const char* const logicErrorStr = "\nLogic error exception\n";
+static const char* const lengthErrorStr = "\nLength error exception\n";
+static const char* const outOfRangeStr = "\nOut of range exception\n";
+static const char* const outOfRangeFmtStr = "\nOut of range format exception\n";
+static const char* const badFunctionCallStr = "\nBad function call exception\n";
+static const char* const badAllocStr = "\nBad alloc exception\n";
+static const char* const badArrayStr = "\nBad array exception\n";
 
 extern "C" {
 
@@ -20,7 +32,8 @@ int64_t strcmp(const char* str1, const char* str2) {
 	return *(const unsigned char*)str1 - *(const unsigned char*)str2;
 }
 
-void* memcpy(void *dest, void *src, size_t n) {
+void* memcpy(void *dest, const void *src, size_t n) {
+	// Copies from front to back
 	// Copy in blocks of 8 because it's most efficient in 64-bit mode
 	// Copy the rest in bytes
 	// Need not worry about overlapping regions
@@ -40,6 +53,24 @@ void* memcpy(void *dest, void *src, size_t n) {
 	uint8_t *s = (uint8_t *)s8;
 	for (size_t i = 0; i < remaining; ++i, ++d, ++s) {
 		*d = *s;
+	}
+	return dest;
+}
+
+void* memmove(void* dest, const void* src, size_t count) {
+	if (
+		(uintptr_t)src < (uintptr_t)dest &&
+		(uintptr_t)src + count > (uintptr_t)dest
+	) {
+		// Copy from back to front
+		uint8_t *dest8 = (uint8_t*) dest;
+		uint8_t *src8 = (uint8_t*) src;
+		for (int64_t i = count - 1; i >= 0; --i) {
+			dest8[i] = src8[i];
+		}
+	} else {
+		// Copy from front to back
+		memcpy(dest, src, count);
 	}
 	return dest;
 }
@@ -67,4 +98,44 @@ void* memset(void *address, int data, size_t length) {
 	return address;
 }
 
+}
+
+namespace std {
+	// Helpers for exception objects in <stdexcept>
+	void __throw_invalid_argument(const char*) {
+		terminalPrintString(invalidArgStr, strlen(invalidArgStr));
+		kernelPanic();
+	}
+	void __throw_logic_error(const char*) {
+		terminalPrintString(logicErrorStr, strlen(logicErrorStr));
+		kernelPanic();
+	}
+	void __throw_length_error(const char*) {
+		terminalPrintString(lengthErrorStr, strlen(lengthErrorStr));
+		kernelPanic();
+	}
+	void __throw_out_of_range(const char*) {
+		terminalPrintString(outOfRangeStr, strlen(outOfRangeStr));
+		kernelPanic();
+	}
+	void __throw_out_of_range_fmt(const char*, ...) {
+		terminalPrintString(outOfRangeFmtStr, strlen(outOfRangeFmtStr));
+		kernelPanic();
+	}
+
+	// Helpers for exception objects in <functional>
+	void __throw_bad_function_call() {
+		terminalPrintString(badFunctionCallStr, strlen(badFunctionCallStr));
+		kernelPanic();
+	}
+
+	// Helper for exception objects in <new>
+	void __throw_bad_alloc(void) {
+		terminalPrintString(badAllocStr, strlen(badAllocStr));
+		kernelPanic();
+	}
+	void __throw_bad_array_new_length(void) {
+		terminalPrintString(badArrayStr, strlen(badArrayStr));
+		kernelPanic();
+	}
 }

@@ -530,7 +530,7 @@ namespace std {
       operator()(_ArgTypes... __args) const
       {
 	if (_M_empty()) {
-		// __throw_bad_function_call();
+		__throw_bad_function_call();
 		// TODO: throw an exception or panic or do something else
 		return;
 	}

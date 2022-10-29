@@ -8498,6 +8498,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
     }
 
   // 21.3.7.9 basic_string::getline and operators
+  /* No need for operator>> in kernel space
   template<typename _CharT, typename _Traits, typename _Alloc>
     basic_istream<_CharT, _Traits>&
     operator>>(basic_istream<_CharT, _Traits>& __in,
@@ -8569,6 +8570,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	__in.setstate(__err);
       return __in;
     }
+  */
 
   template<typename _CharT, typename _Traits, typename _Alloc>
     basic_istream<_CharT, _Traits>&

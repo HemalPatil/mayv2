@@ -109,6 +109,8 @@ void kernelMain(
 		pcieFunction = pcieFunction->next;
 	}
 
+	std::string str1 = "/boot/ap/stage1/bootload.bin";
+
 	// Set up graphical video mode
 	// if (!setupGraphicalVideoMode()) {
 	// 	kernelPanic();
