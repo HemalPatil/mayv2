@@ -10,8 +10,8 @@ $(ISO_DIR)/BOOT/STAGE2/ELFPARSE.BIN: $(SRC_DIR)/boot/stage2/elfparse.asm
 $(ISO_DIR)/BOOT/STAGE2/K64LOAD.BIN: $(SRC_DIR)/boot/stage2/k64load.asm
 	$(NASM_BIN) $@ $^
 
-$(BUILD_DIR)/boot/stage2/loader32.o: $(SRC_DIR)/boot/stage2/loader32.c
+$(BUILD_DIR)/boot/stage2/loader32.o: $(SRC_DIR)/boot/stage2/loader32.cpp
 	$(CC32) -o $@ -c $^ $(C_WARNINGS) $(CC32_FLAGS)
 
-$(BUILD_DIR)/boot/stage2/%.o: $(SRC_DIR)/boot/stage2/%.asm
+$(BUILD_DIR)/boot/stage2/loader32asm.o: $(SRC_DIR)/boot/stage2/loader32asm.asm
 	$(NASM32) $@ $^

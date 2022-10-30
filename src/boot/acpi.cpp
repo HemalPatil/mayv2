@@ -1,7 +1,7 @@
 #include <commonstrings.h>
+#include <cstring>
 #include <kernel.h>
 #include <heapmemmgmt.h>
-#include <string.h>
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 

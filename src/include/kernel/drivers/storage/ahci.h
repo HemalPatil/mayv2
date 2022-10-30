@@ -1,8 +1,7 @@
 #pragma once
 
+#include <cstddef>
 #include <pcie.h>
-#include <stdbool.h>
-#include <stddef.h>
 
 #define ATAPI_READTOC 0xa8
 

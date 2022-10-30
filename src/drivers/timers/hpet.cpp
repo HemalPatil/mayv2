@@ -1,10 +1,10 @@
 #include <acpi.h>
 #include <apic.h>
 #include <commonstrings.h>
+#include <cstring>
 #include <drivers/timers/hpet.h>
 #include <idt64.h>
 #include <kernel.h>
-#include <string.h>
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stddef.h>
+#include <cstddef>
 
 extern "C" size_t availableInterrupt;
 

@@ -1,10 +1,10 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <elf64.h>
 #include <phymemmgmt.h>
 #include <pml4t.h>
-#include <stddef.h>
-#include <stdint.h>
 
 #define MAX_VIRTUAL_ADDRESS_BITS 48
 #define MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE 4

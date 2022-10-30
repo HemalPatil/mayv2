@@ -1,10 +1,9 @@
 #include <acpi.h>
+#include <cstddef>
+#include <cstdint>
 #include <elf64.h>
 #include <infotable.h>
 #include <pml4t.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 
 #define ISO_SECTOR_SIZE 2048
 #define KERNEL_HIGHERHALF_ORIGIN 0xffffffff80000000
@@ -40,23 +39,23 @@ const uint64_t virtualPageIndexMask = ((uint64_t)1 << virtualPageIndexShift) - 1
 InfoTable *infoTable;
 
 void clearScreen();
-extern void printHex(const void *const, const size_t);
-extern void swap(void *const a, void *const b, const size_t);
-extern void memset(void *const dest, const uint8_t, const size_t);
-extern void memcpy(const void *const src, void const *dest, const size_t count);
-extern void setup16BitSegments(const InfoTable* const table, const void *const loadModule, const DAP* const dap, const uint16_t);
-extern void loadKernel64ElfSectors();
-extern void jumpToKernel64(
+extern "C" void printHex(const void *const, const size_t);
+extern "C" void swap(void *const a, void *const b, const size_t);
+extern "C" void memset(void *const dest, const uint8_t, const size_t);
+extern "C" void memcpy(const void *const src, void const *dest, const size_t count);
+extern "C" void setup16BitSegments(const InfoTable* const table, const void *const loadModule, const DAP* const dap, const uint16_t);
+extern "C" void loadKernel64ElfSectors();
+extern "C" void jumpToKernel64(
 	const PML4E* const pml4t,
 	const InfoTable* const table,
 	const uint32_t lowerHalfSize,
 	const uint32_t higherHalfSize,
 	const uint32_t usablePhyMemStart
 );
-extern uint8_t getLinearAddressLimit();
-extern uint8_t getPhysicalAddressLimit();
+extern "C" uint8_t getLinearAddressLimit();
+extern "C" uint8_t getPhysicalAddressLimit();
 
-void terminalPrintChar(char c, uint8_t color) {
+extern "C" void printChar(char c, uint8_t color) {
 	if (cursorX >= vgaWidth || cursorY >= vgaHeight) {
 		return;
 	}
@@ -96,7 +95,7 @@ size_t strlen(const char *const str) {
 void printString(const char *const str) {
 	size_t length = strlen(str);
 	for (size_t i = 0; i < length; ++i) {
-		terminalPrintChar(str[i], DEFAULT_TERMINAL_COLOR);
+		printChar(str[i], DEFAULT_TERMINAL_COLOR);
 	}
 }
 
@@ -207,7 +206,7 @@ void allocatePagingEntry(PML4E *entry, uint32_t address) {
 	entry->physicalAddress = address >> pageSizeShift;
 }
 
-int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, DAP *const dapKernel64, const void *const loadModuleAddress) {
+extern "C" int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, DAP *const dapKernel64, const void *const loadModuleAddress) {
 	infoTable = infoTableAddress;
 	clearScreen();
 	printString("Loader32 virtual memory size = 0x");

@@ -1,5 +1,6 @@
 #include <acpi.h>
 #include <apic.h>
+#include <cstring>
 #include <drivers/filesystems/iso9660.h>
 #include <drivers/ps2/keyboard.h>
 #include <drivers/storage/ahci.h>
@@ -12,7 +13,6 @@
 #include <pcie.h>
 #include <phymemmgmt.h>
 #include <sse4.h>
-#include <string.h>
 #include <terminal.h>
 #include <tss64.h>
 // #include <vbe.h>
@@ -130,6 +130,7 @@ void kernelMain(
 	// if (!setupGraphicalVideoMode()) {
 	// 	kernelPanic();
 	// }
+	hangSystem(false);
 }
 
 void kernelPanic() {

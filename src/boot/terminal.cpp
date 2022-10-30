@@ -1,6 +1,6 @@
+#include <cstring>
 #include <io.h>
 #include <kernel.h>
-#include <string.h>
 #include <terminal.h>
 
 // TODO : This is a temporary file. The functions from this file need to be shifted to drivers/terminal after some higher level

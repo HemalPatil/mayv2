@@ -1,5 +1,5 @@
+#include <cstring>
 #include <drivers/storage/ahci/satadevice.h>
-#include <string.h>
 
 AHCI::SataDevice::SataDevice(
 	Controller *controller,

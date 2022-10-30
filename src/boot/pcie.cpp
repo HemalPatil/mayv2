@@ -1,8 +1,8 @@
 #include <commonstrings.h>
+#include <cstring>
 #include <heapmemmgmt.h>
 #include <kernel.h>
 #include <pcie.h>
-#include <string.h>
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 

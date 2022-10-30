@@ -1,9 +1,8 @@
 #include <bits/allocator.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <kernel.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
 #include <terminal.h>
 
 static const char* const invalidArgStr = "\nInvalid argument exception\n";

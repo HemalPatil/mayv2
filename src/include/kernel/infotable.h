@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 // Do not convert address values to actual pointers
 // due to pointer size differences between 32 and 64 bit modes

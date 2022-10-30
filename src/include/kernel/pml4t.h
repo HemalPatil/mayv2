@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 
 #define PML4_ENTRY_COUNT 512
 

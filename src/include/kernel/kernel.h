@@ -1,10 +1,9 @@
 #pragma once
 
 #include <acpi.h>
+#include <cstddef>
+#include <cstdint>
 #include <infotable.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 
 #define GIB_1 (uint64_t)1024 * 1024 * 1024
 #define KIB_4 4 * 1024

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <stdarg.h>
-#include <stddef.h>
+#include <cstddef>
 
 namespace std {
 	// May need to move this to stdio.h

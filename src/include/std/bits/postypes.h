@@ -55,7 +55,7 @@
 # define _UNDEF__STDC_CONSTANT_MACROS
 # define __STDC_CONSTANT_MACROS
 #endif
-#include <stdint.h> // For int64_t
+#include <cstdint> // For int64_t
 #ifdef _UNDEF__STDC_LIMIT_MACROS
 # undef __STDC_LIMIT_MACROS
 # undef _UNDEF__STDC_LIMIT_MACROS

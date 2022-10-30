@@ -726,7 +726,7 @@ _GLIBCXX_END_NAMESPACE_VERSION
 
 #if __cplusplus >= 201103L
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace std _GLIBCXX_VISIBILITY(default)
 {

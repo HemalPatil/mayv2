@@ -1,8 +1,8 @@
 #include <apic.h>
 #include <commonstrings.h>
+#include <cstring>
 #include <drivers/ps2/keyboard.h>
 #include <idt64.h>
-#include <string.h>
 #include <terminal.h>
 
 static const char* const keyStr = "key";

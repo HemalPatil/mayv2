@@ -1,11 +1,11 @@
 #include <acpi.h>
 #include <apic.h>
 #include <commonstrings.h>
+#include <cstring>
 #include <heapmemmgmt.h>
 #include <idt64.h>
 #include <kernel.h>
 #include <phymemmgmt.h>
-#include <string.h>
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 

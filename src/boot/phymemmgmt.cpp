@@ -1,7 +1,7 @@
 #include <commonstrings.h>
+#include <cstring>
 #include <kernel.h>
 #include <phymemmgmt.h>
-#include <string.h>
 #include <terminal.h>
 
 static size_t phyMemPagesAvailableCount = 0;

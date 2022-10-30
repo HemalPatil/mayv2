@@ -1,7 +1,7 @@
 #pragma once
 
+#include <cstddef>
 #include <functional>
-#include <stddef.h>
 
 namespace Storage {
 	class BlockDevice {

@@ -1,10 +1,9 @@
 #pragma once
 
 #include <acpi.h>
+#include <cstddef>
+#include <cstdint>
 #include <kernel.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 
 #define L32_IDENTITY_MAP_SIZE 32
 #define MEMORY_REQUEST_CONTIGUOUS 1

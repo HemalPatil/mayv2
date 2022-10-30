@@ -1,8 +1,7 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 
 #define APIC_TYPE_CPU 0
 #define APIC_TYPE_IO 1

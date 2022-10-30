@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
+#include <cstdint>
 
 #define VBE_LINEAR_FRAME_BUFFER_AVAILABLE 0x80
 

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 
 // Represent the strings "FREE" and "USED"
 #define HEAP_ENTRY_FREE 0x45455246

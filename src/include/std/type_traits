@@ -35,8 +35,8 @@
 // #include <bits/c++0x_warning.h>
 // #else
 
-#include <stddef.h>
 #include <bits/c++config.h>
+#include <cstddef>
 
 namespace std _GLIBCXX_VISIBILITY(default)
 {

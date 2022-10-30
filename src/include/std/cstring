@@ -1,0 +1,20 @@
+#pragma once
+
+#pragma GCC system_header
+
+#include <bits/c++config.h>
+#include <string.h>
+
+#undef memcpy
+#undef memmove
+#undef memset
+#undef strcmp
+#undef strlen
+
+namespace std {
+	using ::memcpy;
+	using ::memmove;
+	using ::memset;
+	using ::strcmp;
+	using ::strlen;
+}

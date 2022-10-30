@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
+#include <cstdint>
 
 #define ACPI_APIC_SIGNATURE 0x43495041
 #define ACPI_FADT_SIGNATURE 0x50434146

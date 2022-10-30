@@ -1,8 +1,7 @@
 #pragma once
 
 #include <acpi.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include <cstdint>
 
 #define HPET_ENABLE 1
 #define HPET_MAX_TIMERS 32

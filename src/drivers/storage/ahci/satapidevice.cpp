@@ -1,5 +1,5 @@
+#include <cstring>
 #include <drivers/storage/ahci/satapidevice.h>
-#include <string.h>
 
 AHCI::SatapiDevice::SatapiDevice(
 	Controller *controller,

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 
 #define DEFAULT_TERMINAL_COLOUR 0x0f
 

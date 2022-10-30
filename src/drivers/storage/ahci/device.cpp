@@ -1,8 +1,8 @@
 #include <commonstrings.h>
+#include <cstring>
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
 #include <kernel.h>
-#include <string.h>
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 

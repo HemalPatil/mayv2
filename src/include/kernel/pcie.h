@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
+#include <cstdint>
 
 #define PCI_CAPABILITIES_LIST_AVAILABLE (1 << 4)
 #define PCI_MSI_CAPABAILITY_ID 0x5
