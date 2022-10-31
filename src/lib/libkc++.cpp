@@ -13,6 +13,7 @@ static const char* const outOfRangeFmtStr = "\nOut of range format exception\n";
 static const char* const badFunctionCallStr = "\nBad function call exception\n";
 static const char* const badAllocStr = "\nBad alloc exception\n";
 static const char* const badArrayStr = "\nBad array exception\n";
+static const char* const systemErrorStr = "\nSystem exception\n";
 
 extern "C" {
 
@@ -103,6 +104,12 @@ void* memset(void *address, int data, size_t length) {
 namespace std {
 	// Explicit template instantiation of allocator<char> for std::string
 	template class allocator<char>;
+
+	// Helpers for exception objects in <system_error>
+	void __throw_system_error(int) {
+		terminalPrintString(systemErrorStr, strlen(systemErrorStr));
+		kernelPanic();
+	}
 
 	// Helpers for exception objects in <stdexcept>
 	void __throw_invalid_argument(const char*) {

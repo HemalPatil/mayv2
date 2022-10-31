@@ -34,6 +34,10 @@
 
 #pragma GCC system_header
 
+#if __cplusplus < 201103L
+# include <bits/c++0x_warning.h>
+#else
+
 #include <type_traits>
 #include <bits/move.h> // forward
 
@@ -158,3 +162,5 @@ _GLIBCXX_END_NAMESPACE_VERSION
 } // namespace std
 
 #endif // C++11
+
+#endif // _GLIBCXX_INVOKE_H

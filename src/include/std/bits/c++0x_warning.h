@@ -1,8 +1,6 @@
 #pragma once
 
-// The -*- C++ -*- forwarding header.
-
-// Copyright (C) 1997-2021 Free Software Foundation, Inc.
+// Copyright (C) 2007-2021 Free Software Foundation, Inc.
 //
 // This file is part of the GNU ISO C++ Library.  This library is free
 // software; you can redistribute it and/or modify it under the
@@ -24,34 +22,18 @@
 // see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 // <http://www.gnu.org/licenses/>.
 
-/** @file cerrno
- *  This is a Standard C++ Library file.  You should @c \#include this file
- *  in your programs, rather than any of the @a *.h implementation files.
- *
- *  This is the C++ version of the Standard C Library header @c errno.h,
- *  and its contents are (mostly) the same as that header, but are all
- *  contained in the namespace @c std (except for names which are defined
- *  as macros in C).
+/** @file bits/c++0x_warning.h
+ *  This is an internal header file, included by other library headers.
+ *  Do not attempt to use it directly. @headername{iosfwd}
  */
 
-//
-// ISO C++ 14882: 19.3  Error numbers
-//
+#ifndef _CXX0X_WARNING_H
+#define _CXX0X_WARNING_H 1
 
-#pragma GCC system_header
-
-#include <bits/c++config.h>
-#include <asm-generic/errno.h>
-#include <cstdint> // For uint64_t
-
-#ifndef _GLIBCXX_CERRNO
-#define _GLIBCXX_CERRNO 1
-
-extern uint64_t errno;
-
-// Adhere to section 17.4.1.2 clause 5 of ISO 14882:1998
-#ifndef errno
-#define errno errno
+#if __cplusplus < 201103L
+#error This file requires compiler and library support \
+for the ISO C++ 2011 standard. This support must be enabled \
+with the -std=c++11 or -std=gnu++11 compiler options.
 #endif
 
 #endif

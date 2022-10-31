@@ -1,6 +1,9 @@
 #pragma once
 
 namespace std {
+	// Helpers for exception objects in <system_error>
+	[[noreturn]] void __throw_system_error(int);
+
 	// Helpers for exception objects in <stdexcept>
 	[[noreturn]] void __throw_invalid_argument(const char*);
 	[[noreturn]] void __throw_logic_error(const char*);

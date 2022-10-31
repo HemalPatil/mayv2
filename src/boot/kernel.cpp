@@ -18,6 +18,8 @@
 // #include <vbe.h>
 #include <virtualmemmgmt.h>
 
+#include <future>
+
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
 static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
 
