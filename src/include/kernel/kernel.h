@@ -24,4 +24,5 @@ extern "C" [[noreturn]] void kernelPanic();
 
 // kernelasm.asm
 extern "C" void flushTLB(void *newPml4Root);
+extern "C" void haltSystem(bool disableInterrupts);
 extern "C" [[noreturn]] void hangSystem(bool disableInterrupts);

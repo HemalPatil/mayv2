@@ -34,6 +34,7 @@ kernelStart:
 
 section .text
 	global flushTLB
+	global haltSystem
 	global hangSystem
 	global higherHalfStart
 	extern kernelMain
@@ -55,11 +56,18 @@ flushTLB:
 	; FIXME: must set the interrupt flag back to its original state
 	ret
 
+haltSystem:
+	cmp rdi, 0
+	je haltSystemNoDisableInterrupts
+	cli
+haltSystemNoDisableInterrupts:
+	hlt
+	ret
+
 hangSystem:
 	cmp rdi, 0
-	je noDisableInterrupts
+	je hangSystemNoDisableInterrupts
 	cli
-noDisableInterrupts:
+hangSystemNoDisableInterrupts:
 	hlt
-	jmp noDisableInterrupts
-	ret
+	jmp hangSystemNoDisableInterrupts
