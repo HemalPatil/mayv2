@@ -1,3 +1,5 @@
+#pragma once
+
 // <memory> -*- C++ -*-
 
 // Copyright (C) 2001-2021 Free Software Foundation, Inc.

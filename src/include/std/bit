@@ -37,22 +37,22 @@
 
 #include <type_traits>
 
-#if _GLIBCXX_HOSTED
-# include <ext/numeric_traits.h>
-#else
-# include <limits>
-/// @cond undocumented
-namespace __gnu_cxx
-{
-  template<typename _Tp>
-    struct __int_traits
-    {
-      static constexpr int __digits = std::numeric_limits<_Tp>::digits;
-      static constexpr _Tp __max = std::numeric_limits<_Tp>::max();
-    };
-}
-/// @endcond
-#endif
+// #if _GLIBCXX_HOSTED
+// # include <ext/numeric_traits.h>
+// #else
+// # include <limits>
+// /// @cond undocumented
+// namespace __gnu_cxx
+// {
+//   template<typename _Tp>
+//     struct __int_traits
+//     {
+//       static constexpr int __digits = std::numeric_limits<_Tp>::digits;
+//       static constexpr _Tp __max = std::numeric_limits<_Tp>::max();
+//     };
+// }
+// /// @endcond
+// #endif
 
 namespace std _GLIBCXX_VISIBILITY(default)
 {
