@@ -56,10 +56,10 @@ flushTLB:
 	ret
 
 hangSystem:
-	cmp rdi, 1
-	jne noDisableInterrupts
+	cmp rdi, 0
+	je noDisableInterrupts
 	cli
 noDisableInterrupts:
 	hlt
-	jmp hangSystem
+	jmp noDisableInterrupts
 	ret
