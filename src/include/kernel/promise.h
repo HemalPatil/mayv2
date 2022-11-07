@@ -10,7 +10,7 @@ namespace Kernel {
 			T value;
 
 		public:
-			T get() {
+			T awaitGet() {
 				while (!valueSet) {
 					haltSystem(false);
 				}
@@ -20,6 +20,12 @@ namespace Kernel {
 			void setValue(T value) {
 				this->value = value;
 				this->valueSet = true;
+			}
+
+			static Promise<T> resolved(T value) {
+				Promise<T> promise;
+				promise.setValue(value);
+				return promise;
 			}
 	};
 }

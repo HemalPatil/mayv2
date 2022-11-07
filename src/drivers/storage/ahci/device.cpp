@@ -87,6 +87,15 @@ void AHCI::Device::msiHandler() {
 		if (completedCommands) {
 			terminalPrintString(tfeStr, strlen(tfeStr));
 			terminalPrintHex(&completedCommands, sizeof(completedCommands));
+			for (size_t i = 0; i < AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader); ++i) {
+				uint32_t commandBit = (uint32_t)1 << i;
+				if (completedCommands & commandBit) {
+					this->runningCommandsBitmap &= ~commandBit;
+					if(this->commandPromises[i]) {
+						this->commandPromises[i]->setValue(false);
+					}
+				}
+			}
 		} else {
 			terminalPrintString(tfeUnsolicitedStr, strlen(tfeUnsolicitedStr));
 		}
@@ -103,10 +112,9 @@ void AHCI::Device::msiHandler() {
 				uint32_t commandBit = (uint32_t)1 << i;
 				if (completedCommands & commandBit) {
 					this->runningCommandsBitmap &= ~commandBit;
-					// TODO: should schedule the callback on some thread instead of sync execution
-					if (this->commandCallbacks[i]) {
-						this->commandCallbacks[i]();
-						this->commandCallbacks[i] = nullptr;
+					// TODO: should schedule the callback on some thread instead of blocking execution
+					if (this->commandPromises[i]) {
+						this->commandPromises[i]->setValue(true);
 					}
 				}
 			}
@@ -151,8 +159,7 @@ bool AHCI::Device::identify() {
 	commandFis->commandControl = 1;
 	commandFis->command = (this->type == Type::Satapi) ? AHCI_IDENTIFY_PACKET_DEVICE : AHCI_IDENTIFY_DEVICE;
 
-	this->runningCommandsBitmap |= 1 << freeSlot;
-	this->commandCallbacks[freeSlot] = [this]() {
+	if (this->issueCommand(freeSlot)) {
 		// Read section 7.16.7, 7.16.7.54, 7.16.7.59 of ATA8-ACS spec (https://people.freebsd.org/~imp/asiabsdcon2015/works/d2161r5-ATAATAPI_Command_Set_-_3.pdf)
 		// to understand how physical and logical sector size can be determined
 		if (this->info->physicalLogicalSectorSize.valid) {
@@ -161,8 +168,9 @@ bool AHCI::Device::identify() {
 			// Assume sector size of 512 bytes for SATA and 2048 bytes for SATAPI
 			this->blockSize = this->type == Type::Sata ? 512 : 2048;
 		}
-	};
-	this->port->commandIssue = 1 << freeSlot;
+	} else {
+		return false;
+	}
 
 	return true;
 }
@@ -278,10 +286,11 @@ size_t AHCI::Device::findFreeCommandSlot() const {
 	return SIZE_MAX;
 }
 
-void AHCI::Device::issueCommand(size_t freeSlot, const CommandCallback &callback) {
+std::shared_ptr<Kernel::Promise<bool>> AHCI::Device::issueCommand(size_t freeSlot) {
 	this->runningCommandsBitmap |= 1 << freeSlot;
-	this->commandCallbacks[freeSlot] = callback;
+	this->commandPromises[freeSlot] = std::make_shared<Kernel::Promise<bool>>();
 	this->port->commandIssue = 1 << freeSlot;
+	return this->commandPromises[freeSlot];
 }
 
 AHCI::Device::Type AHCI::Device::getType() const {

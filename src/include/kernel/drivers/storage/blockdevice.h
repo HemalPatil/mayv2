@@ -1,7 +1,8 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
+#include <memory>
+#include <promise.h>
 
 namespace Storage {
 	class BlockDevice {
@@ -9,9 +10,7 @@ namespace Storage {
 			size_t blockSize = 0;
 
 		public:
-			using CommandCallback = std::function<void()>;
-
 			size_t getBlockSize() const;
-			virtual bool read(size_t startBlock, size_t blockCount, void *buffer, const CommandCallback &callback) = 0;
+			virtual std::shared_ptr<Kernel::Promise<bool>> read(size_t startBlock, size_t blockCount, void *buffer) = 0;
 	};
 }

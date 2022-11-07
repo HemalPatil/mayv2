@@ -8,10 +8,10 @@ AHCI::SatapiDevice::SatapiDevice(
 	this->type = Type::Satapi;
 }
 
-bool AHCI::SatapiDevice::read(size_t startBlock, size_t blockCount, void *buffer, const CommandCallback &callback) {
+std::shared_ptr<Kernel::Promise<bool>> AHCI::SatapiDevice::read(size_t startBlock, size_t blockCount, void *buffer) {
 	size_t freeSlot = SIZE_MAX;
 	if (!this->setupRead(blockCount, buffer, freeSlot)) {
-		return false;
+		return std::make_shared<Kernel::Promise<bool>>(Kernel::Promise<bool>::resolved(false));
 	}
 
 	this->commandHeaders[freeSlot].atapi = 1;
@@ -46,6 +46,5 @@ bool AHCI::SatapiDevice::read(size_t startBlock, size_t blockCount, void *buffer
 	this->commandTables[freeSlot]->atapiCommand[14] = 0;
 	this->commandTables[freeSlot]->atapiCommand[15] = 0;
 
-	this->issueCommand(freeSlot, callback);
-	return true;
+	return this->issueCommand(freeSlot);
 }

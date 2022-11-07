@@ -1,5 +1,6 @@
 #include <acpi.h>
 #include <apic.h>
+#include <commonstrings.h>
 #include <cstring>
 #include <drivers/filesystems/iso9660.h>
 #include <drivers/ps2/keyboard.h>
@@ -18,16 +19,19 @@
 // #include <vbe.h>
 #include <virtualmemmgmt.h>
 
-#include <future>
-
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
 static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
+static const char* const creatingFsStr = "Creating file systems";
+static const char* const creatingFsDoneStr = "File systems created\n";
+static const char* const checkingAhciStr = "Checking AHCI controllers";
+static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
+static const char* const isoFoundStr = "ISO filesystem found at ";
 
 InfoTable *infoTable;
 
 extern "C" {
 
-void kernelMain(
+[[noreturn]] void kernelMain(
 	InfoTable *infoTableAddress,
 	size_t lowerHalfSize,
 	size_t higherHalfSize,
@@ -112,7 +116,15 @@ void kernelMain(
 	}
 
 	// Create filesystems
+	terminalPrintString(creatingFsStr, strlen(creatingFsStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
+	terminalPrintSpaces4();
+	terminalPrintString(checkingAhciStr, strlen(checkingAhciStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
 	AHCI::Controller *c = AHCI::controllers;
+	size_t controllerCount = 0;
 	while (c) {
 		for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
 			AHCI::Device *device = c->getDevice(i);
@@ -120,13 +132,23 @@ void kernelMain(
 				// Try with ISO9660 for SATAPI devices first because that is the most likely FS
 				if (AHCI::Device::Type::Satapi == device->getType()) {
 					if (FS::ISO9660::isIso9660(device)) {
-
+						terminalPrintSpaces4();
+						terminalPrintSpaces4();
+						terminalPrintString(isoFoundStr, strlen(isoFoundStr));
+						terminalPrintDecimal(controllerCount);
+						terminalPrintChar(':');
+						terminalPrintDecimal(i);
+						terminalPrintChar('\n');
+						FS::filesystems.push_back(std::make_shared<FS::ISO9660>(*device));
 					}
 				}
 			}
 		}
 		c = c->next;
 	}
+	terminalPrintSpaces4();
+	terminalPrintString(checkingAhciDoneStr, strlen(checkingAhciDoneStr));
+	terminalPrintString(creatingFsDoneStr, strlen(creatingFsDoneStr));
 
 	// Set up graphical video mode
 	// if (!setupGraphicalVideoMode()) {

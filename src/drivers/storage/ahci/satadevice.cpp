@@ -8,10 +8,10 @@ AHCI::SataDevice::SataDevice(
 	this->type = Type::Sata;
 }
 
-bool AHCI::SataDevice::read(size_t startBlock, size_t blockCount, void *buffer, const CommandCallback &callback) {
+std::shared_ptr<Kernel::Promise<bool>> AHCI::SataDevice::read(size_t startBlock, size_t blockCount, void *buffer) {
 	size_t freeSlot = SIZE_MAX;
 	if (!this->setupRead(blockCount, buffer, freeSlot)) {
-		return false;
+		return std::make_shared<Kernel::Promise<bool>>(Kernel::Promise<bool>::resolved(false));
 	}
 
 	this->commandHeaders[freeSlot].atapi = 0;
@@ -29,6 +29,5 @@ bool AHCI::SataDevice::read(size_t startBlock, size_t blockCount, void *buffer, 
 	commandFis->countLow = (uint8_t)(blockCount & 0xff);
 	commandFis->countHigh = (uint8_t)((blockCount & 0xff00) >> 8);
 
-	this->issueCommand(freeSlot, callback);
-	return true;
+	return this->issueCommand(freeSlot);
 }

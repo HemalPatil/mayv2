@@ -553,12 +553,12 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
 	// type_info for this class. With RTTI enabled we can check directly,
 	// or call a library function to do it.
 	if (&__ti == &_Sp_make_shared_tag::_S_ti()
-	    ||
-#if __cpp_rtti
-	    __ti == typeid(_Sp_make_shared_tag)
-#else
-	    _Sp_make_shared_tag::_S_eq(__ti)
-#endif
+// 	    ||
+// #if __cpp_rtti
+// 	    __ti == typeid(_Sp_make_shared_tag)
+// #else
+// 	    _Sp_make_shared_tag::_S_eq(__ti)
+// #endif
 	   )
 	  return __ptr;
 	return nullptr;

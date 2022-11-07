@@ -2,7 +2,8 @@
 
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/blockdevice.h>
-#include <functional>
+#include <memory>
+#include <promise.h>
 
 class AHCI::Device : public Storage::BlockDevice {
 	public:
@@ -19,12 +20,12 @@ class AHCI::Device : public Storage::BlockDevice {
 		void *fisBase;
 		CommandTable *commandTables[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
 		uint32_t runningCommandsBitmap;
-		CommandCallback commandCallbacks[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
+		std::shared_ptr<Kernel::Promise<bool>> commandPromises[AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader)];
 		IdentifyDeviceData *info;
 		Controller *controller;
 		Type type;
 
-		void issueCommand(size_t freeSlot, const CommandCallback &callback);
+		std::shared_ptr<Kernel::Promise<bool>> issueCommand(size_t freeSlot);
 		bool setupRead(size_t blockCount, void *buffer, size_t &freeSlot);
 
 	public:
