@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <pcie.h>
+#include <vector>
 
 #define ATAPI_READTOC 0xa8
 
@@ -579,7 +580,7 @@ namespace AHCI {
 	class SataDevice;
 	class SatapiDevice;
 
-	extern Controller *controllers;
+	extern std::vector<Controller> controllers;
 
 	extern bool initialize(PCIeFunction *pcieFunction);
 }

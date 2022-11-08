@@ -14,35 +14,32 @@ static const char* const checkMsiStr = "Checking MSI capability";
 static const char* const msiInstallingStr = "Installing AHCI MSI handler";
 
 static size_t msiInterrupt = SIZE_MAX;
-static size_t controllerCount = 0;
 
-AHCI::Controller *AHCI::controllers = nullptr;
+std::vector<AHCI::Controller> AHCI::controllers;
 
 void ahciMsiHandler() {
 	acknowledgeLocalApicInterrupt();
-	AHCI::Controller *currentController = AHCI::controllers;
-	while (currentController) {
-		uint32_t interruptStatus = currentController->hba->interruptStatus;
+	for (auto &controller : AHCI::controllers) {
+		uint32_t interruptStatus = controller.hba->interruptStatus;
 		if (interruptStatus) {
 			// If any port needs servicing write its value back to hba->interruptStatus
 			// to acknowledge the interrupt
-			currentController->hba->interruptStatus = interruptStatus;
+			controller.hba->interruptStatus = interruptStatus;
 			for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
 				if (
 					interruptStatus & ((uint32_t)1 << i) &&
-					currentController->devices[i]
+					controller.devices[i]
 				) {
-					currentController->devices[i]->msiHandler();
+					controller.devices[i]->msiHandler();
 				}
 			}
 		}
-		currentController = currentController->next;
 	}
 }
 
 bool AHCI::initialize(PCIeFunction *pcieFunction) {
 	terminalPrintString(initAhciStr, strlen(initAhciStr));
-	terminalPrintDecimal(controllerCount);
+	terminalPrintDecimal(AHCI::controllers.size());
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
 
@@ -83,21 +80,10 @@ bool AHCI::initialize(PCIeFunction *pcieFunction) {
 	terminalPrintChar('\n');
 
 	// Create new controller, add to the list, and initialize it
-	Controller *currentController;
-	if (!controllers) {
-		currentController = controllers = new Controller();
-	} else {
-		currentController = controllers;
-		while (currentController->next) {
-			currentController = currentController->next;
-		}
-		currentController->next = new Controller();
-		currentController = currentController->next;
-	}
-	bool result = currentController->initialize(pcieFunction);
+	AHCI::controllers.push_back(AHCI::Controller());
+	bool result = AHCI::controllers.back().initialize(pcieFunction);
 	if (result) {
 		terminalPrintString(initAhciCompleteStr, strlen(initAhciCompleteStr));
-		++controllerCount;
 	}
 	return result;
 }

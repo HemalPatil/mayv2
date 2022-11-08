@@ -9,7 +9,6 @@ class AHCI::Controller {
 		Device *devices[AHCI_PORT_COUNT];
 
 	public:
-		Controller *next;
 		Device* getDevice(size_t portNumber) const;
 		bool initialize(PCIeFunction *pcieFunction);
 		// TODO: implement destructor that releases the virtual pages mapped to the controller's HBA

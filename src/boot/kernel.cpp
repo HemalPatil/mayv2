@@ -146,11 +146,9 @@ extern "C" {
 	terminalPrintString(checkingAhciStr, strlen(checkingAhciStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
-	AHCI::Controller *c = AHCI::controllers;
-	size_t controllerCount = 0;
-	while (c) {
+	for (size_t controllerCount = 0; auto &controller : AHCI::controllers) {
 		for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
-			AHCI::Device *device = c->getDevice(i);
+			AHCI::Device *device = controller.getDevice(i);
 			if (device) {
 				// Try with ISO9660 for SATAPI devices first because that is the most likely FS
 				if (AHCI::Device::Type::Satapi == device->getType()) {
@@ -167,7 +165,6 @@ extern "C" {
 				}
 			}
 		}
-		c = c->next;
 	}
 	terminalPrintSpaces4();
 	terminalPrintString(checkingAhciDoneStr, strlen(checkingAhciDoneStr));
