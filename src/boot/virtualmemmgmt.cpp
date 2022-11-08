@@ -42,6 +42,7 @@ static const char* const addrSpaceHeader = "Base                 Page count     
 static const char* const creatingListsStr = "Creating virtual address space lists";
 static const char* const recursiveStr = "Creating PML4 recursive entry";
 static const char* const checkingMaxBitsStr = "Checking max virtual address bits";
+static const char* const requestErrorStr = "Did not pass MEMORY_REQUEST_CONTIGUOUS to requestVirtualPages\n";
 
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
@@ -361,6 +362,8 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 	} else {
 		// FIXME: serve non-contiguous virtual addresses
 		// is this case even needed?
+		terminalPrintString(requestErrorStr, strlen(requestErrorStr));
+		kernelPanic();
 	}
 	return result;
 }

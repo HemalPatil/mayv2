@@ -38,7 +38,7 @@ extern bool initializePhysicalMemory(
 	void* usablePhyMemStart,
 	size_t kernelLowerHalfSize,
 	size_t kernelHigherHalfSize,
-	size_t *phyMemBuddyPagesCount
+	size_t &phyMemBuddyPagesCount
 );
 extern void initMmap();
 extern void initPhysicalMemorySize();

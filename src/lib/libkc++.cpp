@@ -99,6 +99,15 @@ void* memset(void *address, int data, size_t length) {
 	return address;
 }
 
+void *__dso_handle = 0;
+
+int __cxa_atexit(void (*)(void*), void*, void*) {
+	// TODO: should register the global destructors in some table
+	// Can be avoided since destructing global objects doesn't make much sense
+	// because the kernel never exits
+	return 0;
+};
+
 }
 
 namespace std {

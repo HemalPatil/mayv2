@@ -12,7 +12,7 @@ static size_t phyMemUsableSize = 0;
 const size_t pageSizeShift = 12;
 const size_t pageSize = 1 << pageSizeShift;
 
-ACPI3Entry* mmap = 0;
+ACPI3Entry* mmap = nullptr;
 uint8_t* phyMemBuddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 size_t phyMemBuddyBitmapSizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 uint64_t phyMemBuddyMasks[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
@@ -35,7 +35,7 @@ bool initializePhysicalMemory(
 	void* usablePhyMemStart,
 	size_t kernelLowerHalfSize,
 	size_t kernelHigherHalfSize,
-	size_t *phyMemBuddyPagesCount
+	size_t &phyMemBuddyPagesCount
 ) {
 	terminalPrintString(initPhyMemStr, strlen(initPhyMemStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -67,7 +67,7 @@ bool initializePhysicalMemory(
 	// Unknown number (at least 11) of pages are being occupied by PML4T starting from infoTable->pml4tPhysicalAddress
 	// Create buddy bitmap right after PML4T
 	// Virtual memory manager will take of marking PML4T as used during its initialization
-	*phyMemBuddyPagesCount = 0;
+	phyMemBuddyPagesCount = 0;
 	uint64_t totalBytesRequired = 0;
 	terminalPrintSpaces4();
 	terminalPrintString(creatingBuddyStr, strlen(creatingBuddyStr));
@@ -84,11 +84,11 @@ bool initializePhysicalMemory(
 		phyMemBuddyBitmaps[i] = (i == 0 ? (uint8_t*)usablePhyMemStart : phyMemBuddyBitmaps[i - 1]) + phyMemBuddyBitmapSizes[i - 1];
 		phyMemBuddyBitmapSizes[i] = currentLevelBytesRequired;
 	}
-	*phyMemBuddyPagesCount = totalBytesRequired / pageSize;
-	if (*phyMemBuddyPagesCount * pageSize != totalBytesRequired) {
-		++(*phyMemBuddyPagesCount);
+	phyMemBuddyPagesCount = totalBytesRequired / pageSize;
+	if (phyMemBuddyPagesCount * pageSize != totalBytesRequired) {
+		++phyMemBuddyPagesCount;
 	}
-	memset(phyMemBuddyBitmaps[0], 0, *phyMemBuddyPagesCount * pageSize);
+	memset(phyMemBuddyBitmaps[0], 0, phyMemBuddyPagesCount * pageSize);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -105,7 +105,7 @@ bool initializePhysicalMemory(
 	markPhysicalPages((void*)(infoTable->kernelPhyMemBase + kernelLowerHalfSize), kernelHigherHalfSize / pageSize, PHY_MEM_USED);
 
 	// Mark the phyMemBuddyBitmaps themselves as used
-	markPhysicalPages(phyMemBuddyBitmaps[0], *phyMemBuddyPagesCount, PHY_MEM_USED);
+	markPhysicalPages(phyMemBuddyBitmaps[0], phyMemBuddyPagesCount, PHY_MEM_USED);
 
 	// Mark all the unusable areas in MMAP as used
 	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {

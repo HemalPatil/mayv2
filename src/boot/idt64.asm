@@ -137,7 +137,6 @@ installIdt64EntryInvalidInterrupt:
 	call terminalPrintDecimal
 	mov rdi, ']'
 	call terminalPrintChar
-	mov rdi, 1
 	call hangSystem
 	ret
 

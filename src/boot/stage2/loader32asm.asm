@@ -49,10 +49,11 @@ loader32Start:
 	mov eax, [ebp]
 	push eax
 	call loader32Main
+	; code beyond this will not get executed unless there was an error during kernel initialization
 loader32End:
-	cli			; Halt the processor
-	hlt			; Hang the proceesor by disabling interrupts
-	jmp loader32End		; loader32 will never return to this code
+	cli
+	hlt
+	jmp loader32End
 
 section .text
 	global memset

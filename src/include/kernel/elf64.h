@@ -48,3 +48,17 @@ struct ELF64ProgramHeader {
 	uint64_t alignment;
 } __attribute__((packed));
 typedef struct ELF64ProgramHeader ELF64ProgramHeader;
+
+struct ELF64SectionHeader {
+	uint32_t nameOffset;
+	uint32_t type;
+	uint64_t flags;
+	uint64_t virtualAddress;
+	uint64_t fileOffset;
+	uint64_t sizeInFile;
+	uint32_t associatedSectionIndex;
+	uint32_t extraInfo;
+	uint64_t alignment;
+	uint64_t entrySize;
+} __attribute__((packed));
+typedef struct ELF64SectionHeader ELF64SectionHeader;

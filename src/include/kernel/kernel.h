@@ -23,6 +23,12 @@ extern "C" [[noreturn]] void kernelPanic();
 
 
 // kernelasm.asm
+
+// Flush the virtual->physical address cache by reloading cr3 register
 extern "C" void flushTLB(void *newPml4Root);
-extern "C" void haltSystem(bool disableInterrupts);
-extern "C" [[noreturn]] void hangSystem(bool disableInterrupts);
+
+// Halts the system and returns if execution resumed due to any interrupt
+extern "C" void haltSystem();
+
+// Disables interrupts, halts the systems, and never returns
+extern "C" [[noreturn]] void hangSystem();

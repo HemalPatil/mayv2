@@ -12,7 +12,7 @@ namespace Kernel {
 		public:
 			T awaitGet() {
 				while (!valueSet) {
-					haltSystem(false);
+					haltSystem();
 				}
 				return value;
 			}

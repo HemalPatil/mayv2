@@ -19,6 +19,8 @@
 // #include <vbe.h>
 #include <virtualmemmgmt.h>
 
+typedef void(*GlobalConstructor)();
+
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
 static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
 static const char* const creatingFsStr = "Creating file systems";
@@ -26,6 +28,7 @@ static const char* const creatingFsDoneStr = "File systems created\n";
 static const char* const checkingAhciStr = "Checking AHCI controllers";
 static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
 static const char* const isoFoundStr = "ISO filesystem found at ";
+static const char* const globalCtorStr = "Running global constructors";
 
 InfoTable *infoTable;
 
@@ -41,6 +44,8 @@ extern "C" {
 	// identity mapped page 0 of virtual address space
 	// are moved somewhere else during interrupt initialization
 	infoTable = infoTableAddress;
+	GlobalConstructor globalCtors[infoTable->globalCtorsCount];
+	memcpy(globalCtors, (void*)infoTable->globalCtorsLocation, infoTable->globalCtorsCount * sizeof(uint64_t));
 
 	terminalSetBgColour(TERMINAL_COLOUR_BLUE);
 	terminalSetTextColour(TERMINAL_COLOUR_BWHITE);
@@ -50,12 +55,21 @@ extern "C" {
 
 	// Initialize physical memory
 	size_t phyMemBuddyPagesCount;
-	if (!initializePhysicalMemory(usablePhyMemStart, lowerHalfSize, higherHalfSize, &phyMemBuddyPagesCount)) {
+	if (!initializePhysicalMemory(
+		usablePhyMemStart,
+		lowerHalfSize,
+		higherHalfSize,
+		phyMemBuddyPagesCount)
+	) {
 		kernelPanic();
 	}
 
 	// Initialize virtual memory
-	if (!initializeVirtualMemory((void*)(KERNEL_HIGHERHALF_ORIGIN + higherHalfSize), lowerHalfSize, phyMemBuddyPagesCount)) {
+	if (!initializeVirtualMemory(
+		(void*)(KERNEL_HIGHERHALF_ORIGIN + higherHalfSize),
+		lowerHalfSize,
+		phyMemBuddyPagesCount)
+	) {
 		kernelPanic();
 	}
 
@@ -63,6 +77,15 @@ extern "C" {
 	if (!initializeDynamicMemory()) {
 		kernelPanic();
 	}
+
+	// Run the global constructors
+	terminalPrintString(globalCtorStr, strlen(globalCtorStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	for (size_t i = 0; i < infoTable->globalCtorsCount; ++i) {
+		globalCtors[i]();
+	}
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
 
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();
@@ -154,13 +177,13 @@ extern "C" {
 	// if (!setupGraphicalVideoMode()) {
 	// 	kernelPanic();
 	// }
-	hangSystem(false);
+	hangSystem();
 }
 
 void kernelPanic() {
 	// TODO : improve kernel panic implementation
 	terminalPrintString(kernelPanicStr, strlen(kernelPanicStr));
-	hangSystem(true);
+	hangSystem();
 }
 
 }

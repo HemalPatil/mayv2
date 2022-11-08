@@ -8,7 +8,7 @@ DIR_LIB := $(patsubst $(SRC_DIR)/lib/%.cpp,$(ISO_DIR)/LIB/%.lib,$(shell find $(S
 $(ISO_DIR)/LIB/%.lib: $(BUILD_DIR)/lib/%.lib
 	cp $< $@
 
-$(BUILD_DIR)/lib/%.lib: $(SRC_DIR)/lib/%.cpp
+$(BUILD_DIR)/lib/%.lib: $(SRC_DIR)/lib/%.cpp $(HEADER_FILES)
 	$(CC64) -o $@ -c $< $(C_WARNINGS) $(CC64_FLAGS)
 
 # Remove elements from directory stack

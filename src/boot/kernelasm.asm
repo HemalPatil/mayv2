@@ -47,6 +47,7 @@ higherHalfStart:
 	call kernelMain
 	; code beyond this should never get executed
 kernelEnd:
+	cli
 	hlt
 	jmp kernelEnd
 
@@ -57,17 +58,10 @@ flushTLB:
 	ret
 
 haltSystem:
-	cmp rdi, 0
-	je haltSystemNoDisableInterrupts
-	cli
-haltSystemNoDisableInterrupts:
 	hlt
 	ret
 
 hangSystem:
-	cmp rdi, 0
-	je hangSystemNoDisableInterrupts
 	cli
-hangSystemNoDisableInterrupts:
 	hlt
-	jmp hangSystemNoDisableInterrupts
+	jmp hangSystem

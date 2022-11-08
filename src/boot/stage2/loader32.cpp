@@ -36,7 +36,7 @@ const uint64_t pageSize = 1 << pageSizeShift;
 const uint64_t pageSizeMask = ~(((uint64_t)1 << pageSizeShift) - 1);
 const size_t virtualPageIndexShift = 9;
 const uint64_t virtualPageIndexMask = ((uint64_t)1 << virtualPageIndexShift) - 1;
-InfoTable *infoTable;
+InfoTable *infoTable = nullptr;
 
 void clearScreen();
 extern "C" void printHex(const void *const, const size_t);
@@ -90,6 +90,14 @@ size_t strlen(const char *const str) {
 		++length;
 	}
 	return length;
+}
+
+int strcmp(const char* str1, const char* str2) {
+	while (*str1 && (*str1 == *str2)) {
+		++str1;
+		++str2;
+	}
+	return *(const unsigned char*)str1 - *(const unsigned char*)str2;
 }
 
 void printString(const char *const str) {
@@ -426,8 +434,29 @@ extern "C" int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTabl
 		}
 	}
 
+	ELF64SectionHeader *sectionHeaders = (ELF64SectionHeader*)(kernelElfBase + (uint32_t)elfHeader->sectionTablePosition);
+	ELF64SectionHeader *ctors = nullptr;
+	char *sectionNames = (char*)(kernelElfBase + sectionHeaders[elfHeader->sectionNamesIndex].fileOffset);
+	for (size_t i = 0; i < elfHeader->sectionEntryCount; ++i) {
+		if (strcmp(&sectionNames[sectionHeaders[i].nameOffset], ".ctors") == 0) {
+			ctors = &sectionHeaders[i];
+		}
+	}
+	if (!ctors) {
+		printString("Could not find kernel global constructors! Cannot boot!\n");
+		return 1;
+	}
+	infoTable->globalCtorsLocation = (uint64_t)(kernelElfBase + ctors->fileOffset);
+	infoTable->globalCtorsCount = ctors->sizeInFile / sizeof(uint64_t);
+
 	// Jump to kernel. Code beyond this should never get executed.
-	jumpToKernel64(pml4t, infoTableAddress, lowerHalfSize, higherHalfSize, newPageStart);
+	jumpToKernel64(
+		pml4t,
+		infoTableAddress,
+		lowerHalfSize,
+		higherHalfSize,
+		newPageStart
+	);
 	printString("Fatal error : Cannot boot!");
 	return 1;
 }
