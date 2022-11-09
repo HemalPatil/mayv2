@@ -1,6 +1,5 @@
 #include <commonstrings.h>
 #include <cstring>
-#include <heapmemmgmt.h>
 #include <kernel.h>
 #include <pcie.h>
 #include <terminal.h>

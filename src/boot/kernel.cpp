@@ -8,7 +8,6 @@
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
 #include <drivers/timers/hpet.h>
-#include <heapmemmgmt.h>
 #include <idt64.h>
 #include <kernel.h>
 #include <pcie.h>
@@ -84,7 +83,7 @@ extern "C" {
 
 	Kernel::Memory::Virtual::showAddressSpaceList();
 	Kernel::Memory::Virtual::showAddressSpaceList(false);
-	Kernel::hangSystem();
+	// Kernel::hangSystem();
 
 	if (!parseAcpi3()) {
 		Kernel::panic();

@@ -1,174 +1,135 @@
-#include <commonstrings.h>
 #include <cstring>
-#include <heapmemmgmt.h>
 #include <kernel.h>
 #include <terminal.h>
 
-static HeapEntry* nextHeapEntry(HeapHeader *heap, HeapEntry *heapEntry);
+// The heap region list cannot be a vector unfortunately
+// since std::vector itself uses new internally which requires a heap
+static Kernel::Memory::Heap::Header *heapList = nullptr;
 
-HeapHeader *heapRegionsList = (HeapHeader*)INVALID_ADDRESS;
-HeapHeader *latestHeapSearched = (HeapHeader*)INVALID_ADDRESS;
+static bool validHeap(Kernel::Memory::Heap::Header *heap);
+static Kernel::Memory::Heap::Entry* nextHeapEntry(
+	Kernel::Memory::Heap::Header *heap,
+	Kernel::Memory::Heap::Entry *entry
+);
+static bool validHeapEntry(
+	Kernel::Memory::Heap::Header *heap,
+	Kernel::Memory::Heap::Entry *entry
+);
 
-static const char* const initHeapStr = "Initializing dynamic memory management";
-static const char* const initHeapCompleteStr = "Dynamic memory management initialized\n\n";
-static const char* const creatingHeapHeaderStr = "Creating heap header";
-static const char* const movingVirMemListsStr = "Moving virtual address space lists to heap memory";
-static const char* const listHeapStr = "List of all kernel heap regions\n";
-static const char* const heapHeaderStr = "Heap start           Size                 Count Remaining\n";
-static const char* const invalidFreeStr = "\nInvalid kernelFree operation ";
+static const char* const listStr = "List of all heap regions\n";
+static const char* const listHeaderStr = "Address              Count                Remaining            Entry table\n";
+static const char* const heapNamespaceStr = "Kernel::Memory::Heap::";
+static const char* const mallocInvalidCountStr = "malloc invalid request size ";
+static const char* const noHeapsStr = "No kernel heap regions created\n";
+static const char* const corruptEntryStr = "validHeapEntry corrupt entry ";
+static const char* const corruptEntryContStr = " found in heap ";
+static const char* const corruptHeapStr = "validHeap corrupt heap ";
+static const char* const invalidFreeStr = "\nfree invalid free ";
 
-bool initializeDynamicMemory() {
-	// void *ghostPage = Kernel::Memory::Virtual::kernelAddressSpaceList;
-	// terminalPrintString(initHeapStr, strlen(initHeapStr));
-	// terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	// terminalPrintChar('\n');
+const size_t Kernel::Memory::Heap::newRegionSize = 0x200000;
+const size_t Kernel::Memory::Heap::minBlockSize = 8;
+const size_t Kernel::Memory::Heap::entryTableSize = Kernel::Memory::Heap::newRegionSize / (
+	sizeof(Kernel::Memory::Heap::Entry) +
+	Kernel::Memory::Heap::minBlockSize
+);
 
-	// // Initalize the heap region reserved by virtual memory manager during its initialization
-	// terminalPrintSpaces4();
-	// terminalPrintString(creatingHeapHeaderStr, strlen(creatingHeapHeaderStr));
-	// terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	// heapRegionsList->entryCount = 0;
-	// heapRegionsList->size = HEAP_NEW_REGION_SIZE;
-	// heapRegionsList->remaining = heapRegionsList->size - sizeof(HeapHeader) - sizeof(HeapEntry);
-	// heapRegionsList->next = heapRegionsList->previous = nullptr;
-	// latestHeapSearched = heapRegionsList;
-	// HeapEntry *freeEntry = (HeapEntry*)((uint64_t)heapRegionsList + sizeof(HeapHeader));
-	// freeEntry->signature = HEAP_ENTRY_FREE;
-	// freeEntry->size = heapRegionsList->remaining;
-	// heapRegionsList->latestEntrySearched = freeEntry;
-	// terminalPrintString(doneStr, strlen(doneStr));
-	// terminalPrintChar('\n');
-
-	// // Move the virtual address space lists at the end of heap to the heap to make them dynamic
-	// // and unmap the ghost page containing the lists
-	// terminalPrintSpaces4();
-	// terminalPrintString(movingVirMemListsStr, strlen(movingVirMemListsStr));
-	// terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	// Kernel::Memory::Virtual::AddressSpaceNode *lists[2] = {
-	// 	Kernel::Memory::Virtual::kernelAddressSpaceList,
-	// 	Kernel::Memory::Virtual::generalAddressSpaceList 
-	// };
-	// Kernel::Memory::Virtual::AddressSpaceNode *newLists[2] = { nullptr, nullptr };
-	// for (size_t i = 0; i < 2; ++i) {
-	// 	Kernel::Memory::Virtual::AddressSpaceNode *current = new Kernel::Memory::Virtual::AddressSpaceNode();
-	// 	memcpy(current, lists[i], sizeof(Kernel::Memory::Virtual::AddressSpaceNode));
-	// 	newLists[i] = current;
-	// 	Kernel::Memory::Virtual::AddressSpaceNode *newPrevious = current;
-	// 	Kernel::Memory::Virtual::AddressSpaceNode *oldCurrent = lists[i]->next;
-	// 	while (oldCurrent) {
-	// 		current = new Kernel::Memory::Virtual::AddressSpaceNode();
-	// 		memcpy(current, oldCurrent, sizeof(Kernel::Memory::Virtual::AddressSpaceNode));
-	// 		newPrevious->next = current;
-	// 		current->previous = newPrevious;
-	// 		newPrevious = current;
-	// 		oldCurrent = oldCurrent->next;
-	// 	}
-	// }
-	// Kernel::Memory::Virtual::kernelAddressSpaceList = newLists[0];
-	// Kernel::Memory::Virtual::generalAddressSpaceList = newLists[1];
-	// if (!Kernel::Memory::Virtual::unmapPages(ghostPage, 1, true)) {
-	// 	terminalPrintString(failedStr, strlen(failedStr));
-	// 	terminalPrintChar('\n');
-	// 	return false;
-	// }
-	// terminalPrintString(doneStr, strlen(doneStr));
-	// terminalPrintChar('\n');
-
-	terminalPrintString(initHeapCompleteStr, strlen(initHeapCompleteStr));
-	return true;
-}
-
-// Debug helper to list stats about all heap regions
-void listAllHeapRegions() {
-	terminalPrintString(listHeapStr, strlen(listHeapStr));
-	terminalPrintSpaces4();
-	terminalPrintString(heapHeaderStr, strlen(heapHeaderStr));
-	HeapHeader *header = heapRegionsList;
-	while(header) {
-		terminalPrintSpaces4();
-		terminalPrintHex(&header, sizeof(header));
-		terminalPrintChar(' ');
-		terminalPrintHex(&header->size, sizeof(header->size));
-		terminalPrintChar(' ');
-		terminalPrintDecimal(header->entryCount);
-		terminalPrintSpaces4();
-		terminalPrintChar(' ');
-		terminalPrintHex(&header->remaining, sizeof(header->remaining));
-		terminalPrintChar('\n');
-		header = header->next;
+// Returns a memory chunk from one of the kernel heap regions
+// Unsafe to call before at least one heap region is created
+void* Kernel::Memory::Heap::malloc(size_t count) {
+	terminalPrintString("malloc", 6);
+	terminalPrintDecimal(count);
+	terminalPrintChar('\n');
+	// hangSystem();
+	if (!heapList) {
+		terminalPrintString(noHeapsStr, strlen(noHeapsStr));
+		panic();
 	}
-}
 
-void* kernelMalloc(size_t count) {
 	// FIXME: All heap regions are currently of size 2MiB so serving more than that is not possible
-	if (count == 0 || count >= HEAP_NEW_REGION_SIZE - sizeof(HeapHeader)) {
+	if (count == 0 || count >= (newRegionSize - sizeof(Header) - sizeof(Entry))) {
+		terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
+		terminalPrintString(mallocInvalidCountStr, strlen(mallocInvalidCountStr));
+		terminalPrintHex(&count, sizeof(count));
+		terminalPrintChar('\n');
+		panic();
 		return nullptr;
 	}
 
-	// Align count to HEAP_MIN_BLOCK_SIZE
-	if (count % HEAP_MIN_BLOCK_SIZE) {
-		count += HEAP_MIN_BLOCK_SIZE - (count % HEAP_MIN_BLOCK_SIZE);
+	// Align count to minBlockSize
+	if (count % minBlockSize > 0) {
+		count += minBlockSize - (count % minBlockSize);
 	}
 
-	HeapHeader *heap = latestHeapSearched;
-	if (count > heap->remaining) {
-		heap = heapRegionsList;
-	}
-	while (heap) {
-		if (count <= heap->remaining) {
-			HeapEntry *heapEntry = heap->latestEntrySearched;
-			bool freeEntryFound = true;
-			// lastEntrySearched is guaranteed to be nullptr or point to a free area in the heap
-			if (!heapEntry || count > heapEntry->size) {
-				// Search through all the entries in the heap and find the first fit
-				heapEntry = (HeapEntry*)((uint64_t)heap + sizeof(HeapHeader));
-				freeEntryFound = false;
-				while (heapEntry) {
-					if (heapEntry->signature == HEAP_ENTRY_FREE && count <= heapEntry->size) {
-						freeEntryFound = true;
-						break;
-					}
-					heapEntry = nextHeapEntry(heap, heapEntry);
-				}
+	void *mallocedValue = nullptr;
+	Header *currentHeap = heapList;
+	while (currentHeap) {
+		if (count <= currentHeap->remaining) {
+			Entry *entry = (Entry*)((uint64_t)currentHeap + sizeof(Header));
+			while (
+				entry &&
+				validHeapEntry(currentHeap, entry) &&
+				entry->signature != Signature::Free &&
+				entry->size >= count
+			) {
+				entry = nextHeapEntry(currentHeap, entry);
 			}
-			if (freeEntryFound) {
-				uint32_t originalSize = heapEntry->size;
-				heapEntry->signature = HEAP_ENTRY_USED;
-				heapEntry->size = count;
-				heap->remaining -= count;
-				++heap->entryCount;
-				void *mallocedValue = (void*)((uint64_t)heapEntry + sizeof(HeapEntry));
-				heap->entryTable[heap->entryCount - 1] = mallocedValue;
-				HeapEntry *newEntry = nextHeapEntry(heap, heapEntry);
-				if (!newEntry) {
-					// mallocedValue is the last entry
-					heap->remaining = 0;
-					heap->latestEntrySearched = nullptr;
-				} else if (newEntry->signature != HEAP_ENTRY_USED) {
-					newEntry->signature = HEAP_ENTRY_FREE;
-					newEntry->size = originalSize - count - sizeof(HeapEntry);
-					heap->latestEntrySearched = newEntry;
-				} else {
-					heap->latestEntrySearched = nullptr;
-				}
-				return mallocedValue;
+
+			// Break the free block only if the newly created free block
+			// can occupy at least minBlockSize
+			// terminalPrintString("[f!", 3);
+			// terminalPrintHex(entry, 8);
+			// terminalPrintString("!f]", 3);
+			entry->signature = Signature::Used;
+			const size_t newFreeEntryRemaining = entry->size - count - sizeof(Entry);
+			if (newFreeEntryRemaining >= minBlockSize) {
+				entry->size = count;
+				Entry *newFreeEntry = (Entry*)((uint64_t)entry + entry->size + sizeof(Entry));
+				newFreeEntry->signature = Signature::Free;
+				newFreeEntry->size = newFreeEntryRemaining;
+				currentHeap->remaining -= (count + sizeof(Entry));
+				// terminalPrintString("[m!", 3);
+				// terminalPrintHex(entry, 8);
+				// terminalPrintHex(&newFreeEntry, 8);
+				// terminalPrintHex(newFreeEntry, 8);
+				// terminalPrintHex((void*)(0xffffffff800851c8UL), 8);
+				// terminalPrintString("!m]", 3);
+			} else {
+				currentHeap->remaining -= entry->size;
 			}
+			mallocedValue = (void*)((uint64_t)entry + sizeof(Entry));
+			// terminalPrintString("[v!", 3);
+			// terminalPrintHex(&mallocedValue, 8);
+			// terminalPrintString("!v]", 3);
+			currentHeap->entryTable[currentHeap->entryCount] = mallocedValue;
+			++currentHeap->entryCount;
+			break;
 		}
-		heap = heap->next;
+		currentHeap = currentHeap->next;
 	}
 
-	// Traversed all the heap regions but couldn't find a free region big enough
-	// TODO: Create a new heap region and use that
-	return nullptr;
+	// Traversed all existing heap regions
+	// TODO: Create new heap region and return result of recursive call
+
+	// TODO: remove expensive operation of checking integrity of all heaps for each malloc
+	currentHeap = heapList;
+	while (currentHeap) {
+		if (!validHeap(currentHeap)) {
+			return nullptr;
+		}
+		currentHeap = currentHeap->next;
+	}
+
+	return mallocedValue;
 }
 
-void kernelFree(void *address) {
-	uint64_t addr = (uint64_t) address;
-	HeapHeader *heap = heapRegionsList;
+void Kernel::Memory::Heap::free(void *address) {
+	uint64_t addr = (uint64_t)address;
+	Header *heap = heapList;
+	bool freed = false;
 	while (heap) {
 		// Ensure the address is within the heap's bounds
 		if (
-			(addr >= (uint64_t)heap + sizeof(HeapHeader) + sizeof(HeapEntry)) &&
+			(addr >= (uint64_t)heap + sizeof(Header) + sizeof(Entry)) &&
 			(addr < (uint64_t)heap + heap->size)
 		) {
 			// Check if this address is allocated in the current heap
@@ -183,26 +144,167 @@ void kernelFree(void *address) {
 			if (entryFound) {
 				--heap->entryCount;
 				heap->entryTable[i] = heap->entryTable[heap->entryCount];
-				heap->latestEntrySearched = (HeapEntry*)(addr - sizeof(HeapEntry));
-				heap->latestEntrySearched->signature = HEAP_ENTRY_FREE;
-				heap->remaining += heap->latestEntrySearched->size;
+				Entry *entry = (Entry*)(addr - sizeof(Entry));
+				entry->signature = Signature::Free;
+				heap->remaining += entry->size;
 				// TODO: defrag the heap
-				return;
+				freed = true;
+				break;
 			}
 		}
 		heap = heap->next;
 	}
+
+	// TODO: remove expensive operation of checking integrity of all heaps for each free
+	Header *currentHeap = heapList;
+	while (currentHeap) {
+		if (!validHeap(currentHeap)) {
+			return;
+		}
+		currentHeap = currentHeap->next;
+	}
+
+	if (freed) {
+		return;
+	}
+
+	terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
 	terminalPrintString(invalidFreeStr, strlen(invalidFreeStr));
 	terminalPrintHex(&address, sizeof(address));
 	terminalPrintChar('\n');
-	Kernel::hangSystem();
+	panic();
 }
 
-static HeapEntry* nextHeapEntry(HeapHeader *heap, HeapEntry *heapEntry) {
+static bool validHeap(Kernel::Memory::Heap::Header *heap) {
+	using namespace Kernel::Memory::Heap;
+	size_t total = sizeof(Header);
+	Entry *entry = (Entry*)((uint64_t)heap + sizeof(Header));
+	while (entry && validHeapEntry(heap, entry)) {
+		total += (sizeof(Entry) + entry->size);
+		entry = nextHeapEntry(heap, entry);
+	}
+	if (total == heap->size) {
+		return true;
+	}
+	terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
+	terminalPrintString(corruptHeapStr, strlen(corruptHeapStr));
+	terminalPrintHex(&heap, sizeof(heap));
+	terminalPrintChar('\n');
+	Kernel::panic();
+	return false;
+}
+
+// Creates a new heap region of size Kernel::Memory::Heap::newRegionSize,
+// corresponding entry table of size Kernel::Memory::Heap::entryTableSize,
+// and adds it to the heap regions list
+// Assumes the newHeapAddress passed is a region in kernel address space
+// of total size of heap + entry table
+// Returns true if the operation was successful
+bool Kernel::Memory::Heap::create(void *newHeapAddress, void **entryTable) {
+	PageRequestResult requestResult = Physical::requestPages(newRegionSize / pageSize, 0);
+	if (
+		requestResult.address == INVALID_ADDRESS ||
+		requestResult.allocatedCount != (newRegionSize/ pageSize) ||
+		!Virtual::mapPages(newHeapAddress, requestResult.address, requestResult.allocatedCount, 0)
+	) {
+		return false;
+	}
+	memset(newHeapAddress, 0, newRegionSize);
+	requestResult = Physical::requestPages(entryTableSize / pageSize, 0);
+	if (
+		requestResult.address == INVALID_ADDRESS ||
+		requestResult.allocatedCount != (entryTableSize / pageSize) ||
+		!Virtual::mapPages(
+			(void*)((uint64_t)newHeapAddress + newRegionSize),
+			requestResult.address,
+			requestResult.allocatedCount, 0
+		)
+	) {
+		return false;
+	}
+	Header *currentHeap = nullptr;
+	if (!heapList) {
+		heapList = (Header*)newHeapAddress;
+		heapList->previous = nullptr;
+	} else {
+		currentHeap = heapList;
+		while(currentHeap->next) {
+			currentHeap = currentHeap->next;
+		}
+		currentHeap->next = (Header*)newHeapAddress;
+		((Header*)newHeapAddress)->previous = currentHeap;
+	}
+	currentHeap = (Header*)newHeapAddress;
+	currentHeap->entryCount = 0;
+	currentHeap->entryTable = entryTable;
+	currentHeap->remaining = newRegionSize - sizeof(Header) - sizeof(Entry);
+	currentHeap->size = newRegionSize;
+	currentHeap->next = nullptr;
+	Entry *freeEntry = (Entry*)((uint64_t)currentHeap + sizeof(Header));
+	freeEntry->signature = Signature::Free;
+	freeEntry->size = currentHeap->remaining;
+	return true;
+}
+
+static Kernel::Memory::Heap::Entry* nextHeapEntry(
+	Kernel::Memory::Heap::Header *heap,
+	Kernel::Memory::Heap::Entry *entry
+) {
+	using namespace Kernel::Memory::Heap;
 	uint64_t heapEnd = (uint64_t)heap + heap->size;
-	uint64_t newHeapEntry = (uint64_t)heapEntry + sizeof(HeapEntry) + heapEntry->size;
-	if (newHeapEntry >= heapEnd || heapEnd - newHeapEntry - sizeof(HeapEntry) < HEAP_MIN_BLOCK_SIZE) {
+	uint64_t nextEntry = (uint64_t)entry + sizeof(Entry) + entry->size;
+	if (nextEntry >= heapEnd || heapEnd - nextEntry - sizeof(Entry) < minBlockSize) {
 		return nullptr;
 	}
-	return (HeapEntry*)newHeapEntry;
+	return (Entry*)nextEntry;
+}
+
+// Returns true only if heap entry signature is Signature::Free or Signature::Used,
+// size is less than heap->remaining and heap->size,
+// and size is minimum minBlockSize
+static bool validHeapEntry(
+	Kernel::Memory::Heap::Header *heap,
+	Kernel::Memory::Heap::Entry *entry
+) {
+	using namespace Kernel::Memory::Heap;
+	if (
+		(entry->signature == Signature::Free || entry->signature == Signature::Used) &&
+		entry->size <= heap->remaining &&
+		entry->size <= (heap->size - sizeof(Header) - sizeof(Entry)) &&
+		entry->size >= minBlockSize
+	) {
+		return true;
+	}
+	terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
+	terminalPrintString(corruptEntryStr, strlen(corruptEntryStr));
+	terminalPrintHex(&entry, sizeof(entry));
+	terminalPrintString(corruptEntryContStr, strlen(corruptEntryContStr));
+	terminalPrintHex(&heap, sizeof(heap));
+	terminalPrintChar('\n');
+	terminalPrintHex(entry, 8);
+	Kernel::panic();
+	return false;
+}
+
+// Debug helper to list stats about all heap regions
+void Kernel::Memory::Heap::listRegions(bool forwardDirection) {
+	terminalPrintString(listStr, strlen(listStr));
+	terminalPrintString(listHeaderStr, strlen(listHeaderStr));
+	Header *currentHeap = heapList;
+	if (!forwardDirection) {
+		while (currentHeap->next) {
+			currentHeap = currentHeap->next;
+		}
+	}
+	while (currentHeap) {
+		terminalPrintHex(&currentHeap, sizeof(currentHeap));
+		terminalPrintChar(' ');
+		terminalPrintHex(&currentHeap->entryCount, sizeof(currentHeap->entryCount));
+		terminalPrintChar(' ');
+		terminalPrintHex(&currentHeap->remaining, sizeof(currentHeap->remaining));
+		terminalPrintChar(' ');
+		terminalPrintHex(&currentHeap->entryTable, sizeof(currentHeap->entryTable));
+		terminalPrintChar('\n');
+		currentHeap = forwardDirection ? currentHeap->next : currentHeap->previous;
+	}
 }

@@ -1,7 +1,6 @@
 #include <commonstrings.h>
 #include <cstring>
 #include <kernel.h>
-#include <heapmemmgmt.h>
 #include <terminal.h>
 
 static RSDPDescriptor2* searchRsdp();
@@ -133,7 +132,7 @@ bool parseAcpi3() {
 		return false;
 	}
 	// Copy the XSDT to heap
-	xsdt = (ACPISDTHeader*)kernelMalloc(oldXsdt->length);
+	xsdt = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldXsdt->length);
 	memcpy(xsdt, oldXsdt, oldXsdt->length);
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
@@ -157,13 +156,13 @@ bool parseAcpi3() {
 		return false;
 	}
 	// Copy the tables to heap
-	apicSdtHeader = (ACPISDTHeader*)kernelMalloc(oldApic->length);
+	apicSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldApic->length);
 	memcpy(apicSdtHeader, oldApic, oldApic->length);
-	hpetSdtHeader = (ACPISDTHeader*)kernelMalloc(oldHpet->length);
+	hpetSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldHpet->length);
 	memcpy(hpetSdtHeader, oldHpet, oldHpet->length);
-	mcfgSdtHeader = (ACPISDTHeader*)kernelMalloc(oldMcfg->length);
+	mcfgSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldMcfg->length);
 	memcpy(mcfgSdtHeader, oldMcfg, oldMcfg->length);
-	ssdtHeader = (ACPISDTHeader*)kernelMalloc(oldSsdt->length);
+	ssdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldSsdt->length);
 	memcpy(ssdtHeader, oldSsdt, oldSsdt->length);
 	// Free the kernel page used for parsing XSDT
 	Kernel::Memory::Virtual::freePages(

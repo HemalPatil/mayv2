@@ -2,7 +2,6 @@
 #include <apic.h>
 #include <commonstrings.h>
 #include <cstring>
-#include <heapmemmgmt.h>
 #include <idt64.h>
 #include <kernel.h>
 #include <terminal.h>
