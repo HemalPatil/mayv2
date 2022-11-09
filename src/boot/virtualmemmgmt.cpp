@@ -38,10 +38,10 @@ static const char* const recursiveStr = "Creating PML4 recursive entry";
 static const char* const checkingMaxBitsStr = "Checking max virtual address bits";
 static const char* const requestErrorStr = "Did not pass MEMORY_REQUEST_CONTIGUOUS to requestVirtualPages\n";
 
-static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceListNode *list);
+static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceNode *list);
 
-Kernel::Memory::Virtual::AddressSpaceListNode *Kernel::Memory::Virtual::generalAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceListNode*)INVALID_ADDRESS;
-Kernel::Memory::Virtual::AddressSpaceListNode *Kernel::Memory::Virtual::kernelAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceListNode*)INVALID_ADDRESS;
+Kernel::Memory::Virtual::AddressSpaceNode *Kernel::Memory::Virtual::generalAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceNode*)INVALID_ADDRESS;
+Kernel::Memory::Virtual::AddressSpaceNode *Kernel::Memory::Virtual::kernelAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceNode*)INVALID_ADDRESS;
 
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool Kernel::Memory::Virtual::initialize(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
@@ -213,7 +213,7 @@ bool Kernel::Memory::Virtual::initialize(void* usableKernelSpaceStart, size_t ke
 		terminalPrintChar('\n');
 		return false;
 	}
-	AddressSpaceListNode *current = (AddressSpaceListNode*)usableKernelSpaceStart;
+	AddressSpaceNode *current = (AddressSpaceNode*)usableKernelSpaceStart;
 	// Used kernel space
 	kernelAddressSpaceList = current;
 	kernelAddressSpaceList->available = false;
@@ -309,8 +309,8 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 	if (count > ((flags & RequestType::Kernel) ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
 		return result;
 	}
-	AddressSpaceListNode *list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
-	AddressSpaceListNode *bestFit = nullptr, *current = list;
+	AddressSpaceNode *list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
+	AddressSpaceNode *bestFit = nullptr, *current = list;
 	while (current) {
 		if (
 			current->available &&
@@ -324,7 +324,7 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 	if (flags & RequestType::Contiguous) {
 		bestFit->available = false;
 		if (bestFit->pageCount != count) {
-			AddressSpaceListNode *newNode = new AddressSpaceListNode();
+			AddressSpaceNode *newNode = new AddressSpaceNode();
 			newNode->available = true;
 			newNode->base = (void*)((uint64_t)bestFit->base + count * pageSize);
 			newNode->pageCount = bestFit->pageCount - count;
@@ -388,8 +388,8 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 		return false;
 	}
 
-	AddressSpaceListNode *list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
-	AddressSpaceListNode *current = list;
+	AddressSpaceNode *list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
+	AddressSpaceNode *current = list;
 	while (current) {
 		uint64_t cBeg = (uint64_t)current->base;
 		uint64_t cEnd = cBeg + current->pageCount * pageSize;
@@ -398,9 +398,9 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 				// Region to be freed fits exactly in current block
 				current->available = true;
 			} else {
-				AddressSpaceListNode *newNode1 = new AddressSpaceListNode();
-				AddressSpaceListNode *newNode2 = new AddressSpaceListNode();
-				AddressSpaceListNode *newNode3 = new AddressSpaceListNode();
+				AddressSpaceNode *newNode1 = new AddressSpaceNode();
+				AddressSpaceNode *newNode2 = new AddressSpaceNode();
+				AddressSpaceNode *newNode3 = new AddressSpaceNode();
 				newNode1->available = false;
 				newNode1->base = current->base;
 				newNode1->pageCount = (vBeg - cBeg) / pageSize;
@@ -471,11 +471,11 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 	return true;
 }
 
-static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceListNode *list) {
+static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceNode *list) {
 	while(list->next) {
 		if (list->available == list->next->available) {
 			// Merge blocks
-			Kernel::Memory::Virtual::AddressSpaceListNode *nextBlock = list->next;
+			Kernel::Memory::Virtual::AddressSpaceNode *nextBlock = list->next;
 			list->pageCount += list->next->pageCount;
 			list->next = list->next->next;
 			if (list->next) {
@@ -682,7 +682,7 @@ void Kernel::Memory::Virtual::displayCrawlPageTablesResult(void *virtualAddress)
 // Debug helper to list all entries in a given virtual address space list
 // depending on flags MEMORY_REQUEST_KERNEL_PAGE
 void Kernel::Memory::Virtual::traverseAddressSpaceList(uint8_t flags, bool forwardDirection) {
-	AddressSpaceListNode *list;
+	AddressSpaceNode *list;
 	if (flags & RequestType::Kernel) {
 		list = kernelAddressSpaceList;
 		terminalPrintString("Kernel", 6);

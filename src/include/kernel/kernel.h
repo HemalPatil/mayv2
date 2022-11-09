@@ -98,17 +98,17 @@ namespace Kernel {
 					CrawlResult(void* virtualAddress);
 			};
 
-			class AddressSpaceListNode {
+			class AddressSpaceNode {
 				public:
 					bool available = false;
 					void *base = INVALID_ADDRESS;
 					size_t pageCount = 0;
-					AddressSpaceListNode *next = nullptr;
-					AddressSpaceListNode *previous = nullptr;
+					AddressSpaceNode *next = nullptr;
+					AddressSpaceNode *previous = nullptr;
 			};
 
-			extern AddressSpaceListNode *generalAddressSpaceList;
-			extern AddressSpaceListNode *kernelAddressSpaceList;
+			extern AddressSpaceNode *generalAddressSpaceList;
+			extern AddressSpaceNode *kernelAddressSpaceList;
 
 			void displayCrawlPageTablesResult(void *virtualAddress);
 			bool freePages(void *virtualAddress, size_t count, uint8_t flags);

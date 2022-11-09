@@ -72,20 +72,20 @@ bool initializeDynamicMemory() {
 	terminalPrintSpaces4();
 	terminalPrintString(movingVirMemListsStr, strlen(movingVirMemListsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	Kernel::Memory::Virtual::AddressSpaceListNode *lists[2] = {
+	Kernel::Memory::Virtual::AddressSpaceNode *lists[2] = {
 		Kernel::Memory::Virtual::kernelAddressSpaceList,
 		Kernel::Memory::Virtual::generalAddressSpaceList 
 	};
-	Kernel::Memory::Virtual::AddressSpaceListNode *newLists[2] = { nullptr, nullptr };
+	Kernel::Memory::Virtual::AddressSpaceNode *newLists[2] = { nullptr, nullptr };
 	for (size_t i = 0; i < 2; ++i) {
-		Kernel::Memory::Virtual::AddressSpaceListNode *current = new Kernel::Memory::Virtual::AddressSpaceListNode();
-		memcpy(current, lists[i], sizeof(Kernel::Memory::Virtual::AddressSpaceListNode));
+		Kernel::Memory::Virtual::AddressSpaceNode *current = new Kernel::Memory::Virtual::AddressSpaceNode();
+		memcpy(current, lists[i], sizeof(Kernel::Memory::Virtual::AddressSpaceNode));
 		newLists[i] = current;
-		Kernel::Memory::Virtual::AddressSpaceListNode *newPrevious = current;
-		Kernel::Memory::Virtual::AddressSpaceListNode *oldCurrent = lists[i]->next;
+		Kernel::Memory::Virtual::AddressSpaceNode *newPrevious = current;
+		Kernel::Memory::Virtual::AddressSpaceNode *oldCurrent = lists[i]->next;
 		while (oldCurrent) {
-			current = new Kernel::Memory::Virtual::AddressSpaceListNode();
-			memcpy(current, oldCurrent, sizeof(Kernel::Memory::Virtual::AddressSpaceListNode));
+			current = new Kernel::Memory::Virtual::AddressSpaceNode();
+			memcpy(current, oldCurrent, sizeof(Kernel::Memory::Virtual::AddressSpaceNode));
 			newPrevious->next = current;
 			current->previous = newPrevious;
 			newPrevious = current;
