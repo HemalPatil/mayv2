@@ -160,7 +160,7 @@ void terminalPrintDecimal(int64_t value) {
 	}
 }
 
-void terminalPrintHex(void* value, size_t size) {
+void terminalPrintHex(const void* const value, size_t size) {
 	terminalPrintString("[0x", 3);
 	char hexValue[size * 2];
 	for (size_t i = 0; i < size; ++i) {

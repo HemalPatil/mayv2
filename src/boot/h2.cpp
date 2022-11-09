@@ -6,14 +6,25 @@
 // since std::vector itself uses new internally which requires a heap
 static Kernel::Memory::Heap::Header *heapList = nullptr;
 
+static bool validHeap(Kernel::Memory::Heap::Header *heap);
+static Kernel::Memory::Heap::Entry* nextHeapEntry(
+	Kernel::Memory::Heap::Header *heap,
+	Kernel::Memory::Heap::Entry *entry
+);
+static bool validHeapEntry(
+	Kernel::Memory::Heap::Header *heap,
+	Kernel::Memory::Heap::Entry *entry
+);
+
 static const char* const listStr = "List of all heap regions\n";
 static const char* const listHeaderStr = "Address              Count                Remaining            Entry table\n";
-static const char* const mallocInvalidCountStr = "Kernel::Memory::Heap::malloc invalid request size ";
+static const char* const heapNamespaceStr = "Kernel::Memory::Heap::";
+static const char* const mallocInvalidCountStr = "malloc invalid request size ";
 static const char* const noHeapsStr = "No kernel heap regions created\n";
-static const char* const corruptEntryStr = "Kernel::Memory::Heap::validEntry corrupt entry ";
+static const char* const corruptEntryStr = "validHeapEntry corrupt entry ";
 static const char* const corruptEntryContStr = " found in heap ";
-static const char* const corruptHeapStr = "Kernel::Memory::Heap::valid corrupt heap ";
-static const char* const invalidFreeStr = "\nKernel::Memory::Heap::free invalid free ";
+static const char* const corruptHeapStr = "validHeap corrupt heap ";
+static const char* const invalidFreeStr = "\nfree invalid free ";
 
 const size_t Kernel::Memory::Heap::newRegionSize = 0x200000;
 const size_t Kernel::Memory::Heap::minBlockSize = 8;
@@ -31,15 +42,16 @@ void* Kernel::Memory::Heap::malloc(size_t count) {
 	// hangSystem();
 	if (!heapList) {
 		terminalPrintString(noHeapsStr, strlen(noHeapsStr));
-		Kernel::panic();
+		panic();
 	}
 
 	// FIXME: All heap regions are currently of size 2MiB so serving more than that is not possible
 	if (count == 0 || count >= (newRegionSize - sizeof(Header) - sizeof(Entry))) {
+		terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
 		terminalPrintString(mallocInvalidCountStr, strlen(mallocInvalidCountStr));
 		terminalPrintHex(&count, sizeof(count));
 		terminalPrintChar('\n');
-		Kernel::panic();
+		panic();
 		return nullptr;
 	}
 
@@ -55,11 +67,11 @@ void* Kernel::Memory::Heap::malloc(size_t count) {
 			Entry *entry = (Entry*)((uint64_t)currentHeap + sizeof(Header));
 			while (
 				entry &&
-				validEntry(currentHeap, entry) &&
+				validHeapEntry(currentHeap, entry) &&
 				entry->signature != Signature::Free &&
 				entry->size >= count
 			) {
-				entry = nextEntry(currentHeap, entry);
+				entry = nextHeapEntry(currentHeap, entry);
 			}
 
 			// Break the free block only if the newly created free block
@@ -101,7 +113,7 @@ void* Kernel::Memory::Heap::malloc(size_t count) {
 	// TODO: remove expensive operation of checking integrity of all heaps for each malloc
 	currentHeap = heapList;
 	while (currentHeap) {
-		if (!valid(currentHeap)) {
+		if (!validHeap(currentHeap)) {
 			return nullptr;
 		}
 		currentHeap = currentHeap->next;
@@ -146,7 +158,7 @@ void Kernel::Memory::Heap::free(void *address) {
 	// TODO: remove expensive operation of checking integrity of all heaps for each free
 	Header *currentHeap = heapList;
 	while (currentHeap) {
-		if (!valid(currentHeap)) {
+		if (!validHeap(currentHeap)) {
 			return;
 		}
 		currentHeap = currentHeap->next;
@@ -156,22 +168,25 @@ void Kernel::Memory::Heap::free(void *address) {
 		return;
 	}
 
+	terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
 	terminalPrintString(invalidFreeStr, strlen(invalidFreeStr));
 	terminalPrintHex(&address, sizeof(address));
 	terminalPrintChar('\n');
-	Kernel::panic();
+	panic();
 }
 
-bool Kernel::Memory::Heap::valid(Header *heap) {
+static bool validHeap(Kernel::Memory::Heap::Header *heap) {
+	using namespace Kernel::Memory::Heap;
 	size_t total = sizeof(Header);
 	Entry *entry = (Entry*)((uint64_t)heap + sizeof(Header));
-	while (entry && validEntry(heap, entry)) {
+	while (entry && validHeapEntry(heap, entry)) {
 		total += (sizeof(Entry) + entry->size);
-		entry = nextEntry(heap, entry);
+		entry = nextHeapEntry(heap, entry);
 	}
 	if (total == heap->size) {
 		return true;
 	}
+	terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
 	terminalPrintString(corruptHeapStr, strlen(corruptHeapStr));
 	terminalPrintHex(&heap, sizeof(heap));
 	terminalPrintChar('\n');
@@ -231,7 +246,11 @@ bool Kernel::Memory::Heap::create(void *newHeapAddress, void **entryTable) {
 	return true;
 }
 
-Kernel::Memory::Heap::Entry* Kernel::Memory::Heap::nextEntry(Header *heap, Entry *entry) {
+static Kernel::Memory::Heap::Entry* nextHeapEntry(
+	Kernel::Memory::Heap::Header *heap,
+	Kernel::Memory::Heap::Entry *entry
+) {
+	using namespace Kernel::Memory::Heap;
 	uint64_t heapEnd = (uint64_t)heap + heap->size;
 	uint64_t nextEntry = (uint64_t)entry + sizeof(Entry) + entry->size;
 	if (nextEntry >= heapEnd || heapEnd - nextEntry - sizeof(Entry) < minBlockSize) {
@@ -243,7 +262,11 @@ Kernel::Memory::Heap::Entry* Kernel::Memory::Heap::nextEntry(Header *heap, Entry
 // Returns true only if heap entry signature is Signature::Free or Signature::Used,
 // size is less than heap->remaining and heap->size,
 // and size is minimum minBlockSize
-bool Kernel::Memory::Heap::validEntry(Header *heap, Entry *entry) {
+static bool validHeapEntry(
+	Kernel::Memory::Heap::Header *heap,
+	Kernel::Memory::Heap::Entry *entry
+) {
+	using namespace Kernel::Memory::Heap;
 	if (
 		(entry->signature == Signature::Free || entry->signature == Signature::Used) &&
 		entry->size <= heap->remaining &&
@@ -252,6 +275,7 @@ bool Kernel::Memory::Heap::validEntry(Header *heap, Entry *entry) {
 	) {
 		return true;
 	}
+	terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
 	terminalPrintString(corruptEntryStr, strlen(corruptEntryStr));
 	terminalPrintHex(&entry, sizeof(entry));
 	terminalPrintString(corruptEntryContStr, strlen(corruptEntryContStr));

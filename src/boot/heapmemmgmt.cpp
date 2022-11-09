@@ -18,61 +18,61 @@ static const char* const heapHeaderStr = "Heap start           Size             
 static const char* const invalidFreeStr = "\nInvalid kernelFree operation ";
 
 bool initializeDynamicMemory() {
-	void *ghostPage = Kernel::Memory::Virtual::kernelAddressSpaceList;
-	terminalPrintString(initHeapStr, strlen(initHeapStr));
-	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	terminalPrintChar('\n');
+	// void *ghostPage = Kernel::Memory::Virtual::kernelAddressSpaceList;
+	// terminalPrintString(initHeapStr, strlen(initHeapStr));
+	// terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	// terminalPrintChar('\n');
 
-	// Initalize the heap region reserved by virtual memory manager during its initialization
-	terminalPrintSpaces4();
-	terminalPrintString(creatingHeapHeaderStr, strlen(creatingHeapHeaderStr));
-	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	heapRegionsList->entryCount = 0;
-	heapRegionsList->size = HEAP_NEW_REGION_SIZE;
-	heapRegionsList->remaining = heapRegionsList->size - sizeof(HeapHeader) - sizeof(HeapEntry);
-	heapRegionsList->next = heapRegionsList->previous = nullptr;
-	latestHeapSearched = heapRegionsList;
-	HeapEntry *freeEntry = (HeapEntry*)((uint64_t)heapRegionsList + sizeof(HeapHeader));
-	freeEntry->signature = HEAP_ENTRY_FREE;
-	freeEntry->size = heapRegionsList->remaining;
-	heapRegionsList->latestEntrySearched = freeEntry;
-	terminalPrintString(doneStr, strlen(doneStr));
-	terminalPrintChar('\n');
+	// // Initalize the heap region reserved by virtual memory manager during its initialization
+	// terminalPrintSpaces4();
+	// terminalPrintString(creatingHeapHeaderStr, strlen(creatingHeapHeaderStr));
+	// terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	// heapRegionsList->entryCount = 0;
+	// heapRegionsList->size = HEAP_NEW_REGION_SIZE;
+	// heapRegionsList->remaining = heapRegionsList->size - sizeof(HeapHeader) - sizeof(HeapEntry);
+	// heapRegionsList->next = heapRegionsList->previous = nullptr;
+	// latestHeapSearched = heapRegionsList;
+	// HeapEntry *freeEntry = (HeapEntry*)((uint64_t)heapRegionsList + sizeof(HeapHeader));
+	// freeEntry->signature = HEAP_ENTRY_FREE;
+	// freeEntry->size = heapRegionsList->remaining;
+	// heapRegionsList->latestEntrySearched = freeEntry;
+	// terminalPrintString(doneStr, strlen(doneStr));
+	// terminalPrintChar('\n');
 
-	// Move the virtual address space lists at the end of heap to the heap to make them dynamic
-	// and unmap the ghost page containing the lists
-	terminalPrintSpaces4();
-	terminalPrintString(movingVirMemListsStr, strlen(movingVirMemListsStr));
-	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	Kernel::Memory::Virtual::AddressSpaceNode *lists[2] = {
-		Kernel::Memory::Virtual::kernelAddressSpaceList,
-		Kernel::Memory::Virtual::generalAddressSpaceList 
-	};
-	Kernel::Memory::Virtual::AddressSpaceNode *newLists[2] = { nullptr, nullptr };
-	for (size_t i = 0; i < 2; ++i) {
-		Kernel::Memory::Virtual::AddressSpaceNode *current = new Kernel::Memory::Virtual::AddressSpaceNode();
-		memcpy(current, lists[i], sizeof(Kernel::Memory::Virtual::AddressSpaceNode));
-		newLists[i] = current;
-		Kernel::Memory::Virtual::AddressSpaceNode *newPrevious = current;
-		Kernel::Memory::Virtual::AddressSpaceNode *oldCurrent = lists[i]->next;
-		while (oldCurrent) {
-			current = new Kernel::Memory::Virtual::AddressSpaceNode();
-			memcpy(current, oldCurrent, sizeof(Kernel::Memory::Virtual::AddressSpaceNode));
-			newPrevious->next = current;
-			current->previous = newPrevious;
-			newPrevious = current;
-			oldCurrent = oldCurrent->next;
-		}
-	}
-	Kernel::Memory::Virtual::kernelAddressSpaceList = newLists[0];
-	Kernel::Memory::Virtual::generalAddressSpaceList = newLists[1];
-	if (!Kernel::Memory::Virtual::unmapPages(ghostPage, 1, true)) {
-		terminalPrintString(failedStr, strlen(failedStr));
-		terminalPrintChar('\n');
-		return false;
-	}
-	terminalPrintString(doneStr, strlen(doneStr));
-	terminalPrintChar('\n');
+	// // Move the virtual address space lists at the end of heap to the heap to make them dynamic
+	// // and unmap the ghost page containing the lists
+	// terminalPrintSpaces4();
+	// terminalPrintString(movingVirMemListsStr, strlen(movingVirMemListsStr));
+	// terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	// Kernel::Memory::Virtual::AddressSpaceNode *lists[2] = {
+	// 	Kernel::Memory::Virtual::kernelAddressSpaceList,
+	// 	Kernel::Memory::Virtual::generalAddressSpaceList 
+	// };
+	// Kernel::Memory::Virtual::AddressSpaceNode *newLists[2] = { nullptr, nullptr };
+	// for (size_t i = 0; i < 2; ++i) {
+	// 	Kernel::Memory::Virtual::AddressSpaceNode *current = new Kernel::Memory::Virtual::AddressSpaceNode();
+	// 	memcpy(current, lists[i], sizeof(Kernel::Memory::Virtual::AddressSpaceNode));
+	// 	newLists[i] = current;
+	// 	Kernel::Memory::Virtual::AddressSpaceNode *newPrevious = current;
+	// 	Kernel::Memory::Virtual::AddressSpaceNode *oldCurrent = lists[i]->next;
+	// 	while (oldCurrent) {
+	// 		current = new Kernel::Memory::Virtual::AddressSpaceNode();
+	// 		memcpy(current, oldCurrent, sizeof(Kernel::Memory::Virtual::AddressSpaceNode));
+	// 		newPrevious->next = current;
+	// 		current->previous = newPrevious;
+	// 		newPrevious = current;
+	// 		oldCurrent = oldCurrent->next;
+	// 	}
+	// }
+	// Kernel::Memory::Virtual::kernelAddressSpaceList = newLists[0];
+	// Kernel::Memory::Virtual::generalAddressSpaceList = newLists[1];
+	// if (!Kernel::Memory::Virtual::unmapPages(ghostPage, 1, true)) {
+	// 	terminalPrintString(failedStr, strlen(failedStr));
+	// 	terminalPrintChar('\n');
+	// 	return false;
+	// }
+	// terminalPrintString(doneStr, strlen(doneStr));
+	// terminalPrintChar('\n');
 
 	terminalPrintString(initHeapCompleteStr, strlen(initHeapCompleteStr));
 	return true;

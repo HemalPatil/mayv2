@@ -74,20 +74,6 @@ extern "C" {
 		Kernel::panic();
 	}
 
-	// Initialize dynamic memory
-	if (!initializeDynamicMemory()) {
-		Kernel::panic();
-	}
-
-	// Run the global constructors
-	terminalPrintString(globalCtorStr, strlen(globalCtorStr));
-	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	for (size_t i = 0; i < Kernel::infoTable->globalCtorsCount; ++i) {
-		globalCtors[i]();
-	}
-	terminalPrintString(doneStr, strlen(doneStr));
-	terminalPrintChar('\n');
-
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();
 	setupIdt64();
@@ -95,6 +81,10 @@ extern "C" {
 		Kernel::panic();
 	}
 	terminalPrintChar('\n');
+
+	Kernel::Memory::Virtual::showAddressSpaceList();
+	Kernel::Memory::Virtual::showAddressSpaceList(false);
+	Kernel::hangSystem();
 
 	if (!parseAcpi3()) {
 		Kernel::panic();

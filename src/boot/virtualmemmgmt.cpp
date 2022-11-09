@@ -31,21 +31,21 @@ static const char* const reservingHeapStr = "Reserving memory for dynamic memory
 static const char* const pageTablesStr = "Page tables of ";
 static const char* const isCanonicalStr = "isCanonical = ";
 static const char* const crawlTableHeader = "L Tables               Physical tables      Indexes              C\n";
-static const char* const addrSpaceStr = " address space list ";
-static const char* const addrSpaceHeader = "Base                 Page count           Available Node address\n";
+static const char* const addrSpaceStr = " address space list\n";
+static const char* const addrSpaceHeader = "Base                 Page count           Available\n";
 static const char* const creatingListsStr = "Creating virtual address space lists";
 static const char* const recursiveStr = "Creating PML4 recursive entry";
 static const char* const checkingMaxBitsStr = "Checking max virtual address bits";
-static const char* const requestErrorStr = "Did not pass MEMORY_REQUEST_CONTIGUOUS to requestVirtualPages\n";
+static const char* const virtualNamespaceStr = "Kernel::Memory::Virtual::";
+static const char* const freeErrorStr = "freePages tried to free already free pages";
+static const char* const requestErrorStr = "requestPages did not pass RequestType::Contiguous\n";
 static const char* const globalCtorStr = "Running global constructors";
+static const char* const listDefragFailStr = "defragAddressSpaceList integrity check failed for ";
 
-static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceNode *list);
+static void defragAddressSpaceList(bool kernelList = true);
 
-Kernel::Memory::Virtual::AddressSpaceNode *Kernel::Memory::Virtual::generalAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceNode*)INVALID_ADDRESS;
-Kernel::Memory::Virtual::AddressSpaceNode *Kernel::Memory::Virtual::kernelAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceNode*)INVALID_ADDRESS;
-
-std::vector<Kernel::Memory::Virtual::AddressSpaceNode> Kernel::Memory::Virtual::g2(10);
-std::vector<Kernel::Memory::Virtual::AddressSpaceNode> Kernel::Memory::Virtual::k2(2);
+Kernel::Memory::Virtual::AddressSpaceList Kernel::Memory::Virtual::generalAddressSpaceList(8);
+Kernel::Memory::Virtual::AddressSpaceList Kernel::Memory::Virtual::kernelAddressSpaceList(2);
 
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool Kernel::Memory::Virtual::initialize(
@@ -196,12 +196,8 @@ bool Kernel::Memory::Virtual::initialize(
 	}
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
-	hangSystem();
+	// hangSystem();
 
-	// Create a ghost page which will contain virtual address space lists
-	// i.e. this page is mapped in kernel space but no entry for it exists in the kernel space list
-	// Dynamic memory manager will take care of making these lists
-	// dynamic during its initialization and unmap the ghost page
 	// Used areas of virtual address space so far
 	// 1) 0x0 to L32K64_SCRATCH_BASE
 	// 2) (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB
@@ -220,82 +216,52 @@ bool Kernel::Memory::Virtual::initialize(
 		terminalPrintChar('\n');
 		return false;
 	}
-	AddressSpaceNode *current = (AddressSpaceNode*)usableKernelSpaceStart;
 	// Used kernel space
-	kernelAddressSpaceList = current;
-	kernelAddressSpaceList->available = false;
-	kernelAddressSpaceList->base = (void*) KERNEL_HIGHERHALF_ORIGIN;
-	kernelAddressSpaceList->pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / pageSize;
-	kernelAddressSpaceList->next = ++current;
-	kernelAddressSpaceList->previous = nullptr;
+	kernelAddressSpaceList.at(0).available = false;
+	kernelAddressSpaceList.at(0).base = (void*) KERNEL_HIGHERHALF_ORIGIN;
+	kernelAddressSpaceList.at(0).pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / pageSize;
 	// Available kernel space
-	current->available = true;
-	current->base = usableKernelSpaceStart;
+	kernelAddressSpaceList.at(1).available = true;
+	kernelAddressSpaceList.at(1).base = usableKernelSpaceStart;
 	kernelPagesAvailableCount =
-		current->pageCount =
+		kernelAddressSpaceList.at(1).pageCount =
 		((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / pageSize;
-	current->next = nullptr;
-	current->previous = kernelAddressSpaceList;
-	++current;
 	// General 0 to L32K64_SCRATCH_BASE used
-	generalAddressSpaceList = current;
-	generalAddressSpaceList->available = false;
-	generalAddressSpaceList->base = 0;
-	generalAddressSpaceList->pageCount = L32K64_SCRATCH_BASE / pageSize;
-	generalAddressSpaceList->next = ++current;
-	generalAddressSpaceList->previous = nullptr;
+	generalAddressSpaceList.at(0).available = false;
+	generalAddressSpaceList.at(0).base = 0;
+	generalAddressSpaceList.at(0).pageCount = L32K64_SCRATCH_BASE / pageSize;
 	// General L32K64_SCRATCH_BASE to (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) available
-	current->available = true;
-	current->base = (void*) L32K64_SCRATCH_BASE;
-	current->pageCount = L32K64_SCRATCH_LENGTH / pageSize;
-	current->next = current + 1;
-	current->previous = current - 1;
-	generalPagesAvailableCount += current->pageCount;
-	++current;
+	generalAddressSpaceList.at(1).available = true;
+	generalAddressSpaceList.at(1).base = (void*) L32K64_SCRATCH_BASE;
+	generalAddressSpaceList.at(1).pageCount = L32K64_SCRATCH_LENGTH / pageSize;
+	generalPagesAvailableCount += generalAddressSpaceList.at(1).pageCount;
 	// General (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB used
-	current->available = false;
-	current->base = (void*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH);
-	current->pageCount = (mib1 - L32K64_SCRATCH_BASE - L32K64_SCRATCH_LENGTH) / pageSize;
-	current->next = current + 1;
-	current->previous = current - 1;
-	++current;
+	generalAddressSpaceList.at(2).available = false;
+	generalAddressSpaceList.at(2).base = (void*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH);
+	generalAddressSpaceList.at(2).pageCount = (mib1 - L32K64_SCRATCH_BASE - L32K64_SCRATCH_LENGTH) / pageSize;
 	// General 1MiB to valid lower half canonical address available
-	current->available = true;
-	current->base = (void*) mib1;
-	current->pageCount = (nonCanonicalStart - mib1) / pageSize;
-	current->next = current + 1;
-	current->previous = current - 1;
-	generalPagesAvailableCount += current->pageCount;
-	++current;
+	generalAddressSpaceList.at(3).available = true;
+	generalAddressSpaceList.at(3).base = (void*) mib1;
+	generalAddressSpaceList.at(3).pageCount = (nonCanonicalStart - mib1) / pageSize;
+	generalPagesAvailableCount += generalAddressSpaceList.at(3).pageCount;
 	// Mark non canonical address range as used
-	current->available = false;
-	current->base = (void*) nonCanonicalStart;
-	current->pageCount = (nonCanonicalEnd - nonCanonicalStart) / pageSize;
-	current->next = current + 1;
-	current->previous = current - 1;
-	++current;
+	generalAddressSpaceList.at(4).available = false;
+	generalAddressSpaceList.at(4).base = (void*) nonCanonicalStart;
+	generalAddressSpaceList.at(4).pageCount = (nonCanonicalEnd - nonCanonicalStart) / pageSize;
 	// General valid higher half canonical address to PML4 recursive map available
-	current->available = true;
-	current->base = (void*) nonCanonicalEnd;
-	current->pageCount = (ptMask - nonCanonicalEnd) / pageSize;
-	current->next = current + 1;
-	current->previous = current - 1;
-	generalPagesAvailableCount += current->pageCount;
-	++current;
+	generalAddressSpaceList.at(5).available = true;
+	generalAddressSpaceList.at(5).base = (void*) nonCanonicalEnd;
+	generalAddressSpaceList.at(5).pageCount = (ptMask - nonCanonicalEnd) / pageSize;
+	generalPagesAvailableCount += generalAddressSpaceList.at(5).pageCount;
 	// PML4 recursive map used
-	current->available = false;
-	current->base = (void*) ptMask;
-	current->pageCount = ((uint64_t)512 * GIB_1) / pageSize;
-	current->next = current + 1;
-	current->previous = current - 1;
-	++current;
+	generalAddressSpaceList.at(6).available = false;
+	generalAddressSpaceList.at(6).base = (void*) ptMask;
+	generalAddressSpaceList.at(6).pageCount = ((uint64_t)512 * GIB_1) / pageSize;
 	// General PML4 recursive map to KERNEL_HIGHERHALF_ORIGIN available
-	current->available = true;
-	current->base = (void*)(ptMask + 512 * GIB_1);
-	current->pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
-	current->next = nullptr;
-	current->previous = current - 1;
-	generalPagesAvailableCount += current->pageCount;
+	generalAddressSpaceList.at(7).available = true;
+	generalAddressSpaceList.at(7).base = (void*)(ptMask + 512 * GIB_1);
+	generalAddressSpaceList.at(7).pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
+	generalPagesAvailableCount += generalAddressSpaceList.at(7).pageCount;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -303,54 +269,52 @@ bool Kernel::Memory::Virtual::initialize(
 	return true;
 }
 
-// Returns a region in the kernel or general address space depending on MEMORY_REQUEST_KERNEL_PAGE flag
+// Returns a region in the kernel or general address space depending on RequestType::Kernel flag
 // that is the closest fit to the number of requested pages
-// If MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE flag is passed,
+// If RequestType::AllocatePhysical flag is passed,
 // the returned virtual addresses are mapped to newly allocated physical pages
-// When MEMORY_REQUEST_CACHE_DISABLE flag is passed, the physical page is marked as cachedDisabled(1) in the PTE
+// When RequestType::CacheDisable flag is passed, the physical page is marked as cachedDisabled(1) in the PTE
 // Returns INVALID_ADDRESS and allocatedCount = 0 if request count is count == 0
 // or greater than currently available kernel pages
-// Unsafe to call this function until dynamic memory manager is initialized
+// Unsafe to call this function until virtual memory manager is initialized
 Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t count, uint32_t flags) {
 	PageRequestResult result;
 	if (count > ((flags & RequestType::Kernel) ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
 		return result;
 	}
-	AddressSpaceNode *list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
-	AddressSpaceNode *bestFit = nullptr, *current = list;
-	while (current) {
+	AddressSpaceList &list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
+	size_t bestFitIndex = SIZE_MAX;
+	for (size_t i = 0; const auto &block : list) {
 		if (
-			current->available &&
-			current->pageCount >= count &&
-			(bestFit == nullptr || bestFit->pageCount > current->pageCount)
+			block.available &&
+			block.pageCount >= count &&
+			(bestFitIndex == SIZE_MAX || list.at(bestFitIndex).pageCount > block.pageCount)
 		) {
-			bestFit = current;
+			bestFitIndex = i;
 		}
-		current = current->next;
 	}
+	AddressSpaceNode &bestFit = list.at(bestFitIndex);
 	if (flags & RequestType::Contiguous) {
-		bestFit->available = false;
-		if (bestFit->pageCount != count) {
-			AddressSpaceNode *newNode = new AddressSpaceNode();
-			newNode->available = true;
-			newNode->base = (void*)((uint64_t)bestFit->base + count * pageSize);
-			newNode->pageCount = bestFit->pageCount - count;
-			newNode->next = bestFit->next;
-			newNode->previous = bestFit;
-			bestFit->next = newNode;
-			if (newNode->next) {
-				newNode->next->previous = newNode;
-			}
-			bestFit->pageCount = count;
+		bestFit.available = false;
+		if (bestFit.pageCount != count) {
+			list.insert(
+				list.begin() + bestFitIndex,
+				{
+					false,
+					(void*)((uint64_t)bestFit.base + count * pageSize),
+					bestFit.pageCount - count
+				}
+			);
+			bestFit.pageCount = count;
 		}
 		if (flags & RequestType::Kernel) {
 			kernelPagesAvailableCount -= count;
 		} else {
 			generalPagesAvailableCount -= count;
 		}
-		result.address = bestFit->base;
+		result.address = bestFit.base;
 		result.allocatedCount = count;
-		defragAddressSpaceList(list);
+		defragAddressSpaceList((flags & RequestType::Kernel) ? true : false);
 
 		if (flags & RequestType::AllocatePhysical) {
 			size_t total = 0;
@@ -374,6 +338,7 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 	} else {
 		// FIXME: serve non-contiguous virtual addresses
 		// is this case even needed?
+		terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
 		terminalPrintString(requestErrorStr, strlen(requestErrorStr));
 		panic();
 	}
@@ -381,9 +346,9 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 }
 
 // Frees and unmaps virtual pages from the kernel or general address space
-// depending on MEMORY_REQUEST_KERNEL_PAGE flag
+// depending on RequestType::Kernel flag
 // It is assumed all virtual addresses are canonical and pageSize boundary aligned
-// If MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE flag is passed,
+// If RequestType::AllocatePhysical flag is passed,
 // the physical pages to which a virtual page is mapped is also freed
 // Returns false if the virtual pages to be freed do not entirely fit in a used region
 bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint8_t flags) {
@@ -395,104 +360,87 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 		return false;
 	}
 
-	AddressSpaceNode *list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
-	AddressSpaceNode *current = list;
-	while (current) {
-		uint64_t cBeg = (uint64_t)current->base;
-		uint64_t cEnd = cBeg + current->pageCount * pageSize;
-		if (!current->available && cBeg <= vBeg && cEnd >= vEnd) {
-			if (cBeg == vBeg && cEnd == vEnd) {
+	AddressSpaceList &list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
+	for (size_t i = 0; auto &block : list) {
+		uint64_t blockBeg = (uint64_t)block.base;
+		uint64_t blockEnd = blockBeg + block.pageCount * pageSize;
+		if (blockBeg <= vBeg && blockEnd >= vEnd) {
+			if (block.available) {
+				// Tried to free already block
+				terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
+				terminalPrintString(freeErrorStr, strlen(freeErrorStr));
+				panic();
+				return false;
+			}
+			if (blockBeg == vBeg && blockEnd == vEnd) {
 				// Region to be freed fits exactly in current block
-				current->available = true;
+				block.available = true;
 			} else {
-				AddressSpaceNode *newNode1 = new AddressSpaceNode();
-				AddressSpaceNode *newNode2 = new AddressSpaceNode();
-				AddressSpaceNode *newNode3 = new AddressSpaceNode();
-				newNode1->available = false;
-				newNode1->base = current->base;
-				newNode1->pageCount = (vBeg - cBeg) / pageSize;
-				newNode1->next = newNode2;
-				newNode1->previous = current->previous;
-				if (newNode1->previous) {
-					newNode1->previous->next = newNode1;
-				}
-				newNode2->available = true;
-				newNode2->base = (void*)vBeg;
-				newNode2->pageCount = count;
-				newNode2->next = newNode3;
-				newNode2->previous = newNode1;
-				newNode3->available = false;
-				newNode3->base = (void*)vEnd;
-				newNode3->pageCount = (cEnd - vEnd) / pageSize;
-				newNode3->next = current->next;
-				newNode3->previous = newNode2;
-				if (newNode3->next) {
-					newNode3->next->previous = newNode3;
-				}
-				delete current;
-				if (!newNode1->previous) {
-					// newNode1 and by implication current is the first node in the list
-					// current is already freed
-					if (flags & RequestType::Kernel) {
-						kernelAddressSpaceList = newNode1;
-					} else {
-						generalAddressSpaceList = newNode1;
+				list.insert(
+					list.begin() + i + 1,
+					{
+						false,
+						(void*)vEnd,
+						(blockEnd - vEnd) / pageSize
 					}
-				}
-				if (newNode1->pageCount == 0) {
-					// Region to be freed is at the beginning of the current block
-					newNode2->previous = newNode1->previous;
-					delete newNode1;
-					if (newNode2->previous) {
-						newNode2->previous->next = newNode2;
-					} else {
-						// newNode2 is the first node in the list
-						if (flags & RequestType::Kernel) {
-							kernelAddressSpaceList = newNode2;
-						} else {
-							generalAddressSpaceList = newNode2;
-						}
+				);
+				list.insert(
+					list.begin() + i,
+					{
+						false,
+						(void*)block.base,
+						(vBeg - blockBeg) / pageSize
 					}
-				}
-				if (newNode3->pageCount == 0) {
-					// Region to be freed is at the end of the current block
-					newNode2->next = newNode3->next;
-					if (newNode2->next) {
-						newNode2->next->previous = newNode2;
-					}
-					delete newNode3;
-				}
+				);
+				block.available = true;
+				block.base = (void*)vBeg;
+				block.pageCount = count;
 			}
 			if (flags & RequestType::Kernel) {
 				kernelPagesAvailableCount += count;
 			} else {
 				generalPagesAvailableCount += count;
 			}
-			defragAddressSpaceList((flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList);
+			defragAddressSpaceList((flags & RequestType::Kernel) ? true : false);
 
 			unmapPages(virtualAddress, count, flags & RequestType::AllocatePhysical);
 			return true;
 		}
-		current = current->next;
 	}
 	return true;
 }
 
-static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceNode *list) {
-	while(list->next) {
-		if (list->available == list->next->available) {
-			// Merge blocks
-			Kernel::Memory::Virtual::AddressSpaceNode *nextBlock = list->next;
-			list->pageCount += list->next->pageCount;
-			list->next = list->next->next;
-			if (list->next) {
-				list->next->previous = list;
-			}
-			delete nextBlock;
-		} else {
-			// Move to the next block
-			list = list->next;
+static void defragAddressSpaceList(bool kernelList) {
+	using namespace Kernel::Memory::Virtual;
+	Kernel::Memory::Virtual::AddressSpaceList &list = kernelList ? kernelAddressSpaceList : generalAddressSpaceList;
+
+	// Merge all blocks that have same availability
+	for (size_t i = 0; i < list.size() - 1; ++i) {
+		if (list.at(i).available == list.at(i + 1).available) {
+			list.at(i).pageCount += list.at(i + 1).pageCount;
+			list.erase(list.begin() + i + 1);
+			--i;
 		}
+	}
+
+	// Remove blocks with pageCount = 0
+	for (size_t i = 0; i < list.size(); ++i) {
+		if (list.at(i).pageCount == 0) {
+			list.erase(list.begin() + i);
+			--i;
+		}
+	}
+
+	// TODO: remove expensive address space list integrity check
+	size_t total = 0;
+	for (const auto &block : list) {
+		total += block.pageCount;
+	}
+	if (total != (kernelList ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
+		terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
+		terminalPrintString(kernelList ? "Kernel" : "General", kernelList ? 6 : 7);
+		terminalPrintString(listDefragFailStr, strlen(listDefragFailStr));
+		Kernel::panic();
 	}
 }
 
@@ -688,21 +636,13 @@ void Kernel::Memory::Virtual::displayCrawlPageTablesResult(void *virtualAddress)
 
 // Debug helper to list all entries in a given virtual address space list
 // depending on flags MEMORY_REQUEST_KERNEL_PAGE
-void Kernel::Memory::Virtual::traverseAddressSpaceList(uint8_t flags, bool forwardDirection) {
-	AddressSpaceNode *list;
-	if (flags & RequestType::Kernel) {
-		list = kernelAddressSpaceList;
-		terminalPrintString("Kernel", 6);
-	} else {
-		list = generalAddressSpaceList;
-		terminalPrintString("General", 7);
-	}
+void Kernel::Memory::Virtual::showAddressSpaceList(bool kernelList) {
+	std::vector<AddressSpaceNode> &list = kernelList ? kernelAddressSpaceList : generalAddressSpaceList;
+	terminalPrintString(kernelList ? "Kernel" : "General", kernelList ? 6 : 7);
 	terminalPrintString(addrSpaceStr, strlen(addrSpaceStr));
-	terminalPrintHex(&list, sizeof(list));
-	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintString(pagesAvailableStr, strlen(pagesAvailableStr));
-	if (flags & RequestType::Kernel) {
+	if (kernelList) {
 		terminalPrintHex(&kernelPagesAvailableCount, sizeof(kernelPagesAvailableCount));
 	} else {
 		terminalPrintHex(&generalPagesAvailableCount, sizeof(generalPagesAvailableCount));
@@ -710,23 +650,14 @@ void Kernel::Memory::Virtual::traverseAddressSpaceList(uint8_t flags, bool forwa
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintString(addrSpaceHeader, strlen(addrSpaceHeader));
-	if (!forwardDirection) {
-		while (list->next) {
-			list = list->next;
-		}
-	}
-	while (list) {
+
+	for (const auto &x : list) {
 		terminalPrintSpaces4();
-		terminalPrintHex(&list->base, sizeof(list->base));
+		terminalPrintHex(&x.base, sizeof(x.base));
 		terminalPrintChar(' ');
-		terminalPrintHex(&list->pageCount, sizeof(list->pageCount));
+		terminalPrintHex(&x.pageCount, sizeof(x.pageCount));
 		terminalPrintChar(' ');
-		terminalPrintDecimal(list->available);
-		terminalPrintSpaces4();
-		terminalPrintSpaces4();
-		terminalPrintChar(' ');
-		terminalPrintHex(&list, sizeof(list));
+		terminalPrintDecimal(x.available);
 		terminalPrintChar('\n');
-		list = forwardDirection ? list->next : list->previous;
 	}
 }

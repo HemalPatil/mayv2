@@ -220,7 +220,6 @@ Kernel::Memory::Physical::BuddyBitmapIndex Kernel::Memory::Physical::getBuddyBit
 	uint64_t addr = (uint64_t) address;
 	BuddyBitmapIndex index;
 	if (addr >= phyMemPagesTotalCount * pageSize || order >= PHY_MEM_BUDDY_MAX_ORDER) {
-		index.byte = index.bit = SIZE_MAX;
 		return index;
 	}
 	addr >>= (pageSizeShift + order);

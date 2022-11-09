@@ -53,18 +53,16 @@ namespace Kernel {
 			Used
 		};
 
-		class PageRequestResult {
-			public:
-				void* address = INVALID_ADDRESS;
-				size_t allocatedCount = 0;
+		struct PageRequestResult {
+			void* address = INVALID_ADDRESS;
+			size_t allocatedCount = 0;
 		};
 
 		namespace Physical {
 			struct BuddyBitmapIndex {
-				size_t byte;
-				size_t bit;
+				size_t byte = SIZE_MAX;
+				size_t bit = SIZE_MAX;
 			};
-			typedef struct BuddyBitmapIndex BuddyBitmapIndex;
 
 			extern ACPI3Entry *map;
 			extern uint8_t* buddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER];
@@ -101,20 +99,16 @@ namespace Kernel {
 					CrawlResult(void* virtualAddress);
 			};
 
-			class AddressSpaceNode {
-				public:
-					bool available = false;
-					void *base = INVALID_ADDRESS;
-					size_t pageCount = 0;
-					AddressSpaceNode *next = nullptr;
-					AddressSpaceNode *previous = nullptr;
+			struct AddressSpaceNode {
+				bool available = false;
+				void *base = INVALID_ADDRESS;
+				size_t pageCount = 0;
 			};
 
-			extern AddressSpaceNode *generalAddressSpaceList;
-			extern AddressSpaceNode *kernelAddressSpaceList;
+			using AddressSpaceList = std::vector<Kernel::Memory::Virtual::AddressSpaceNode>;
 
-			extern std::vector<AddressSpaceNode> g2;
-			extern std::vector<AddressSpaceNode> k2;
+			extern AddressSpaceList generalAddressSpaceList;
+			extern AddressSpaceList kernelAddressSpaceList;
 
 			void displayCrawlPageTablesResult(void *virtualAddress);
 			bool freePages(void *virtualAddress, size_t count, uint8_t flags);
@@ -127,7 +121,7 @@ namespace Kernel {
 			bool isCanonical(void *address);
 			bool mapPages(void *virtualAddress, void *physicalAddress, size_t count, uint32_t flags);
 			PageRequestResult requestPages(size_t count, uint32_t flags);
-			void traverseAddressSpaceList(uint8_t flags, bool forwardDirection = true);
+			void showAddressSpaceList(bool kernelList = true);
 			bool unmapPages(void *virtualAddress, size_t count, bool freePhysicalPage);
 		}
 
@@ -146,7 +140,6 @@ namespace Kernel {
 				Signature signature;
 				uint32_t size;
 			} __attribute__((packed));
-			typedef struct Entry Entry;
 
 			struct Header {
 				size_t entryCount;
@@ -157,15 +150,11 @@ namespace Kernel {
 				struct Header *next;
 				struct Header *previous;
 			};
-			typedef struct Header Header;
 
-			extern bool valid(Header *heap);
 			extern bool create(void *newHeapAddress, void **entryTable);
 			extern void free(void *address);
 			extern void listRegions(bool forwardDirection = true);
 			extern void* malloc(size_t count);
-			extern Entry* nextEntry(Header *heap, Entry *entry);
-			extern bool validEntry(Header *heap, Entry *entry);
 		}
 	}
 }
