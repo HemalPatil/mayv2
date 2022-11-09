@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <infotable.h>
 #include <pml4t.h>
+#include <vector>
 
 #define GIB_1 (uint64_t)1024 * 1024 * 1024
 #define KIB_4 4 * 1024
@@ -19,6 +20,8 @@
 #define PHY_MEM_BUDDY_MAX_ORDER 10
 
 namespace Kernel {
+	typedef void(*GlobalConstructor)();
+
 	// kernelMain is not exposed to other files deliberately
 
 	extern InfoTable *infoTable;
@@ -110,14 +113,59 @@ namespace Kernel {
 			extern AddressSpaceNode *generalAddressSpaceList;
 			extern AddressSpaceNode *kernelAddressSpaceList;
 
+			extern std::vector<AddressSpaceNode> g2;
+			extern std::vector<AddressSpaceNode> k2;
+
 			void displayCrawlPageTablesResult(void *virtualAddress);
 			bool freePages(void *virtualAddress, size_t count, uint8_t flags);
-			bool initialize(void *usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount);
+			bool initialize(
+				void *usableKernelSpaceStart,
+				size_t kernelLowerHalfSize,
+				size_t phyMemBuddyPagesCount,
+				GlobalConstructor (&globalCtors)[]
+			);
 			bool isCanonical(void *address);
-			bool mapPages(void *virtualAddress, void *physicalAddress, size_t count, uint8_t flags);
+			bool mapPages(void *virtualAddress, void *physicalAddress, size_t count, uint32_t flags);
 			PageRequestResult requestPages(size_t count, uint32_t flags);
-			void traverseAddressSpaceList(uint8_t flags, bool forwardDirection);
+			void traverseAddressSpaceList(uint8_t flags, bool forwardDirection = true);
 			bool unmapPages(void *virtualAddress, size_t count, bool freePhysicalPage);
+		}
+
+		namespace Heap {
+			extern const size_t newRegionSize;
+			extern const size_t minBlockSize;
+			extern const size_t entryTableSize;
+
+			enum Signature : uint32_t {
+				// Represent the strings "FREE" and "USED"
+				Free = 0x45455246,
+				Used = 0x44455355
+			};
+
+			struct Entry {
+				Signature signature;
+				uint32_t size;
+			} __attribute__((packed));
+			typedef struct Entry Entry;
+
+			struct Header {
+				size_t entryCount;
+				void **entryTable;
+				// Entry *latestEntrySearched;
+				size_t remaining;
+				size_t size;
+				struct Header *next;
+				struct Header *previous;
+			};
+			typedef struct Header Header;
+
+			extern bool valid(Header *heap);
+			extern bool create(void *newHeapAddress, void **entryTable);
+			extern void free(void *address);
+			extern void listRegions(bool forwardDirection = true);
+			extern void* malloc(size_t count);
+			extern Entry* nextEntry(Header *heap, Entry *entry);
+			extern bool validEntry(Header *heap, Entry *entry);
 		}
 	}
 }

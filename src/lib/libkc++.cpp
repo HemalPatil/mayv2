@@ -105,10 +105,39 @@ int __cxa_atexit(void (*)(void*), void*, void*) {
 	// TODO: should register the global destructors in some table
 	// Can be avoided since destructing global objects doesn't make much sense
 	// because the kernel never exits
+	terminalPrintString("cAtExit\n", 8);
 	return 0;
 };
 
 }
+
+void *operator new(size_t size) {
+	return Kernel::Memory::Heap::malloc(size);
+}
+
+void *operator new[](size_t size) {
+	return Kernel::Memory::Heap::malloc(size);
+}
+
+void operator delete(void *memory) {
+	Kernel::Memory::Heap::free(memory);
+}
+
+void operator delete[](void *memory) {
+	Kernel::Memory::Heap::free(memory);
+}
+
+// TODO: Do not know the meaning of -Wsized-deallocation but this removes the warning
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+void operator delete(void *memory, size_t size) {
+	Kernel::Memory::Heap::free(memory);
+}
+
+void operator delete[](void *memory, size_t size) {
+	Kernel::Memory::Heap::free(memory);
+}
+#pragma GCC diagnostic pop
 
 namespace std {
 	// Explicit template instantiation of allocator<char> for std::string

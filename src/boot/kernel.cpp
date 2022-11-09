@@ -17,8 +17,6 @@
 #include <tss64.h>
 // #include <vbe.h>
 
-typedef void(*GlobalConstructor)();
-
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
 static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
 static const char* const creatingFsStr = "Creating file systems";
@@ -42,7 +40,7 @@ extern "C" {
 	// identity mapped page 0 of virtual address space
 	// are moved somewhere else during interrupt initialization
 	Kernel::infoTable = infoTableAddress;
-	GlobalConstructor globalCtors[Kernel::infoTable->globalCtorsCount];
+	Kernel::GlobalConstructor globalCtors[Kernel::infoTable->globalCtorsCount];
 	memcpy(
 		globalCtors,
 		(void*)Kernel::infoTable->globalCtorsLocation,
@@ -61,8 +59,8 @@ extern "C" {
 		usablePhyMemStart,
 		lowerHalfSize,
 		higherHalfSize,
-		phyMemBuddyPagesCount)
-	) {
+		phyMemBuddyPagesCount
+	)) {
 		Kernel::panic();
 	}
 
@@ -70,8 +68,9 @@ extern "C" {
 	if (!Kernel::Memory::Virtual::initialize(
 		(void*)(KERNEL_HIGHERHALF_ORIGIN + higherHalfSize),
 		lowerHalfSize,
-		phyMemBuddyPagesCount)
-	) {
+		phyMemBuddyPagesCount,
+		globalCtors
+	)) {
 		Kernel::panic();
 	}
 

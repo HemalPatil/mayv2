@@ -37,14 +37,23 @@ static const char* const creatingListsStr = "Creating virtual address space list
 static const char* const recursiveStr = "Creating PML4 recursive entry";
 static const char* const checkingMaxBitsStr = "Checking max virtual address bits";
 static const char* const requestErrorStr = "Did not pass MEMORY_REQUEST_CONTIGUOUS to requestVirtualPages\n";
+static const char* const globalCtorStr = "Running global constructors";
 
 static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceNode *list);
 
 Kernel::Memory::Virtual::AddressSpaceNode *Kernel::Memory::Virtual::generalAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceNode*)INVALID_ADDRESS;
 Kernel::Memory::Virtual::AddressSpaceNode *Kernel::Memory::Virtual::kernelAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceNode*)INVALID_ADDRESS;
 
+std::vector<Kernel::Memory::Virtual::AddressSpaceNode> Kernel::Memory::Virtual::g2(10);
+std::vector<Kernel::Memory::Virtual::AddressSpaceNode> Kernel::Memory::Virtual::k2(2);
+
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
-bool Kernel::Memory::Virtual::initialize(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
+bool Kernel::Memory::Virtual::initialize(
+	void* usableKernelSpaceStart,
+	size_t kernelLowerHalfSize,
+	size_t phyMemBuddyPagesCount,
+	GlobalConstructor (&globalCtors)[]
+) {
 	uint64_t mib1 = 0x100000;
 	terminalPrintString(initVirMemStr, strlen(initVirMemStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -162,34 +171,32 @@ bool Kernel::Memory::Virtual::initialize(void* usableKernelSpaceStart, size_t ke
 	terminalPrintSpaces4();
 	terminalPrintString(reservingHeapStr, strlen(reservingHeapStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	heapRegionsList = (HeapHeader*)usableKernelSpaceStart;
-	PageRequestResult requestResult = Physical::requestPages(HEAP_NEW_REGION_SIZE / pageSize, 0);
-	if (
-		requestResult.address == INVALID_ADDRESS ||
-		requestResult.allocatedCount != (HEAP_NEW_REGION_SIZE / pageSize) ||
-		!mapPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
+	if (!Heap::create(
+			usableKernelSpaceStart,
+			(void**)((uint64_t)usableKernelSpaceStart + Heap::newRegionSize)
+		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
 	}
-	memset(heapRegionsList, 0, HEAP_NEW_REGION_SIZE);
-	usableKernelSpaceStart = (void*)((uint64_t)usableKernelSpaceStart + HEAP_NEW_REGION_SIZE);
-	const size_t entryTableSize = HEAP_NEW_REGION_SIZE / (sizeof(HeapEntry) + HEAP_MIN_BLOCK_SIZE);
-	requestResult = Physical::requestPages(entryTableSize / pageSize, 0);
-	if (
-		requestResult.address == INVALID_ADDRESS ||
-		requestResult.allocatedCount != (entryTableSize / pageSize) ||
-		!mapPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
-	) {
-		terminalPrintString(failedStr, strlen(failedStr));
-		terminalPrintChar('\n');
-		return false;
-	}
-	heapRegionsList->entryTable = (void**)usableKernelSpaceStart;
-	usableKernelSpaceStart = (void*)((uint64_t)usableKernelSpaceStart + entryTableSize);
+	// Heap::valid((Heap::Header*)usableKernelSpaceStart);
+	// hangSystem();
+	usableKernelSpaceStart = (void*)((uint64_t)usableKernelSpaceStart + Heap::newRegionSize + Heap::entryTableSize);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
+
+	Heap::listRegions();
+	// Run the global constructors
+	terminalPrintSpaces4();
+	terminalPrintString(globalCtorStr, strlen(globalCtorStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	for (size_t i = 0; i < Kernel::infoTable->globalCtorsCount; ++i) {
+		globalCtors[i]();
+	}
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+	hangSystem();
 
 	// Create a ghost page which will contain virtual address space lists
 	// i.e. this page is mapped in kernel space but no entry for it exists in the kernel space list
@@ -203,7 +210,7 @@ bool Kernel::Memory::Virtual::initialize(void* usableKernelSpaceStart, size_t ke
 	terminalPrintSpaces4();
 	terminalPrintString(creatingListsStr, strlen(creatingListsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	requestResult = Physical::requestPages(1, 0);
+	PageRequestResult requestResult = Physical::requestPages(1, 0);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
@@ -494,7 +501,7 @@ static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceNode *li
 // and within bounds of physical memory and canonical virtual address space before calling this function
 // When MEMORY_REQUEST_CACHE_DISABLE flag is passed, the physical page is marked as cachedDisabled(1) in the PTE
 // Returns true only on successful mapping
-bool Kernel::Memory::Virtual::mapPages(void* virtualAddress, void* physicalAddress, size_t count, uint8_t flags) {
+bool Kernel::Memory::Virtual::mapPages(void* virtualAddress, void* physicalAddress, size_t count, uint32_t flags) {
 	uint64_t phyAddr = (uint64_t)physicalAddress;
 	uint64_t virAddr = (uint64_t)virtualAddress;
 
