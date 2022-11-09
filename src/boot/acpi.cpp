@@ -3,7 +3,6 @@
 #include <kernel.h>
 #include <heapmemmgmt.h>
 #include <terminal.h>
-#include <virtualmemmgmt.h>
 
 static RSDPDescriptor2* searchRsdp();
 
@@ -99,11 +98,19 @@ bool parseAcpi3() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingXsdtStr, strlen(mappingXsdtStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous);
+	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
+		1,
+		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
+	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!mapVirtualPages(requestResult.address, (void*)((uint64_t)xsdtPhy & Kernel::Memory::Physical::buddyMasks[0]), 1, 0)
+		!Kernel::Memory::Virtual::mapPages(
+			requestResult.address,
+			(void*)((uint64_t)xsdtPhy & Kernel::Memory::Physical::buddyMasks[0]),
+			1,
+			0
+		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -159,7 +166,11 @@ bool parseAcpi3() {
 	ssdtHeader = (ACPISDTHeader*)kernelMalloc(oldSsdt->length);
 	memcpy(ssdtHeader, oldSsdt, oldSsdt->length);
 	// Free the kernel page used for parsing XSDT
-	freeVirtualPages((void*)((uint64_t)oldXsdt & Kernel::Memory::Physical::buddyMasks[0]), 1, MEMORY_REQUEST_KERNEL_PAGE);
+	Kernel::Memory::Virtual::freePages(
+		(void*)((uint64_t)oldXsdt & Kernel::Memory::Physical::buddyMasks[0]),
+		1,
+		Kernel::Memory::RequestType::Kernel
+	);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 

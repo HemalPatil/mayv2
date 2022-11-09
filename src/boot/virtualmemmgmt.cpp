@@ -4,24 +4,19 @@
 #include <kernel.h>
 #include <pml4t.h>
 #include <terminal.h>
-#include <virtualmemmgmt.h>
 
-static const uint64_t nonCanonicalStart = (uint64_t)1 << (MAX_VIRTUAL_ADDRESS_BITS - 1);
+static const size_t maxVirtualAddressBits = 48;
+static const size_t pml4tRecursiveEntry = 510;
+static const uint64_t nonCanonicalStart = (uint64_t)1 << (maxVirtualAddressBits - 1);
 static const uint64_t nonCanonicalEnd = ~(nonCanonicalStart - 1);
-
 static size_t generalPagesAvailableCount = 0;
 static size_t kernelPagesAvailableCount = 0;
-
-static void defragAddressSpaceList(VirtualMemNode *list);
-
-VirtualMemNode *generalAddressSpaceList = (VirtualMemNode*)INVALID_ADDRESS;
-VirtualMemNode *kernelAddressSpaceList = (VirtualMemNode*)INVALID_ADDRESS;
-const uint64_t ptMask = (uint64_t)UINT64_MAX - 1024 * (uint64_t)GIB_1 + 1;
-const uint64_t pdMask = ptMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint64_t)GIB_1;
-const uint64_t pdptMask = pdMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint64_t)MIB_2;
-PML4E* const pml4t = (PML4E*)(pdptMask + (uint64_t)PML4T_RECURSIVE_ENTRY * (uint64_t)KIB_4);
-const size_t virtualPageIndexShift = 9;
-const uint64_t virtualPageIndexMask = ((uint64_t)1 << virtualPageIndexShift) - 1;
+static const uint64_t ptMask = (uint64_t)UINT64_MAX - 1024 * (uint64_t)GIB_1 + 1;
+static const uint64_t pdMask = ptMask + (uint64_t)pml4tRecursiveEntry * (uint64_t)GIB_1;
+static const uint64_t pdptMask = pdMask + (uint64_t)pml4tRecursiveEntry * (uint64_t)MIB_2;
+static PML4E* const pml4t = (PML4E*)(pdptMask + (uint64_t)pml4tRecursiveEntry * (uint64_t)KIB_4);
+static const size_t virtualPageIndexShift = 9;
+static const uint64_t virtualPageIndexMask = ((uint64_t)1 << virtualPageIndexShift) - 1;
 
 static const char* const initVirMemStr = "Initializing virtual memory management";
 static const char* const initVirMemCompleteStr = "Virtual memory management initialized\n\n";
@@ -43,8 +38,13 @@ static const char* const recursiveStr = "Creating PML4 recursive entry";
 static const char* const checkingMaxBitsStr = "Checking max virtual address bits";
 static const char* const requestErrorStr = "Did not pass MEMORY_REQUEST_CONTIGUOUS to requestVirtualPages\n";
 
+static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceListNode *list);
+
+Kernel::Memory::Virtual::AddressSpaceListNode *Kernel::Memory::Virtual::generalAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceListNode*)INVALID_ADDRESS;
+Kernel::Memory::Virtual::AddressSpaceListNode *Kernel::Memory::Virtual::kernelAddressSpaceList = (Kernel::Memory::Virtual::AddressSpaceListNode*)INVALID_ADDRESS;
+
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
-bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
+bool Kernel::Memory::Virtual::initialize(void* usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount) {
 	uint64_t mib1 = 0x100000;
 	terminalPrintString(initVirMemStr, strlen(initVirMemStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -53,14 +53,14 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintSpaces4();
 	terminalPrintString(checkingMaxBitsStr, strlen(checkingMaxBitsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (infoTable->maxLinearAddress != MAX_VIRTUAL_ADDRESS_BITS) {
+	if (infoTable->maxLinearAddress != maxVirtualAddressBits) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
 		terminalPrintChar('\n');
 		terminalPrintSpaces4();
 		terminalPrintString(maxVirAddrMismatch, strlen(maxVirAddrMismatch));
-		terminalPrintDecimal(MAX_VIRTUAL_ADDRESS_BITS);
+		terminalPrintDecimal(maxVirtualAddressBits);
 		terminalPrintString(gotStr, strlen(gotStr));
 		terminalPrintDecimal(infoTable->maxLinearAddress);
 		terminalPrintChar(']');
@@ -109,8 +109,8 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintString(recursiveStr, strlen(recursiveStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PML4E *root = (PML4E*)infoTable->pml4tPhysicalAddress;
-	root[PML4T_RECURSIVE_ENTRY].present = root[PML4T_RECURSIVE_ENTRY].readWrite = 1;
-	root[PML4T_RECURSIVE_ENTRY].physicalAddress = infoTable->pml4tPhysicalAddress >> Kernel::Memory::pageSizeShift;
+	root[pml4tRecursiveEntry].present = root[pml4tRecursiveEntry].readWrite = 1;
+	root[pml4tRecursiveEntry].physicalAddress = infoTable->pml4tPhysicalAddress >> Kernel::Memory::pageSizeShift;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -118,7 +118,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintSpaces4();
 	terminalPrintString(movingBuddiesStr, strlen(movingBuddiesStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!mapVirtualPages(usableKernelSpaceStart, Kernel::Memory::Physical::buddyBitmaps[0], phyMemBuddyPagesCount, 0)) {
+	if (!mapPages(usableKernelSpaceStart, Kernel::Memory::Physical::buddyBitmaps[0], phyMemBuddyPagesCount, 0)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
@@ -146,9 +146,9 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintString("MiBs", 4);
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	if (
-		!unmapVirtualPages((void*)mib1, (L32_IDENTITY_MAP_SIZE - 1) * mib1 / Kernel::Memory::pageSize, false) ||
-		!unmapVirtualPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / Kernel::Memory::pageSize, false) ||
-		!unmapVirtualPages((void*)KERNEL_LOWERHALF_ORIGIN, kernelLowerHalfSize / Kernel::Memory::pageSize, false)
+		!unmapPages((void*)mib1, (L32_IDENTITY_MAP_SIZE - 1) * mib1 / Kernel::Memory::pageSize, false) ||
+		!unmapPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / Kernel::Memory::pageSize, false) ||
+		!unmapPages((void*)KERNEL_LOWERHALF_ORIGIN, kernelLowerHalfSize / Kernel::Memory::pageSize, false)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -167,7 +167,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != (HEAP_NEW_REGION_SIZE / Kernel::Memory::pageSize) ||
-		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
+		!mapPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -180,7 +180,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != (entryTableSize / Kernel::Memory::pageSize) ||
-		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
+		!mapPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -207,13 +207,13 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
+		!mapPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
 	}
-	VirtualMemNode *current = (VirtualMemNode*)usableKernelSpaceStart;
+	AddressSpaceListNode *current = (AddressSpaceListNode*)usableKernelSpaceStart;
 	// Used kernel space
 	kernelAddressSpaceList = current;
 	kernelAddressSpaceList->available = false;
@@ -304,13 +304,13 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 // Returns INVALID_ADDRESS and allocatedCount = 0 if request count is count == 0
 // or greater than currently available kernel pages
 // Unsafe to call this function until dynamic memory manager is initialized
-Kernel::Memory::PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
+Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t count, uint32_t flags) {
 	Kernel::Memory::PageRequestResult result;
-	if (count > ((flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
+	if (count > ((flags & Kernel::Memory::RequestType::Kernel) ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
 		return result;
 	}
-	VirtualMemNode *list = (flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelAddressSpaceList : generalAddressSpaceList;
-	VirtualMemNode *bestFit = nullptr, *current = list;
+	AddressSpaceListNode *list = (flags & Kernel::Memory::RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
+	AddressSpaceListNode *bestFit = nullptr, *current = list;
 	while (current) {
 		if (
 			current->available &&
@@ -324,7 +324,7 @@ Kernel::Memory::PageRequestResult requestVirtualPages(size_t count, uint8_t flag
 	if (flags & Kernel::Memory::RequestType::Contiguous) {
 		bestFit->available = false;
 		if (bestFit->pageCount != count) {
-			VirtualMemNode *newNode = new VirtualMemNode();
+			AddressSpaceListNode *newNode = new AddressSpaceListNode();
 			newNode->available = true;
 			newNode->base = (void*)((uint64_t)bestFit->base + count * Kernel::Memory::pageSize);
 			newNode->pageCount = bestFit->pageCount - count;
@@ -336,7 +336,7 @@ Kernel::Memory::PageRequestResult requestVirtualPages(size_t count, uint8_t flag
 			}
 			bestFit->pageCount = count;
 		}
-		if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+		if (flags & Kernel::Memory::RequestType::Kernel) {
 			kernelPagesAvailableCount -= count;
 		} else {
 			generalPagesAvailableCount -= count;
@@ -345,7 +345,7 @@ Kernel::Memory::PageRequestResult requestVirtualPages(size_t count, uint8_t flag
 		result.allocatedCount = count;
 		defragAddressSpaceList(list);
 
-		if (flags & MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE) {
+		if (flags & Kernel::Memory::RequestType::AllocatePhysical) {
 			size_t total = 0;
 			while (total != count) {
 				Kernel::Memory::PageRequestResult phyResult = Kernel::Memory::Physical::requestPages(count - total, 0);
@@ -355,7 +355,7 @@ Kernel::Memory::PageRequestResult requestVirtualPages(size_t count, uint8_t flag
 					terminalPrintString(outOfMemoryStr, strlen(outOfMemoryStr));
 					kernelPanic();
 				}
-				mapVirtualPages(
+				mapPages(
 					(void*)((uint64_t)result.address + total * Kernel::Memory::pageSize),
 					phyResult.address,
 					phyResult.allocatedCount,
@@ -379,17 +379,17 @@ Kernel::Memory::PageRequestResult requestVirtualPages(size_t count, uint8_t flag
 // If MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE flag is passed,
 // the physical pages to which a virtual page is mapped is also freed
 // Returns false if the virtual pages to be freed do not entirely fit in a used region
-bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
+bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint8_t flags) {
 	uint64_t vBeg = (uint64_t)virtualAddress;
 	uint64_t vEnd = vBeg + count * Kernel::Memory::pageSize;
 
 	// Ensure the virtual addresses are pageSize boundary aligned and canonical
-	if ((vBeg & ~Kernel::Memory::Physical::buddyMasks[0]) || !isCanonicalVirtualAddress(virtualAddress)) {
+	if ((vBeg & ~Kernel::Memory::Physical::buddyMasks[0]) || !isCanonical(virtualAddress)) {
 		return false;
 	}
 
-	VirtualMemNode *list = (flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelAddressSpaceList : generalAddressSpaceList;
-	VirtualMemNode *current = list;
+	AddressSpaceListNode *list = (flags & Kernel::Memory::RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
+	AddressSpaceListNode *current = list;
 	while (current) {
 		uint64_t cBeg = (uint64_t)current->base;
 		uint64_t cEnd = cBeg + current->pageCount * Kernel::Memory::pageSize;
@@ -398,9 +398,9 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 				// Region to be freed fits exactly in current block
 				current->available = true;
 			} else {
-				VirtualMemNode *newNode1 = new VirtualMemNode();
-				VirtualMemNode *newNode2 = new VirtualMemNode();
-				VirtualMemNode *newNode3 = new VirtualMemNode();
+				AddressSpaceListNode *newNode1 = new AddressSpaceListNode();
+				AddressSpaceListNode *newNode2 = new AddressSpaceListNode();
+				AddressSpaceListNode *newNode3 = new AddressSpaceListNode();
 				newNode1->available = false;
 				newNode1->base = current->base;
 				newNode1->pageCount = (vBeg - cBeg) / Kernel::Memory::pageSize;
@@ -426,7 +426,7 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 				if (!newNode1->previous) {
 					// newNode1 and by implication current is the first node in the list
 					// current is already freed
-					if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+					if (flags & Kernel::Memory::RequestType::Kernel) {
 						kernelAddressSpaceList = newNode1;
 					} else {
 						generalAddressSpaceList = newNode1;
@@ -440,7 +440,7 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 						newNode2->previous->next = newNode2;
 					} else {
 						// newNode2 is the first node in the list
-						if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+						if (flags & Kernel::Memory::RequestType::Kernel) {
 							kernelAddressSpaceList = newNode2;
 						} else {
 							generalAddressSpaceList = newNode2;
@@ -456,14 +456,14 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 					delete newNode3;
 				}
 			}
-			if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+			if (flags & Kernel::Memory::RequestType::Kernel) {
 				kernelPagesAvailableCount += count;
 			} else {
 				generalPagesAvailableCount += count;
 			}
-			defragAddressSpaceList((flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelAddressSpaceList : generalAddressSpaceList);
+			defragAddressSpaceList((flags & Kernel::Memory::RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList);
 
-			unmapVirtualPages(virtualAddress, count, flags & MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE);
+			unmapPages(virtualAddress, count, flags & Kernel::Memory::RequestType::AllocatePhysical);
 			return true;
 		}
 		current = current->next;
@@ -471,11 +471,11 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 	return true;
 }
 
-static void defragAddressSpaceList(VirtualMemNode *list) {
+static void defragAddressSpaceList(Kernel::Memory::Virtual::AddressSpaceListNode *list) {
 	while(list->next) {
 		if (list->available == list->next->available) {
 			// Merge blocks
-			VirtualMemNode *nextBlock = list->next;
+			Kernel::Memory::Virtual::AddressSpaceListNode *nextBlock = list->next;
 			list->pageCount += list->next->pageCount;
 			list->next = list->next->next;
 			if (list->next) {
@@ -494,7 +494,7 @@ static void defragAddressSpaceList(VirtualMemNode *list) {
 // and within bounds of physical memory and canonical virtual address space before calling this function
 // When MEMORY_REQUEST_CACHE_DISABLE flag is passed, the physical page is marked as cachedDisabled(1) in the PTE
 // Returns true only on successful mapping
-bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count, uint8_t flags) {
+bool Kernel::Memory::Virtual::mapPages(void* virtualAddress, void* physicalAddress, size_t count, uint8_t flags) {
 	uint64_t phyAddr = (uint64_t)physicalAddress;
 	uint64_t virAddr = (uint64_t)virtualAddress;
 
@@ -505,7 +505,7 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count, 
 
 	Kernel::Memory::PageRequestResult requestResult;
 	for (size_t i = 0; i < count; ++i, phyAddr += Kernel::Memory::pageSize, virAddr += Kernel::Memory::pageSize) {
-		PML4CrawlResult crawlResult((void*)virAddr);
+		CrawlResult crawlResult((void*)virAddr);
 		if (!crawlResult.isCanonical) {
 			return false;
 		}
@@ -534,7 +534,7 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count, 
 			// FIXME: should add only appropriate permissions when mapping pages
 			crawlResult.tables[1][crawlResult.indexes[1]].readWrite = 1;
 			crawlResult.tables[1][crawlResult.indexes[1]].physicalAddress = phyAddr >> Kernel::Memory::pageSizeShift;
-			crawlResult.tables[1][crawlResult.indexes[1]].cacheDisable = (flags & MEMORY_REQUEST_CACHE_DISABLE) ? 1 : 0;
+			crawlResult.tables[1][crawlResult.indexes[1]].cacheDisable = (flags & Kernel::Memory::RequestType::CacheDisable) ? 1 : 0;
 		}
 	}
 	return true;
@@ -546,7 +546,7 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count, 
 // the corresponding physical page is also freed if freePhysicalPage == true
 // If all the entries in a page table are absent,
 // the page table is also freed and marked absent in upper level page table
-bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage) {
+bool Kernel::Memory::Virtual::unmapPages(void* virtualAddress, size_t count, bool freePhysicalPage) {
 	uint64_t addr = (uint64_t) virtualAddress;
 
 	// Ensure the virtual addresses are pageSize boundary aligned
@@ -555,7 +555,7 @@ bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage
 	}
 
 	for (size_t i = 0; i < count; ++i, addr += Kernel::Memory::pageSize) {
-		PML4CrawlResult crawlResult((void*) addr);
+		CrawlResult crawlResult((void*) addr);
 		if (!crawlResult.isCanonical) {
 			return false;
 		}
@@ -591,7 +591,7 @@ bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage
 
 // Returns true only if virtual address is canonical i.e. lies in the range
 // 0 - 0x00007fffffffffff or 0xffff800000000000 - 0xffffffffffffffff
-bool isCanonicalVirtualAddress(void* address) {
+bool Kernel::Memory::Virtual::isCanonical(void* address) {
 	uint64_t addr = (uint64_t) address;
 	return (
 		addr < nonCanonicalStart ||
@@ -608,7 +608,7 @@ bool isCanonicalVirtualAddress(void* address) {
 // Address of a level and subsequent lower levels are set to INVALID_ADDRESS in physicalTables
 // if mapping while crawling the PML4 structure is not present for that level
 // If an address is not canonical all levels in physicalTables are set to INVALID_ADDRESS
-PML4CrawlResult::PML4CrawlResult(void *virtualAddress) {
+Kernel::Memory::Virtual::CrawlResult::CrawlResult(void *virtualAddress) {
 	this->isCanonical = false;
 	uint64_t addr = (uint64_t)virtualAddress & Kernel::Memory::Physical::buddyMasks[0];
 	this->indexes[0] = (uint64_t)virtualAddress - addr;
@@ -638,7 +638,7 @@ PML4CrawlResult::PML4CrawlResult(void *virtualAddress) {
 		false;
 	this->cached[4] = (pml4t->cacheDisable & 1) ? false : true;
 
-	if (isCanonicalVirtualAddress(virtualAddress)) {
+	if (Kernel::Memory::Virtual::isCanonical(virtualAddress)) {
 		this->isCanonical = true;
 		this->physicalTables[4] = (PML4E*)infoTable->pml4tPhysicalAddress;
 		for (size_t i = 4; i >= 1; --i) {
@@ -652,14 +652,14 @@ PML4CrawlResult::PML4CrawlResult(void *virtualAddress) {
 	}
 }
 
-// Debug helper to display result of PML4CrawlResult for a given virtual address
-void displayCrawlPageTablesResult(void *virtualAddress) {
+// Debug helper to display result of CrawlResult for a given virtual address
+void Kernel::Memory::Virtual::displayCrawlPageTablesResult(void *virtualAddress) {
 	terminalPrintString(pageTablesStr, strlen(pageTablesStr));
 	terminalPrintHex(&virtualAddress, sizeof(virtualAddress));
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintString(isCanonicalStr, strlen(isCanonicalStr));
-	PML4CrawlResult result(virtualAddress);
+	CrawlResult result(virtualAddress);
 	terminalPrintString(result.isCanonical ? trueStr : falseStr, strlen(result.isCanonical ? trueStr : falseStr));
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();
@@ -681,9 +681,9 @@ void displayCrawlPageTablesResult(void *virtualAddress) {
 
 // Debug helper to list all entries in a given virtual address space list
 // depending on flags MEMORY_REQUEST_KERNEL_PAGE
-void traverseAddressSpaceList(uint8_t flags, bool forwardDirection) {
-	VirtualMemNode *list;
-	if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+void Kernel::Memory::Virtual::traverseAddressSpaceList(uint8_t flags, bool forwardDirection) {
+	AddressSpaceListNode *list;
+	if (flags & Kernel::Memory::RequestType::Kernel) {
 		list = kernelAddressSpaceList;
 		terminalPrintString("Kernel", 6);
 	} else {
@@ -695,7 +695,7 @@ void traverseAddressSpaceList(uint8_t flags, bool forwardDirection) {
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintString(pagesAvailableStr, strlen(pagesAvailableStr));
-	if (flags & MEMORY_REQUEST_KERNEL_PAGE) {
+	if (flags & Kernel::Memory::RequestType::Kernel) {
 		terminalPrintHex(&kernelPagesAvailableCount, sizeof(kernelPagesAvailableCount));
 	} else {
 		terminalPrintHex(&generalPagesAvailableCount, sizeof(generalPagesAvailableCount));

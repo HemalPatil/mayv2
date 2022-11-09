@@ -4,7 +4,6 @@
 #include <drivers/storage/ahci/device.h>
 #include <kernel.h>
 #include <terminal.h>
-#include <virtualmemmgmt.h>
 
 static const char* const configuringStr = "Configuring port ";
 static const char* const tfeStr = "AHCI task file error caused by commands ";
@@ -23,7 +22,7 @@ bool AHCI::Device::setupRead(size_t blockCount, void *buffer, size_t &freeSlot) 
 	}
 
 	// Make sure buffer is mapped to a physical page and word boundary aligned
-	PML4CrawlResult crawlResult(buffer);
+	Kernel::Memory::Virtual::CrawlResult crawlResult(buffer);
 	if (crawlResult.physicalTables[0] == INVALID_ADDRESS || crawlResult.indexes[0] % 2 != 0) {
 		return false;
 	}
@@ -130,7 +129,7 @@ void AHCI::Device::msiHandler() {
 
 bool AHCI::Device::identify() {
 	this->info = new IdentifyDeviceData();
-	PML4CrawlResult crawl(this->info);
+	Kernel::Memory::Virtual::CrawlResult crawl(this->info);
 	if (crawl.physicalTables[0] == INVALID_ADDRESS || crawl.indexes[0] % 2 != 0) {
 		return false;
 	}
@@ -196,19 +195,19 @@ bool AHCI::Device::initialize() {
 
 	// Request a page where the command list (1024 bytes) and received FISes (256 bytes) can be placed
 	// Get the physical address of this page and put it in the commandListBase and fisBase
-	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(
+	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
 		1,
 		(
-			MEMORY_REQUEST_KERNEL_PAGE |
+			Kernel::Memory::RequestType::Kernel |
 			Kernel::Memory::RequestType::Contiguous |
-			MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE |
-			MEMORY_REQUEST_CACHE_DISABLE
+			Kernel::Memory::RequestType::AllocatePhysical |
+			Kernel::Memory::RequestType::CacheDisable
 		)
 	);
 	if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
 		return false;
 	}
-	PML4CrawlResult crawlResult(requestResult.address);
+	Kernel::Memory::Virtual::CrawlResult crawlResult(requestResult.address);
 	uint64_t phyAddr = (uint64_t)crawlResult.physicalTables[0];
 	uint64_t virAddr = (uint64_t)requestResult.address;
 	memset(requestResult.address, 0, Kernel::Memory::pageSize);
@@ -232,19 +231,19 @@ bool AHCI::Device::initialize() {
 	// 2 * 4096 = 32 * (64 + 16 + 48 + prdtLength * 16)
 	// Hence, prdtLength works out to 8
 	// FIXME: requestVirtualPages does not guarantee the physical pages alloted will be contiguous
-	requestResult = requestVirtualPages(
+	requestResult = Kernel::Memory::Virtual::requestPages(
 		2,
 		(
-			MEMORY_REQUEST_KERNEL_PAGE |
+			Kernel::Memory::RequestType::Kernel |
 			Kernel::Memory::RequestType::Contiguous |
-			MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE |
-			MEMORY_REQUEST_CACHE_DISABLE
+			Kernel::Memory::RequestType::AllocatePhysical |
+			Kernel::Memory::RequestType::CacheDisable
 		)
 	);
 	if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 2) {
 		return false;
 	}
-	crawlResult = PML4CrawlResult(requestResult.address);
+	crawlResult = Kernel::Memory::Virtual::CrawlResult(requestResult.address);
 	phyAddr = (uint64_t)crawlResult.physicalTables[0];
 	virAddr = (uint64_t)requestResult.address;
 	memset(requestResult.address, 0, 2 * Kernel::Memory::pageSize);

@@ -16,7 +16,6 @@
 #include <terminal.h>
 #include <tss64.h>
 // #include <vbe.h>
-#include <virtualmemmgmt.h>
 
 typedef void(*GlobalConstructor)();
 
@@ -64,7 +63,7 @@ extern "C" {
 	}
 
 	// Initialize virtual memory
-	if (!initializeVirtualMemory(
+	if (!Kernel::Memory::Virtual::initialize(
 		(void*)(KERNEL_HIGHERHALF_ORIGIN + higherHalfSize),
 		lowerHalfSize,
 		phyMemBuddyPagesCount)

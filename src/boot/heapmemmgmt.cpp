@@ -3,7 +3,6 @@
 #include <heapmemmgmt.h>
 #include <kernel.h>
 #include <terminal.h>
-#include <virtualmemmgmt.h>
 
 static HeapEntry* nextHeapEntry(HeapHeader *heap, HeapEntry *heapEntry);
 
@@ -47,7 +46,7 @@ void operator delete[](void *memory, size_t size) {
 #pragma GCC diagnostic pop
 
 bool initializeDynamicMemory() {
-	void *ghostPage = kernelAddressSpaceList;
+	void *ghostPage = Kernel::Memory::Virtual::kernelAddressSpaceList;
 	terminalPrintString(initHeapStr, strlen(initHeapStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
@@ -73,26 +72,29 @@ bool initializeDynamicMemory() {
 	terminalPrintSpaces4();
 	terminalPrintString(movingVirMemListsStr, strlen(movingVirMemListsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	VirtualMemNode *lists[2] = { kernelAddressSpaceList, generalAddressSpaceList };
-	VirtualMemNode *newLists[2] = { nullptr, nullptr };
+	Kernel::Memory::Virtual::AddressSpaceListNode *lists[2] = {
+		Kernel::Memory::Virtual::kernelAddressSpaceList,
+		Kernel::Memory::Virtual::generalAddressSpaceList 
+	};
+	Kernel::Memory::Virtual::AddressSpaceListNode *newLists[2] = { nullptr, nullptr };
 	for (size_t i = 0; i < 2; ++i) {
-		VirtualMemNode *current = new VirtualMemNode();
-		memcpy(current, lists[i], sizeof(VirtualMemNode));
+		Kernel::Memory::Virtual::AddressSpaceListNode *current = new Kernel::Memory::Virtual::AddressSpaceListNode();
+		memcpy(current, lists[i], sizeof(Kernel::Memory::Virtual::AddressSpaceListNode));
 		newLists[i] = current;
-		VirtualMemNode *newPrevious = current;
-		VirtualMemNode *oldCurrent = lists[i]->next;
+		Kernel::Memory::Virtual::AddressSpaceListNode *newPrevious = current;
+		Kernel::Memory::Virtual::AddressSpaceListNode *oldCurrent = lists[i]->next;
 		while (oldCurrent) {
-			current = new VirtualMemNode();
-			memcpy(current, oldCurrent, sizeof(VirtualMemNode));
+			current = new Kernel::Memory::Virtual::AddressSpaceListNode();
+			memcpy(current, oldCurrent, sizeof(Kernel::Memory::Virtual::AddressSpaceListNode));
 			newPrevious->next = current;
 			current->previous = newPrevious;
 			newPrevious = current;
 			oldCurrent = oldCurrent->next;
 		}
 	}
-	kernelAddressSpaceList = newLists[0];
-	generalAddressSpaceList = newLists[1];
-	if (!unmapVirtualPages(ghostPage, 1, true)) {
+	Kernel::Memory::Virtual::kernelAddressSpaceList = newLists[0];
+	Kernel::Memory::Virtual::generalAddressSpaceList = newLists[1];
+	if (!Kernel::Memory::Virtual::unmapPages(ghostPage, 1, true)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;

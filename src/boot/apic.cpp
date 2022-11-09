@@ -6,7 +6,6 @@
 #include <idt64.h>
 #include <kernel.h>
 #include <terminal.h>
-#include <virtualmemmgmt.h>
 
 uint8_t bootCpu = 0xff;
 
@@ -177,11 +176,14 @@ bool initializeApic() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingApicStr, strlen(mappingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous);
+	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
+		1,
+		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
+	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!mapVirtualPages(requestResult.address, localApicPhysicalAddress, 1, MEMORY_REQUEST_CACHE_DISABLE)
+		!Kernel::Memory::Virtual::mapPages(requestResult.address, localApicPhysicalAddress, 1, Kernel::Memory::RequestType::CacheDisable)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -203,11 +205,19 @@ bool initializeApic() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingIoApicStr, strlen(mappingIoApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous);
+	requestResult = Kernel::Memory::Virtual::requestPages(
+		1,
+		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
+	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!mapVirtualPages(requestResult.address, (void*)(uint64_t)ioApicEntries[0].address, 1, MEMORY_REQUEST_CACHE_DISABLE)
+		!Kernel::Memory::Virtual::mapPages(
+			requestResult.address,
+			(void*)(uint64_t)ioApicEntries[0].address,
+			1,
+			Kernel::Memory::RequestType::CacheDisable
+		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');

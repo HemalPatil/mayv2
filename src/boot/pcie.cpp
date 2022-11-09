@@ -4,7 +4,6 @@
 #include <kernel.h>
 #include <pcie.h>
 #include <terminal.h>
-#include <virtualmemmgmt.h>
 
 static bool enumerateBus(uint64_t baseAddress, uint8_t bus);
 static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device);
@@ -71,11 +70,19 @@ bool enumeratePCIe() {
 
 static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8_t function) {
 	uint64_t functionAddress = baseAddress + (bus << 20 | device << 15 | function << 12);
-	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous);
+	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
+		1,
+		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
+	);
 	if (
 		requestResult.address != INVALID_ADDRESS &&
 		requestResult.allocatedCount == 1 &&
-		mapVirtualPages(requestResult.address, (void*) functionAddress, 1, MEMORY_REQUEST_CACHE_DISABLE)
+		Kernel::Memory::Virtual::mapPages(
+			requestResult.address,
+			(void*) functionAddress,
+			1,
+			Kernel::Memory::RequestType::CacheDisable
+		)
 	) {
 		return requestResult.address;
 	}
@@ -153,7 +160,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 	}
 	if (pcieHeader->deviceId == PCI_INVALID_DEVICE) {
 		// Unmap the configuration page
-		freeVirtualPages(pcieHeader, 1, MEMORY_REQUEST_KERNEL_PAGE);
+		Kernel::Memory::Virtual::freePages(pcieHeader, 1, Kernel::Memory::RequestType::Kernel);
 		return true;
 	}
 	terminalPrintSpaces4();
@@ -200,7 +207,7 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 			}
 			if (pcieHeader->deviceId == PCI_INVALID_DEVICE) {
 				// Unmap the configuration page
-				freeVirtualPages(pcieHeader, 1, MEMORY_REQUEST_KERNEL_PAGE);
+				Kernel::Memory::Virtual::freePages(pcieHeader, 1, Kernel::Memory::RequestType::Kernel);
 				continue;
 			}
 			if (!enumerateFunction(function, pcieHeader, &msi)) {

@@ -6,7 +6,6 @@
 #include <drivers/storage/ahci/satapidevice.h>
 #include <kernel.h>
 #include <terminal.h>
-#include <virtualmemmgmt.h>
 
 static const char* const mappingHbaStr = "Mapping HBA control registers to kernel address space";
 static const char* const ahciSwitchStr = "Switching to AHCI mode";
@@ -19,14 +18,19 @@ bool AHCI::Controller::initialize(PCIeFunction *pcieFunction) {
 	terminalPrintString(mappingHbaStr, strlen(mappingHbaStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PCIeType0Header *ahciHeader = (PCIeType0Header*)(pcieFunction->configurationSpace);
-	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(
+	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
 		2,
-		MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous | MEMORY_REQUEST_CACHE_DISABLE
+		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous | Kernel::Memory::RequestType::CacheDisable
 	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 2 ||
-		!mapVirtualPages(requestResult.address, (void*)(uint64_t)ahciHeader->bar5, 2, MEMORY_REQUEST_CACHE_DISABLE)
+		!Kernel::Memory::Virtual::mapPages(
+			requestResult.address,
+			(void*)(uint64_t)ahciHeader->bar5,
+			2,
+			Kernel::Memory::RequestType::CacheDisable
+		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		return false;
