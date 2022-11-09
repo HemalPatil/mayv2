@@ -223,7 +223,7 @@ void kernelFree(void *address) {
 	terminalPrintString(invalidFreeStr, strlen(invalidFreeStr));
 	terminalPrintHex(&address, sizeof(address));
 	terminalPrintChar('\n');
-	hangSystem();
+	Kernel::hangSystem();
 }
 
 static HeapEntry* nextHeapEntry(HeapHeader *heap, HeapEntry *heapEntry) {

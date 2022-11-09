@@ -18,22 +18,22 @@
 #define L32K64_SCRATCH_LENGTH 0x10000
 #define PHY_MEM_BUDDY_MAX_ORDER 10
 
-// kernelMain is not exposed to other files deliberately
-
-extern InfoTable *infoTable;
-
-extern "C" [[noreturn]] void kernelPanic();
-
-// Flush the virtual->physical address cache by reloading cr3 register
-extern "C" void flushTLB(void *newPml4Root);
-
-// Halts the system and returns if execution resumed due to any interrupt
-extern "C" void haltSystem();
-
-// Disables interrupts, halts the systems, and never returns
-extern "C" [[noreturn]] void hangSystem();
-
 namespace Kernel {
+	// kernelMain is not exposed to other files deliberately
+
+	extern InfoTable *infoTable;
+
+	extern "C" [[noreturn]] void panic();
+
+	// Flush the virtual->physical address cache by reloading cr3 register
+	extern "C" void flushTLB(void *newPml4Root);
+
+	// Halts the system and returns if execution resumed due to any interrupt
+	extern "C" void haltSystem();
+
+	// Disables interrupts, halts the systems, and never returns
+	extern "C" [[noreturn]] void hangSystem();
+
 	namespace Memory {
 		extern const size_t pageSize;
 		extern const size_t pageSizeShift;

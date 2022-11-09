@@ -28,7 +28,7 @@ static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
 static const char* const isoFoundStr = "ISO filesystem found at ";
 static const char* const globalCtorStr = "Running global constructors";
 
-InfoTable *infoTable;
+InfoTable *Kernel::infoTable;
 
 extern "C" {
 
@@ -41,9 +41,13 @@ extern "C" {
 	// Be careful of nullptr references until the IVTs in
 	// identity mapped page 0 of virtual address space
 	// are moved somewhere else during interrupt initialization
-	infoTable = infoTableAddress;
-	GlobalConstructor globalCtors[infoTable->globalCtorsCount];
-	memcpy(globalCtors, (void*)infoTable->globalCtorsLocation, infoTable->globalCtorsCount * sizeof(uint64_t));
+	Kernel::infoTable = infoTableAddress;
+	GlobalConstructor globalCtors[Kernel::infoTable->globalCtorsCount];
+	memcpy(
+		globalCtors,
+		(void*)Kernel::infoTable->globalCtorsLocation,
+		Kernel::infoTable->globalCtorsCount * sizeof(uint64_t)
+	);
 
 	terminalSetBgColour(TERMINAL_COLOUR_BLUE);
 	terminalSetTextColour(TERMINAL_COLOUR_BWHITE);
@@ -59,7 +63,7 @@ extern "C" {
 		higherHalfSize,
 		phyMemBuddyPagesCount)
 	) {
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Initialize virtual memory
@@ -68,18 +72,18 @@ extern "C" {
 		lowerHalfSize,
 		phyMemBuddyPagesCount)
 	) {
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Initialize dynamic memory
 	if (!initializeDynamicMemory()) {
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Run the global constructors
 	terminalPrintString(globalCtorStr, strlen(globalCtorStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	for (size_t i = 0; i < infoTable->globalCtorsCount; ++i) {
+	for (size_t i = 0; i < Kernel::infoTable->globalCtorsCount; ++i) {
 		globalCtors[i]();
 	}
 	terminalPrintString(doneStr, strlen(doneStr));
@@ -89,34 +93,34 @@ extern "C" {
 	setupTss64();
 	setupIdt64();
 	if (!enableSse4()) {
-		kernelPanic();
+		Kernel::panic();
 	}
 	terminalPrintChar('\n');
 
 	if (!parseAcpi3()) {
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Disable PIC and setup APIC
 	if (!initializeApic()) {
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Get at least 1 periodic 64-bit edge-triggered HPET
 	if (!initializeHpet()) {
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Setup basic hardware interrupts
 	if (!initializePs2Keyboard()) {
-		kernelPanic();
+		Kernel::panic();
 	}
 	enableInterrupts();
 	terminalPrintChar('\n');
 
 	// Enumerate PCIe devices
 	if (!enumeratePCIe()) {
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Start drivers for PCIe devices
@@ -131,7 +135,7 @@ extern "C" {
 			initializer = &AHCI::initialize;
 		}
 		if (initializer && !((*initializer)(pcieFunction))) {
-			kernelPanic();
+			Kernel::panic();
 		}
 		pcieFunction = pcieFunction->next;
 	}
@@ -170,15 +174,15 @@ extern "C" {
 
 	// Set up graphical video mode
 	// if (!setupGraphicalVideoMode()) {
-	// 	kernelPanic();
+	// 	panic();
 	// }
-	hangSystem();
+	Kernel::hangSystem();
 }
 
-void kernelPanic() {
+void panic() {
 	// TODO : improve kernel panic implementation
 	terminalPrintString(kernelPanicStr, strlen(kernelPanicStr));
-	hangSystem();
+	Kernel::hangSystem();
 }
 
 }

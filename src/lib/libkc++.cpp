@@ -117,44 +117,44 @@ namespace std {
 	// Helpers for exception objects in <system_error>
 	void __throw_system_error(int) {
 		terminalPrintString(systemErrorStr, strlen(systemErrorStr));
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Helpers for exception objects in <stdexcept>
 	void __throw_invalid_argument(const char*) {
 		terminalPrintString(invalidArgStr, strlen(invalidArgStr));
-		kernelPanic();
+		Kernel::panic();
 	}
 	void __throw_logic_error(const char*) {
 		terminalPrintString(logicErrorStr, strlen(logicErrorStr));
-		kernelPanic();
+		Kernel::panic();
 	}
 	void __throw_length_error(const char*) {
 		terminalPrintString(lengthErrorStr, strlen(lengthErrorStr));
-		kernelPanic();
+		Kernel::panic();
 	}
 	void __throw_out_of_range(const char*) {
 		terminalPrintString(outOfRangeStr, strlen(outOfRangeStr));
-		kernelPanic();
+		Kernel::panic();
 	}
 	void __throw_out_of_range_fmt(const char*, ...) {
 		terminalPrintString(outOfRangeFmtStr, strlen(outOfRangeFmtStr));
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Helpers for exception objects in <functional>
 	void __throw_bad_function_call() {
 		terminalPrintString(badFunctionCallStr, strlen(badFunctionCallStr));
-		kernelPanic();
+		Kernel::panic();
 	}
 
 	// Helper for exception objects in <new>
 	void __throw_bad_alloc(void) {
 		terminalPrintString(badAllocStr, strlen(badAllocStr));
-		kernelPanic();
+		Kernel::panic();
 	}
 	void __throw_bad_array_new_length(void) {
 		terminalPrintString(badArrayStr, strlen(badArrayStr));
-		kernelPanic();
+		Kernel::panic();
 	}
 }
