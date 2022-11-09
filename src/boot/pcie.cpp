@@ -71,7 +71,7 @@ bool enumeratePCIe() {
 
 static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8_t function) {
 	uint64_t functionAddress = baseAddress + (bus << 20 | device << 15 | function << 12);
-	PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous);
 	if (
 		requestResult.address != INVALID_ADDRESS &&
 		requestResult.allocatedCount == 1 &&

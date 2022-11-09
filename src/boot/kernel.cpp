@@ -12,7 +12,6 @@
 #include <idt64.h>
 #include <kernel.h>
 #include <pcie.h>
-#include <phymemmgmt.h>
 #include <sse4.h>
 #include <terminal.h>
 #include <tss64.h>
@@ -55,7 +54,7 @@ extern "C" {
 
 	// Initialize physical memory
 	size_t phyMemBuddyPagesCount;
-	if (!initializePhysicalMemory(
+	if (!Kernel::Memory::Physical::initialize(
 		usablePhyMemStart,
 		lowerHalfSize,
 		higherHalfSize,

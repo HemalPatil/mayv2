@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <elf64.h>
-#include <phymemmgmt.h>
+#include <kernel.h>
 #include <pml4t.h>
 
 #define MAX_VIRTUAL_ADDRESS_BITS 48
@@ -46,6 +46,6 @@ extern bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags);
 extern bool initializeVirtualMemory(void *usableKernelSpaceStart, size_t kernelLowerHalfSize, size_t phyMemBuddyPagesCount);
 extern bool isCanonicalVirtualAddress(void *address);
 extern bool mapVirtualPages(void *virtualAddress, void *physicalAddress, size_t count, uint8_t flags);
-extern PageRequestResult requestVirtualPages(size_t count, uint8_t flags);
+extern Kernel::Memory::PageRequestResult requestVirtualPages(size_t count, uint8_t flags);
 extern void traverseAddressSpaceList(uint8_t flags, bool forwardDirection);
 extern bool unmapVirtualPages(void *virtualAddress, size_t count, bool freePhysicalPage);

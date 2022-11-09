@@ -99,11 +99,11 @@ bool parseAcpi3() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingXsdtStr, strlen(mappingXsdtStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!mapVirtualPages(requestResult.address, (void*)((uint64_t)xsdtPhy & phyMemBuddyMasks[0]), 1, 0)
+		!mapVirtualPages(requestResult.address, (void*)((uint64_t)xsdtPhy & Kernel::Memory::Physical::buddyMasks[0]), 1, 0)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -113,7 +113,7 @@ bool parseAcpi3() {
 	terminalPrintChar('\n');
 
 	// Verify the XSDT signature
-	ACPISDTHeader *oldXsdt = (ACPISDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~phyMemBuddyMasks[0]));
+	ACPISDTHeader *oldXsdt = (ACPISDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~Kernel::Memory::Physical::buddyMasks[0]));
 	terminalPrintSpaces4();
 	terminalPrintString(verifyingXsdtSigStr, strlen(verifyingXsdtSigStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -159,7 +159,7 @@ bool parseAcpi3() {
 	ssdtHeader = (ACPISDTHeader*)kernelMalloc(oldSsdt->length);
 	memcpy(ssdtHeader, oldSsdt, oldSsdt->length);
 	// Free the kernel page used for parsing XSDT
-	freeVirtualPages((void*)((uint64_t)oldXsdt & phyMemBuddyMasks[0]), 1, MEMORY_REQUEST_KERNEL_PAGE);
+	freeVirtualPages((void*)((uint64_t)oldXsdt & Kernel::Memory::Physical::buddyMasks[0]), 1, MEMORY_REQUEST_KERNEL_PAGE);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -174,8 +174,8 @@ ACPISDTHeader* findAcpiTable(ACPISDTHeader *xsdt, uint32_t signature) {
 	size_t tableCount = (xsdt->length - sizeof(ACPISDTHeader)) / sizeof(uint64_t);
 	for (size_t i = 0; i < tableCount; ++i) {
 		ACPISDTHeader *table = (ACPISDTHeader*)(
-			((uint64_t)xsdt & phyMemBuddyMasks[0]) |
-			(((uint64_t*)(xsdt + 1))[i] & ~phyMemBuddyMasks[0])
+			((uint64_t)xsdt & Kernel::Memory::Physical::buddyMasks[0]) |
+			(((uint64_t*)(xsdt + 1))[i] & ~Kernel::Memory::Physical::buddyMasks[0])
 		);
 		if (*(uint32_t*)table->signature == signature) {
 			return table;

@@ -30,7 +30,7 @@ bool initializeHpet() {
 	terminalPrintString(mappingStr, strlen(mappingStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	ACPIHPETTable *hpetTable = (ACPIHPETTable*)hpetSdtHeader;
-	PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||

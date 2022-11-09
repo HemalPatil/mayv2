@@ -2,7 +2,6 @@
 #include <cstring>
 #include <heapmemmgmt.h>
 #include <kernel.h>
-#include <phymemmgmt.h>
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 

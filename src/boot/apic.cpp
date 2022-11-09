@@ -5,7 +5,6 @@
 #include <heapmemmgmt.h>
 #include <idt64.h>
 #include <kernel.h>
-#include <phymemmgmt.h>
 #include <terminal.h>
 #include <virtualmemmgmt.h>
 
@@ -178,7 +177,7 @@ bool initializeApic() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingApicStr, strlen(mappingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
@@ -204,7 +203,7 @@ bool initializeApic() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingIoApicStr, strlen(mappingIoApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS);
+	requestResult = requestVirtualPages(1, MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||

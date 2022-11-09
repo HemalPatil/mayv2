@@ -2,7 +2,6 @@
 #include <cstring>
 #include <heapmemmgmt.h>
 #include <kernel.h>
-#include <phymemmgmt.h>
 #include <pml4t.h>
 #include <terminal.h>
 #include <virtualmemmgmt.h>
@@ -77,19 +76,19 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintString(markingPml4Str, strlen(markingPml4Str));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PML4E *pml4tId = (PML4E*) infoTable->pml4tPhysicalAddress;
-	markPhysicalPages(pml4tId, 1, PHY_MEM_USED);
+	Kernel::Memory::Physical::markPages(pml4tId, 1, Kernel::Memory::MarkPageType::Used);
 	for (size_t i = 0; i < PML4_ENTRY_COUNT; ++i) {
 		if (pml4tId[i].present) {
-			PDPTE *pdptId = (PDPTE*)((uint64_t)pml4tId[i].physicalAddress << pageSizeShift);
-			markPhysicalPages(pdptId, 1, PHY_MEM_USED);
+			PDPTE *pdptId = (PDPTE*)((uint64_t)pml4tId[i].physicalAddress << Kernel::Memory::pageSizeShift);
+			Kernel::Memory::Physical::markPages(pdptId, 1, Kernel::Memory::MarkPageType::Used);
 			for (size_t j = 0; j < PML4_ENTRY_COUNT; ++j) {
 				if (pdptId[j].present) {
-					PDE *pdtId = (PDE*)((uint64_t)pdptId[j].physicalAddress << pageSizeShift);
-					markPhysicalPages(pdtId, 1, PHY_MEM_USED);
+					PDE *pdtId = (PDE*)((uint64_t)pdptId[j].physicalAddress << Kernel::Memory::pageSizeShift);
+					Kernel::Memory::Physical::markPages(pdtId, 1, Kernel::Memory::MarkPageType::Used);
 					for (size_t k = 0; k < PML4_ENTRY_COUNT; ++k) {
 						if (pdtId[k].present) {
-							PTE *ptId = (PTE*)((uint64_t)pdtId[k].physicalAddress << pageSizeShift);
-							markPhysicalPages(ptId, 1, PHY_MEM_USED);
+							PTE *ptId = (PTE*)((uint64_t)pdtId[k].physicalAddress << Kernel::Memory::pageSizeShift);
+							Kernel::Memory::Physical::markPages(ptId, 1, Kernel::Memory::MarkPageType::Used);
 						}
 					}
 				}
@@ -111,7 +110,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PML4E *root = (PML4E*)infoTable->pml4tPhysicalAddress;
 	root[PML4T_RECURSIVE_ENTRY].present = root[PML4T_RECURSIVE_ENTRY].readWrite = 1;
-	root[PML4T_RECURSIVE_ENTRY].physicalAddress = infoTable->pml4tPhysicalAddress >> pageSizeShift;
+	root[PML4T_RECURSIVE_ENTRY].physicalAddress = infoTable->pml4tPhysicalAddress >> Kernel::Memory::pageSizeShift;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -119,16 +118,22 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintSpaces4();
 	terminalPrintString(movingBuddiesStr, strlen(movingBuddiesStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!mapVirtualPages(usableKernelSpaceStart, phyMemBuddyBitmaps[0], phyMemBuddyPagesCount, 0)) {
+	if (!mapVirtualPages(usableKernelSpaceStart, Kernel::Memory::Physical::buddyBitmaps[0], phyMemBuddyPagesCount, 0)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
 	}
-	phyMemBuddyBitmaps[0] = (uint8_t*)usableKernelSpaceStart;
+	Kernel::Memory::Physical::buddyBitmaps[0] = (uint8_t*)usableKernelSpaceStart;
 	for (size_t i = 1; i < PHY_MEM_BUDDY_MAX_ORDER; ++i) {
-		phyMemBuddyBitmaps[i] = (uint8_t*)((uint64_t)phyMemBuddyBitmaps[i - 1] + phyMemBuddyBitmapSizes[i - 1]);
+		Kernel::Memory::Physical::buddyBitmaps[i] = (uint8_t*)(
+			(uint64_t)Kernel::Memory::Physical::buddyBitmaps[i - 1] +
+			Kernel::Memory::Physical::buddyBitmapSizes[i - 1]
+		);
 	}
-	usableKernelSpaceStart = (void*)((uint64_t)phyMemBuddyBitmaps[0] + phyMemBuddyPagesCount * pageSize);
+	usableKernelSpaceStart = (void*)(
+		(uint64_t)Kernel::Memory::Physical::buddyBitmaps[0] +
+		phyMemBuddyPagesCount * Kernel::Memory::pageSize
+	);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -141,9 +146,9 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintString("MiBs", 4);
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	if (
-		!unmapVirtualPages((void*)mib1, (L32_IDENTITY_MAP_SIZE - 1) * mib1 / pageSize, false) ||
-		!unmapVirtualPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / pageSize, false) ||
-		!unmapVirtualPages((void*)KERNEL_LOWERHALF_ORIGIN, kernelLowerHalfSize / pageSize, false)
+		!unmapVirtualPages((void*)mib1, (L32_IDENTITY_MAP_SIZE - 1) * mib1 / Kernel::Memory::pageSize, false) ||
+		!unmapVirtualPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / Kernel::Memory::pageSize, false) ||
+		!unmapVirtualPages((void*)KERNEL_LOWERHALF_ORIGIN, kernelLowerHalfSize / Kernel::Memory::pageSize, false)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -158,10 +163,10 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintString(reservingHeapStr, strlen(reservingHeapStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	heapRegionsList = (HeapHeader*)usableKernelSpaceStart;
-	PageRequestResult requestResult = requestPhysicalPages(HEAP_NEW_REGION_SIZE / pageSize, 0);
+	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Physical::requestPages(HEAP_NEW_REGION_SIZE / Kernel::Memory::pageSize, 0);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
-		requestResult.allocatedCount != (HEAP_NEW_REGION_SIZE / pageSize) ||
+		requestResult.allocatedCount != (HEAP_NEW_REGION_SIZE / Kernel::Memory::pageSize) ||
 		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
@@ -171,10 +176,10 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	memset(heapRegionsList, 0, HEAP_NEW_REGION_SIZE);
 	usableKernelSpaceStart = (void*)((uint64_t)usableKernelSpaceStart + HEAP_NEW_REGION_SIZE);
 	const size_t entryTableSize = HEAP_NEW_REGION_SIZE / (sizeof(HeapEntry) + HEAP_MIN_BLOCK_SIZE);
-	requestResult = requestPhysicalPages(entryTableSize / pageSize, 0);
+	requestResult = Kernel::Memory::Physical::requestPages(entryTableSize / Kernel::Memory::pageSize, 0);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
-		requestResult.allocatedCount != (entryTableSize / pageSize) ||
+		requestResult.allocatedCount != (entryTableSize / Kernel::Memory::pageSize) ||
 		!mapVirtualPages(usableKernelSpaceStart, requestResult.address, requestResult.allocatedCount, 0)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
@@ -198,7 +203,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	terminalPrintSpaces4();
 	terminalPrintString(creatingListsStr, strlen(creatingListsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	requestResult = requestPhysicalPages(1, 0);
+	requestResult = Kernel::Memory::Physical::requestPages(1, 0);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
@@ -213,7 +218,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	kernelAddressSpaceList = current;
 	kernelAddressSpaceList->available = false;
 	kernelAddressSpaceList->base = (void*) KERNEL_HIGHERHALF_ORIGIN;
-	kernelAddressSpaceList->pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / pageSize;
+	kernelAddressSpaceList->pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / Kernel::Memory::pageSize;
 	kernelAddressSpaceList->next = ++current;
 	kernelAddressSpaceList->previous = nullptr;
 	// Available kernel space
@@ -221,7 +226,7 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	current->base = usableKernelSpaceStart;
 	kernelPagesAvailableCount =
 		current->pageCount =
-		((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / pageSize;
+		((uint64_t)UINT64_MAX - (uint64_t)usableKernelSpaceStart + 1) / Kernel::Memory::pageSize;
 	current->next = nullptr;
 	current->previous = kernelAddressSpaceList;
 	++current;
@@ -229,13 +234,13 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	generalAddressSpaceList = current;
 	generalAddressSpaceList->available = false;
 	generalAddressSpaceList->base = 0;
-	generalAddressSpaceList->pageCount = L32K64_SCRATCH_BASE / pageSize;
+	generalAddressSpaceList->pageCount = L32K64_SCRATCH_BASE / Kernel::Memory::pageSize;
 	generalAddressSpaceList->next = ++current;
 	generalAddressSpaceList->previous = nullptr;
 	// General L32K64_SCRATCH_BASE to (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) available
 	current->available = true;
 	current->base = (void*) L32K64_SCRATCH_BASE;
-	current->pageCount = L32K64_SCRATCH_LENGTH / pageSize;
+	current->pageCount = L32K64_SCRATCH_LENGTH / Kernel::Memory::pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
 	generalPagesAvailableCount += current->pageCount;
@@ -243,14 +248,14 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// General (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB used
 	current->available = false;
 	current->base = (void*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH);
-	current->pageCount = (mib1 - L32K64_SCRATCH_BASE - L32K64_SCRATCH_LENGTH)/pageSize;
+	current->pageCount = (mib1 - L32K64_SCRATCH_BASE - L32K64_SCRATCH_LENGTH) / Kernel::Memory::pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
 	++current;
 	// General 1MiB to valid lower half canonical address available
 	current->available = true;
 	current->base = (void*) mib1;
-	current->pageCount = (nonCanonicalStart - mib1) / pageSize;
+	current->pageCount = (nonCanonicalStart - mib1) / Kernel::Memory::pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
 	generalPagesAvailableCount += current->pageCount;
@@ -258,14 +263,14 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// Mark non canonical address range as used
 	current->available = false;
 	current->base = (void*) nonCanonicalStart;
-	current->pageCount = (nonCanonicalEnd - nonCanonicalStart) / pageSize;
+	current->pageCount = (nonCanonicalEnd - nonCanonicalStart) / Kernel::Memory::pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
 	++current;
 	// General valid higher half canonical address to PML4 recursive map available
 	current->available = true;
 	current->base = (void*) nonCanonicalEnd;
-	current->pageCount = (ptMask - nonCanonicalEnd) / pageSize;
+	current->pageCount = (ptMask - nonCanonicalEnd) / Kernel::Memory::pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
 	generalPagesAvailableCount += current->pageCount;
@@ -273,14 +278,14 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 	// PML4 recursive map used
 	current->available = false;
 	current->base = (void*) ptMask;
-	current->pageCount = ((uint64_t)512 * GIB_1) / pageSize;
+	current->pageCount = ((uint64_t)512 * GIB_1) / Kernel::Memory::pageSize;
 	current->next = current + 1;
 	current->previous = current - 1;
 	++current;
 	// General PML4 recursive map to KERNEL_HIGHERHALF_ORIGIN available
 	current->available = true;
 	current->base = (void*)(ptMask + 512 * GIB_1);
-	current->pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
+	current->pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / Kernel::Memory::pageSize;
 	current->next = nullptr;
 	current->previous = current - 1;
 	generalPagesAvailableCount += current->pageCount;
@@ -299,8 +304,8 @@ bool initializeVirtualMemory(void* usableKernelSpaceStart, size_t kernelLowerHal
 // Returns INVALID_ADDRESS and allocatedCount = 0 if request count is count == 0
 // or greater than currently available kernel pages
 // Unsafe to call this function until dynamic memory manager is initialized
-PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
-	PageRequestResult result;
+Kernel::Memory::PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
+	Kernel::Memory::PageRequestResult result;
 	if (count > ((flags & MEMORY_REQUEST_KERNEL_PAGE) ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
 		return result;
 	}
@@ -316,12 +321,12 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 		}
 		current = current->next;
 	}
-	if (flags & MEMORY_REQUEST_CONTIGUOUS) {
+	if (flags & Kernel::Memory::RequestType::Contiguous) {
 		bestFit->available = false;
 		if (bestFit->pageCount != count) {
 			VirtualMemNode *newNode = new VirtualMemNode();
 			newNode->available = true;
-			newNode->base = (void*)((uint64_t)bestFit->base + count * pageSize);
+			newNode->base = (void*)((uint64_t)bestFit->base + count * Kernel::Memory::pageSize);
 			newNode->pageCount = bestFit->pageCount - count;
 			newNode->next = bestFit->next;
 			newNode->previous = bestFit;
@@ -343,7 +348,7 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 		if (flags & MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE) {
 			size_t total = 0;
 			while (total != count) {
-				PageRequestResult phyResult = requestPhysicalPages(count - total, 0);
+				Kernel::Memory::PageRequestResult phyResult = Kernel::Memory::Physical::requestPages(count - total, 0);
 				if (phyResult.address == INVALID_ADDRESS || phyResult.allocatedCount == 0) {
 					// Out of memory
 					// TODO: should swap out pages instead of panicking
@@ -351,7 +356,7 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 					kernelPanic();
 				}
 				mapVirtualPages(
-					(void*)((uint64_t)result.address + total * pageSize),
+					(void*)((uint64_t)result.address + total * Kernel::Memory::pageSize),
 					phyResult.address,
 					phyResult.allocatedCount,
 					flags
@@ -376,10 +381,10 @@ PageRequestResult requestVirtualPages(size_t count, uint8_t flags) {
 // Returns false if the virtual pages to be freed do not entirely fit in a used region
 bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 	uint64_t vBeg = (uint64_t)virtualAddress;
-	uint64_t vEnd = vBeg + count * pageSize;
+	uint64_t vEnd = vBeg + count * Kernel::Memory::pageSize;
 
 	// Ensure the virtual addresses are pageSize boundary aligned and canonical
-	if ((vBeg & ~phyMemBuddyMasks[0]) || !isCanonicalVirtualAddress(virtualAddress)) {
+	if ((vBeg & ~Kernel::Memory::Physical::buddyMasks[0]) || !isCanonicalVirtualAddress(virtualAddress)) {
 		return false;
 	}
 
@@ -387,7 +392,7 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 	VirtualMemNode *current = list;
 	while (current) {
 		uint64_t cBeg = (uint64_t)current->base;
-		uint64_t cEnd = cBeg + current->pageCount * pageSize;
+		uint64_t cEnd = cBeg + current->pageCount * Kernel::Memory::pageSize;
 		if (!current->available && cBeg <= vBeg && cEnd >= vEnd) {
 			if (cBeg == vBeg && cEnd == vEnd) {
 				// Region to be freed fits exactly in current block
@@ -398,7 +403,7 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 				VirtualMemNode *newNode3 = new VirtualMemNode();
 				newNode1->available = false;
 				newNode1->base = current->base;
-				newNode1->pageCount = (vBeg - cBeg) / pageSize;
+				newNode1->pageCount = (vBeg - cBeg) / Kernel::Memory::pageSize;
 				newNode1->next = newNode2;
 				newNode1->previous = current->previous;
 				if (newNode1->previous) {
@@ -411,7 +416,7 @@ bool freeVirtualPages(void *virtualAddress, size_t count, uint8_t flags) {
 				newNode2->previous = newNode1;
 				newNode3->available = false;
 				newNode3->base = (void*)vEnd;
-				newNode3->pageCount = (cEnd - vEnd) / pageSize;
+				newNode3->pageCount = (cEnd - vEnd) / Kernel::Memory::pageSize;
 				newNode3->next = current->next;
 				newNode3->previous = newNode2;
 				if (newNode3->next) {
@@ -494,12 +499,12 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count, 
 	uint64_t virAddr = (uint64_t)virtualAddress;
 
 	// Ensure both physical and virtual address are pageSize boundary aligned
-	if (phyAddr & ~phyMemBuddyMasks[0] || virAddr & ~phyMemBuddyMasks[0]) {
+	if (phyAddr & ~Kernel::Memory::Physical::buddyMasks[0] || virAddr & ~Kernel::Memory::Physical::buddyMasks[0]) {
 		return false;
 	}
 
-	PageRequestResult requestResult;
-	for (size_t i = 0; i < count; ++i, phyAddr += pageSize, virAddr += pageSize) {
+	Kernel::Memory::PageRequestResult requestResult;
+	for (size_t i = 0; i < count; ++i, phyAddr += Kernel::Memory::pageSize, virAddr += Kernel::Memory::pageSize) {
 		PML4CrawlResult crawlResult((void*)virAddr);
 		if (!crawlResult.isCanonical) {
 			return false;
@@ -507,7 +512,7 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count, 
 		for (size_t j = 3; j >= 1; --j) {
 			if (crawlResult.physicalTables[j] == INVALID_ADDRESS) {
 				// Create a new page table if entry is not present
-				requestResult = requestPhysicalPages(1, 0);
+				requestResult = Kernel::Memory::Physical::requestPages(1, 0);
 				if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
 					// TODO: should swap out a physical page instead of panicking
 					terminalPrintString(entryCreationFailed, strlen(entryCreationFailed));
@@ -520,15 +525,15 @@ bool mapVirtualPages(void* virtualAddress, void* physicalAddress, size_t count, 
 				}
 				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].present = 1;
 				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].readWrite = 1;
-				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].physicalAddress = (uint64_t)requestResult.address >> pageSizeShift;
-				memset(crawlResult.tables[j], 0, pageSize);
+				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].physicalAddress = (uint64_t)requestResult.address >> Kernel::Memory::pageSizeShift;
+				memset(crawlResult.tables[j], 0, Kernel::Memory::pageSize);
 			}
 		}
 		if (crawlResult.physicalTables[0] == INVALID_ADDRESS) {
 			crawlResult.tables[1][crawlResult.indexes[1]].present = 1;
 			// FIXME: should add only appropriate permissions when mapping pages
 			crawlResult.tables[1][crawlResult.indexes[1]].readWrite = 1;
-			crawlResult.tables[1][crawlResult.indexes[1]].physicalAddress = phyAddr >> pageSizeShift;
+			crawlResult.tables[1][crawlResult.indexes[1]].physicalAddress = phyAddr >> Kernel::Memory::pageSizeShift;
 			crawlResult.tables[1][crawlResult.indexes[1]].cacheDisable = (flags & MEMORY_REQUEST_CACHE_DISABLE) ? 1 : 0;
 		}
 	}
@@ -545,11 +550,11 @@ bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage
 	uint64_t addr = (uint64_t) virtualAddress;
 
 	// Ensure the virtual addresses are pageSize boundary aligned
-	if (addr & ~phyMemBuddyMasks[0]) {
+	if (addr & ~Kernel::Memory::Physical::buddyMasks[0]) {
 		return false;
 	}
 
-	for (size_t i = 0; i < count; ++i, addr += pageSize) {
+	for (size_t i = 0; i < count; ++i, addr += Kernel::Memory::pageSize) {
 		PML4CrawlResult crawlResult((void*) addr);
 		if (!crawlResult.isCanonical) {
 			return false;
@@ -558,7 +563,7 @@ bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage
 			// Virtual address is fully resolved
 			crawlResult.tables[1][crawlResult.indexes[1]].present = 0;
 			if (freePhysicalPage) {
-				markPhysicalPages(crawlResult.physicalTables[0], 1, PHY_MEM_FREE);
+				Kernel::Memory::Physical::markPages(crawlResult.physicalTables[0], 1, Kernel::Memory::MarkPageType::Free);
 			}
 		}
 		for (size_t j = 1; j <= 3; ++j) {
@@ -577,7 +582,7 @@ bool unmapVirtualPages(void* virtualAddress, size_t count, bool freePhysicalPage
 			}
 			if (freePageTable) {
 				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].present = 0;
-				markPhysicalPages((void*)crawlResult.physicalTables[j], 1, PHY_MEM_FREE);
+				Kernel::Memory::Physical::markPages((void*)crawlResult.physicalTables[j], 1, Kernel::Memory::MarkPageType::Free);
 			}
 		}
 	}
@@ -605,9 +610,9 @@ bool isCanonicalVirtualAddress(void* address) {
 // If an address is not canonical all levels in physicalTables are set to INVALID_ADDRESS
 PML4CrawlResult::PML4CrawlResult(void *virtualAddress) {
 	this->isCanonical = false;
-	uint64_t addr = (uint64_t)virtualAddress & phyMemBuddyMasks[0];
+	uint64_t addr = (uint64_t)virtualAddress & Kernel::Memory::Physical::buddyMasks[0];
 	this->indexes[0] = (uint64_t)virtualAddress - addr;
-	addr >>= pageSizeShift;
+	addr >>= Kernel::Memory::pageSizeShift;
 	for (size_t i = 1; i <= 4; ++i) {
 		this->indexes[i] = addr & virtualPageIndexMask;
 		addr >>= virtualPageIndexShift;
@@ -638,7 +643,7 @@ PML4CrawlResult::PML4CrawlResult(void *virtualAddress) {
 		this->physicalTables[4] = (PML4E*)infoTable->pml4tPhysicalAddress;
 		for (size_t i = 4; i >= 1; --i) {
 			if (this->tables[i][indexes[i]].present) {
-				this->physicalTables[i - 1] = (PML4E*)((uint64_t)this->tables[i][this->indexes[i]].physicalAddress << pageSizeShift);
+				this->physicalTables[i - 1] = (PML4E*)((uint64_t)this->tables[i][this->indexes[i]].physicalAddress << Kernel::Memory::pageSizeShift);
 				this->cached[i - 1] = (this->tables[i][this->indexes[i]].cacheDisable & 1) ? false : true;
 			} else {
 				break;

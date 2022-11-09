@@ -196,11 +196,11 @@ bool AHCI::Device::initialize() {
 
 	// Request a page where the command list (1024 bytes) and received FISes (256 bytes) can be placed
 	// Get the physical address of this page and put it in the commandListBase and fisBase
-	PageRequestResult requestResult = requestVirtualPages(
+	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(
 		1,
 		(
 			MEMORY_REQUEST_KERNEL_PAGE |
-			MEMORY_REQUEST_CONTIGUOUS |
+			Kernel::Memory::RequestType::Contiguous |
 			MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE |
 			MEMORY_REQUEST_CACHE_DISABLE
 		)
@@ -211,7 +211,7 @@ bool AHCI::Device::initialize() {
 	PML4CrawlResult crawlResult(requestResult.address);
 	uint64_t phyAddr = (uint64_t)crawlResult.physicalTables[0];
 	uint64_t virAddr = (uint64_t)requestResult.address;
-	memset(requestResult.address, 0, pageSize);
+	memset(requestResult.address, 0, Kernel::Memory::pageSize);
 	this->commandHeaders = (CommandHeader*)virAddr;
 	this->port->commandListBase = (uint32_t)phyAddr;
 	if (this->controller->hba->hostCapabilities.bit64Addressing) {
@@ -236,7 +236,7 @@ bool AHCI::Device::initialize() {
 		2,
 		(
 			MEMORY_REQUEST_KERNEL_PAGE |
-			MEMORY_REQUEST_CONTIGUOUS |
+			Kernel::Memory::RequestType::Contiguous |
 			MEMORY_REQUEST_ALLOCATE_PHYSICAL_PAGE |
 			MEMORY_REQUEST_CACHE_DISABLE
 		)
@@ -247,7 +247,7 @@ bool AHCI::Device::initialize() {
 	crawlResult = PML4CrawlResult(requestResult.address);
 	phyAddr = (uint64_t)crawlResult.physicalTables[0];
 	virAddr = (uint64_t)requestResult.address;
-	memset(requestResult.address, 0, 2 * pageSize);
+	memset(requestResult.address, 0, 2 * Kernel::Memory::pageSize);
 	const size_t commandTableSize = 64 + 16 + 48 + 16 * 8;
 	for (size_t i = 0; i < AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader); ++i) {
 		this->commandHeaders[i].prdtLength = 8;

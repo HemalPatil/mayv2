@@ -19,9 +19,9 @@ bool AHCI::Controller::initialize(PCIeFunction *pcieFunction) {
 	terminalPrintString(mappingHbaStr, strlen(mappingHbaStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PCIeType0Header *ahciHeader = (PCIeType0Header*)(pcieFunction->configurationSpace);
-	PageRequestResult requestResult = requestVirtualPages(
+	Kernel::Memory::PageRequestResult requestResult = requestVirtualPages(
 		2,
-		MEMORY_REQUEST_KERNEL_PAGE | MEMORY_REQUEST_CONTIGUOUS | MEMORY_REQUEST_CACHE_DISABLE
+		MEMORY_REQUEST_KERNEL_PAGE | Kernel::Memory::RequestType::Contiguous | MEMORY_REQUEST_CACHE_DISABLE
 	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
