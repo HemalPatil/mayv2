@@ -3,25 +3,22 @@
 #include <cstdint>
 #include <kernel.h>
 
-#define PCI_CAPABILITIES_LIST_AVAILABLE (1 << 4)
-#define PCI_MSI_CAPABAILITY_ID 0x5
-
-#define PCI_CLASS_STORAGE 0x1
-#define PCI_CLASS_BRIDGE 0x6
-
-#define PCI_SUBCLASS_PCI_BRIDGE 0x4
-#define PCI_SUBCLASS_PCI_BRIDGE2 0x9
-#define PCI_SUBCLASS_SATA 0x6
-
-#define PCI_PROG_AHCI 0x1
-
-#define PCI_BUS_COUNT 256
-#define PCI_DEVICE_COUNT 32
-#define PCI_FUNCTION_COUNT 8
-#define PCI_INVALID_DEVICE 0xffff
-#define PCI_MULTI_FUNCTION_DEVICE 0x80
-
 namespace PCIe {
+	enum Class {
+		Storage = 0x1,
+		Bridge = 0x6
+	};
+
+	enum Subclass {
+		PciBridge = 0x4,
+		PciBridge2 = 0x9,
+		Sata = 0x6
+	};
+
+	enum ProgramType {
+		Ahci = 0x1
+	};
+
 	struct SegmentGroupEntry {
 		uint64_t baseAddress;
 		uint16_t groupNumber;

@@ -114,9 +114,9 @@ extern "C" {
 	for (auto &function : PCIe::functions) {
 		bool (*initializer)(PCIe::Function &pcieFunction) = nullptr;
 		if (
-			function.configurationSpace->mainClass == PCI_CLASS_STORAGE &&
-			function.configurationSpace->subClass == PCI_SUBCLASS_SATA &&
-			function.configurationSpace->progIf == PCI_PROG_AHCI
+			function.configurationSpace->mainClass == PCIe::Class::Storage &&
+			function.configurationSpace->subClass == PCIe::Subclass::Sata &&
+			function.configurationSpace->progIf == PCIe::ProgramType::Ahci
 		) {
 			initializer = &AHCI::initialize;
 		}

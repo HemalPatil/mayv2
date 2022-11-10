@@ -4,6 +4,15 @@
 #include <pcie.h>
 #include <terminal.h>
 
+#define PCI_CAPABILITIES_LIST_AVAILABLE (1 << 4)
+#define PCI_MSI_CAPABAILITY_ID 0x5
+
+#define PCI_BUS_COUNT 256
+#define PCI_DEVICE_COUNT 32
+#define PCI_FUNCTION_COUNT 8
+#define PCI_INVALID_DEVICE 0xffff
+#define PCI_MULTI_FUNCTION_DEVICE 0x80
+
 static bool enumerateBus(uint64_t baseAddress, uint8_t bus);
 static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device);
 static bool enumerateFunction(uint8_t function, PCIe::BaseHeader *pcieHeader, PCIe::MSICapability **msi);
@@ -94,7 +103,7 @@ static bool enumerateFunction(uint8_t function, PCIe::BaseHeader *pcieHeader, PC
 	terminalPrintHex(&pcieHeader->subClass, sizeof(pcieHeader->subClass));
 	terminalPrintChar(':');
 	terminalPrintHex(&pcieHeader->progIf, sizeof(pcieHeader->progIf));
-	if (pcieHeader->mainClass == PCI_CLASS_BRIDGE && pcieHeader->subClass == PCI_SUBCLASS_PCI_BRIDGE) {
+	if (pcieHeader->mainClass == PCIe::Class::Bridge && pcieHeader->subClass == PCIe::Subclass::PciBridge) {
 		// FIXME: should enumerate secondary bus
 	}
 
