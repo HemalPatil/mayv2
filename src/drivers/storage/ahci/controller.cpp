@@ -12,12 +12,12 @@ static const char* const ahciSwitchStr = "Switching to AHCI mode";
 static const char* const probingPortsStr = "Enumerating and configuring ports";
 static const char* const configuredStr = "Ports configured";
 
-bool AHCI::Controller::initialize(PCIeFunction *pcieFunction) {
+bool AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
 	// Map the HBA control registers to kernel address space
 	terminalPrintSpaces4();
 	terminalPrintString(mappingHbaStr, strlen(mappingHbaStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	PCIeType0Header *ahciHeader = (PCIeType0Header*)(pcieFunction->configurationSpace);
+	PCIe::Type0Header *ahciHeader = (PCIe::Type0Header*)(pcieFunction.configurationSpace);
 	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
 		2,
 		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous | Kernel::Memory::RequestType::CacheDisable

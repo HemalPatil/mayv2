@@ -36,7 +36,7 @@ void ahciMsiHandler() {
 	}
 }
 
-bool AHCI::initialize(PCIeFunction *pcieFunction) {
+bool AHCI::initialize(PCIe::Function &pcieFunction) {
 	terminalPrintString(initAhciStr, strlen(initAhciStr));
 	terminalPrintDecimal(AHCI::controllers.size());
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -58,22 +58,22 @@ bool AHCI::initialize(PCIeFunction *pcieFunction) {
 	terminalPrintSpaces4();
 	terminalPrintString(checkMsiStr, strlen(checkMsiStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!pcieFunction->msi) {
+	if (!pcieFunction.msi) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
 		terminalPrintChar('\n');
 		return false;
 	}
-	if (pcieFunction->msi->bit64Capable) {
-		PCIeMSI64Capability *msi64 = (PCIeMSI64Capability*)pcieFunction->msi;
+	if (pcieFunction.msi->bit64Capable) {
+		PCIe::MSI64Capability *msi64 = (PCIe::MSI64Capability*)pcieFunction.msi;
 		msi64->messageAddress = LOCAL_APIC_DEFAULT_ADDRESS;
 		msi64->data = msiInterrupt;
 		msi64->enable = 1;
 	} else {
-		pcieFunction->msi->messageAddress = LOCAL_APIC_DEFAULT_ADDRESS;
-		pcieFunction->msi->data = msiInterrupt;
-		pcieFunction->msi->enable = 1;
+		pcieFunction.msi->messageAddress = LOCAL_APIC_DEFAULT_ADDRESS;
+		pcieFunction.msi->data = msiInterrupt;
+		pcieFunction.msi->enable = 1;
 	}
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');

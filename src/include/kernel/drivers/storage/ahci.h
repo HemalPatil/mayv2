@@ -43,7 +43,6 @@ namespace AHCI {
 		uint8_t reserved0 : 4;
 		uint16_t reserved1;
 	} __attribute__((packed));
-	typedef struct PortStatus PortStatus;
 
 	struct PortCommandStatus {
 		uint8_t start : 1;
@@ -70,7 +69,6 @@ namespace AHCI {
 		uint8_t aggressiveSlumber : 1;
 		uint8_t interfaceCommunicationControl : 4;
 	} __attribute__((packed));
-	typedef struct PortCommandStatus PortCommandStatus;
 
 	struct Port {
 		uint32_t commandListBase;
@@ -94,7 +92,6 @@ namespace AHCI {
 		uint8_t reserved1[40];
 		uint32_t vendor[4];
 	} __attribute__((packed));
-	typedef struct Port Port;
 
 	struct HostCapabilities {
 		uint8_t portCount : 5;
@@ -119,7 +116,6 @@ namespace AHCI {
 		uint8_t nativeCommandQueuing : 1;
 		uint8_t bit64Addressing : 1;
 	} __attribute__((packed));
-	typedef struct HostCapabilities HostCapabilities;
 
 	struct HostBusAdapter {
 		HostCapabilities hostCapabilities;
@@ -137,7 +133,6 @@ namespace AHCI {
 		uint8_t vendor[96];
 		Port ports[AHCI_PORT_COUNT];
 	} __attribute__((packed));
-	typedef struct HostBusAdapter HostBusAdapter;
 
 	struct CommandHeader {
 		uint8_t commandFisLength : 5;
@@ -155,7 +150,6 @@ namespace AHCI {
 		uint32_t commandTableBaseUpper;
 		uint32_t reserved1[4];
 	} __attribute__((packed));
-	typedef struct CommandHeader CommandHeader;
 
 	namespace FIS {
 
@@ -180,7 +174,6 @@ namespace AHCI {
 			uint8_t control;
 			uint32_t reserved1;
 		} __attribute__((packed));
-		typedef struct RegisterH2D RegisterH2D;
 
 	}
 
@@ -192,7 +185,6 @@ namespace AHCI {
 		uint16_t reserved1 : 9;
 		uint8_t interruptOnCompletion : 1;
 	} __attribute__((packed));
-	typedef struct PRDTEntry PRDTEntry;
 
 	struct CommandTable {
 		uint8_t commandFIS[64];
@@ -200,7 +192,6 @@ namespace AHCI {
 		uint8_t reserved[48];
 		PRDTEntry prdtEntries[];
 	} __attribute__((packed));
-	typedef struct CommandTable CommandTable;
 
 	struct IdentifyDeviceData {
 		struct {
@@ -573,7 +564,6 @@ namespace AHCI {
 		uint16_t signature : 8;
 		uint16_t checkSum : 8;
 	} __attribute__((packed));
-	typedef struct IdentifyDeviceData IdentifyDeviceData;
 
 	class Controller;
 	class Device;
@@ -582,7 +572,7 @@ namespace AHCI {
 
 	extern std::vector<Controller> controllers;
 
-	extern bool initialize(PCIeFunction *pcieFunction);
+	extern bool initialize(PCIe::Function &pcieFunction);
 }
 
 extern "C" void ahciMsiHandler();

@@ -106,25 +106,23 @@ extern "C" {
 	terminalPrintChar('\n');
 
 	// Enumerate PCIe devices
-	if (!enumeratePCIe()) {
+	if (!PCIe::enumerate()) {
 		Kernel::panic();
 	}
 
 	// Start drivers for PCIe devices
-	PCIeFunction *pcieFunction = pcieFunctions;
-	while (pcieFunction) {
-		bool (*initializer)(PCIeFunction *pcieFunction) = nullptr;
+	for (auto &function : PCIe::functions) {
+		bool (*initializer)(PCIe::Function &pcieFunction) = nullptr;
 		if (
-			pcieFunction->configurationSpace->mainClass == PCI_CLASS_STORAGE &&
-			pcieFunction->configurationSpace->subClass == PCI_SUBCLASS_SATA &&
-			pcieFunction->configurationSpace->progIf == PCI_PROG_AHCI
+			function.configurationSpace->mainClass == PCI_CLASS_STORAGE &&
+			function.configurationSpace->subClass == PCI_SUBCLASS_SATA &&
+			function.configurationSpace->progIf == PCI_PROG_AHCI
 		) {
 			initializer = &AHCI::initialize;
 		}
-		if (initializer && !((*initializer)(pcieFunction))) {
+		if (initializer && !((*initializer)(function))) {
 			Kernel::panic();
 		}
-		pcieFunction = pcieFunction->next;
 	}
 
 	// Create filesystems
