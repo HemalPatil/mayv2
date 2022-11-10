@@ -57,7 +57,7 @@ sed -i "s/L32K64_SCRATCH_LENGTH equ $SED_HEX_OR_NUMBER_REGEX/L32K64_SCRATCH_LENG
 # Should never exceed 256MiB
 L32_IDENTITY_MAP_SIZE=32
 sed -i "s/\#define L32_IDENTITY_MAP_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define L32_IDENTITY_MAP_SIZE $L32_IDENTITY_MAP_SIZE/" src/boot/stage2/loader32.cpp
-sed -i "s/\#define L32_IDENTITY_MAP_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define L32_IDENTITY_MAP_SIZE $L32_IDENTITY_MAP_SIZE/" src/include/kernel/phymemmgmt.h
+sed -i "s/\#define L32_IDENTITY_MAP_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define L32_IDENTITY_MAP_SIZE $L32_IDENTITY_MAP_SIZE/" src/include/kernel/kernel.h
 
 # Configure kernel lowerhalf origin
 # Should always fit in first 2GiB - 4GiB of virtual address space to allow jumping into x64 32-bit compatibility mode
