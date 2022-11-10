@@ -81,10 +81,6 @@ extern "C" {
 	}
 	terminalPrintChar('\n');
 
-	Kernel::Memory::Virtual::showAddressSpaceList();
-	Kernel::Memory::Virtual::showAddressSpaceList(false);
-	// Kernel::hangSystem();
-
 	if (!parseAcpi3()) {
 		Kernel::panic();
 	}
@@ -103,6 +99,9 @@ extern "C" {
 	if (!initializePs2Keyboard()) {
 		Kernel::panic();
 	}
+
+	// Enable interrupts
+	terminalPrintChar('\n');
 	enableInterrupts();
 	terminalPrintChar('\n');
 
@@ -155,6 +154,7 @@ extern "C" {
 				}
 			}
 		}
+		++controllerCount;
 	}
 	terminalPrintSpaces4();
 	terminalPrintString(checkingAhciDoneStr, strlen(checkingAhciDoneStr));

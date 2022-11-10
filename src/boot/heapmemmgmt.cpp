@@ -36,10 +36,6 @@ const size_t Kernel::Memory::Heap::entryTableSize = Kernel::Memory::Heap::newReg
 // Returns a memory chunk from one of the kernel heap regions
 // Unsafe to call before at least one heap region is created
 void* Kernel::Memory::Heap::malloc(size_t count) {
-	terminalPrintString("malloc", 6);
-	terminalPrintDecimal(count);
-	terminalPrintChar('\n');
-	// hangSystem();
 	if (!heapList) {
 		terminalPrintString(noHeapsStr, strlen(noHeapsStr));
 		panic();
@@ -68,38 +64,28 @@ void* Kernel::Memory::Heap::malloc(size_t count) {
 			while (
 				entry &&
 				validHeapEntry(currentHeap, entry) &&
-				entry->signature != Signature::Free &&
-				entry->size >= count
+				(
+					entry->signature != Signature::Free ||
+					(entry->signature == Signature::Free && entry->size < count)
+				)
 			) {
 				entry = nextHeapEntry(currentHeap, entry);
 			}
 
 			// Break the free block only if the newly created free block
 			// can occupy at least minBlockSize
-			// terminalPrintString("[f!", 3);
-			// terminalPrintHex(entry, 8);
-			// terminalPrintString("!f]", 3);
 			entry->signature = Signature::Used;
-			const size_t newFreeEntryRemaining = entry->size - count - sizeof(Entry);
-			if (newFreeEntryRemaining >= minBlockSize) {
+			if (entry->size >= count + sizeof(Entry) + minBlockSize) {
+				const size_t newFreeEntryRemaining = entry->size - count - sizeof(Entry);
 				entry->size = count;
 				Entry *newFreeEntry = (Entry*)((uint64_t)entry + entry->size + sizeof(Entry));
 				newFreeEntry->signature = Signature::Free;
 				newFreeEntry->size = newFreeEntryRemaining;
 				currentHeap->remaining -= (count + sizeof(Entry));
-				// terminalPrintString("[m!", 3);
-				// terminalPrintHex(entry, 8);
-				// terminalPrintHex(&newFreeEntry, 8);
-				// terminalPrintHex(newFreeEntry, 8);
-				// terminalPrintHex((void*)(0xffffffff800851c8UL), 8);
-				// terminalPrintString("!m]", 3);
 			} else {
 				currentHeap->remaining -= entry->size;
 			}
 			mallocedValue = (void*)((uint64_t)entry + sizeof(Entry));
-			// terminalPrintString("[v!", 3);
-			// terminalPrintHex(&mallocedValue, 8);
-			// terminalPrintString("!v]", 3);
 			currentHeap->entryTable[currentHeap->entryCount] = mallocedValue;
 			++currentHeap->entryCount;
 			break;
@@ -217,7 +203,8 @@ bool Kernel::Memory::Heap::create(void *newHeapAddress, void **entryTable) {
 		!Virtual::mapPages(
 			(void*)((uint64_t)newHeapAddress + newRegionSize),
 			requestResult.address,
-			requestResult.allocatedCount, 0
+			requestResult.allocatedCount,
+			0
 		)
 	) {
 		return false;
@@ -253,7 +240,7 @@ static Kernel::Memory::Heap::Entry* nextHeapEntry(
 	using namespace Kernel::Memory::Heap;
 	uint64_t heapEnd = (uint64_t)heap + heap->size;
 	uint64_t nextEntry = (uint64_t)entry + sizeof(Entry) + entry->size;
-	if (nextEntry >= heapEnd || heapEnd - nextEntry - sizeof(Entry) < minBlockSize) {
+	if (nextEntry >= heapEnd || (nextEntry + sizeof(Entry) + minBlockSize) > heapEnd) {
 		return nullptr;
 	}
 	return (Entry*)nextEntry;

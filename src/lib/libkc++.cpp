@@ -105,7 +105,6 @@ int __cxa_atexit(void (*)(void*), void*, void*) {
 	// TODO: should register the global destructors in some table
 	// Can be avoided since destructing global objects doesn't make much sense
 	// because the kernel never exits
-	terminalPrintString("cAtExit\n", 8);
 	return 0;
 };
 

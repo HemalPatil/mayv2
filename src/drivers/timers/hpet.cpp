@@ -62,10 +62,7 @@ bool initializeHpet() {
 		terminalPrintChar('\n');
 		return false;
 	}
-	terminalPrintDecimal(hpetTable->comparatorCount);
 	terminalPrintString(okStr, strlen(okStr));
-	terminalPrintDecimal(hpet->timerCount);
-	terminalPrintHex(&hpet->period, sizeof(hpet->period));
 	terminalPrintChar('\n');
 
 	terminalPrintSpaces4();
