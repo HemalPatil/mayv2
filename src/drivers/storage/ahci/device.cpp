@@ -11,7 +11,7 @@ static const char* const tfeUnsolicitedStr = "AHCI unsolicited task file error "
 static const char* const d2hUnsolicitedStr = "AHCI unsolicited register D2H FIS ";
 static const char* const atDeviceStr = "at device";
 
-bool AHCI::Device::setupRead(size_t blockCount, void *buffer, size_t &freeSlot) {
+bool AHCI::Device::setupRead(size_t blockCount, std::shared_ptr<void> buffer, size_t &freeSlot) {
 	// Each command has 8 PRDTs (read AHCI::Device::initialize comments to know why 8 PRDTs)
 	// and each PRDT can handle 4MiB i.e. maximum of 32MiB
 	const size_t mib4 = 4 * 1024 * 1024UL;
@@ -22,7 +22,7 @@ bool AHCI::Device::setupRead(size_t blockCount, void *buffer, size_t &freeSlot) 
 	}
 
 	// Make sure buffer is mapped to a physical page and word boundary aligned
-	Kernel::Memory::Virtual::CrawlResult crawlResult(buffer);
+	Kernel::Memory::Virtual::CrawlResult crawlResult(buffer.get());
 	if (crawlResult.physicalTables[0] == INVALID_ADDRESS || crawlResult.indexes[0] % 2 != 0) {
 		return false;
 	}
@@ -158,7 +158,7 @@ bool AHCI::Device::identify() {
 	commandFis->commandControl = 1;
 	commandFis->command = (this->type == Type::Satapi) ? AHCI_IDENTIFY_PACKET_DEVICE : AHCI_IDENTIFY_DEVICE;
 
-	if (this->issueCommand(freeSlot)) {
+	if (this->issueCommand(freeSlot)->awaitGet()) {
 		// Read section 7.16.7, 7.16.7.54, 7.16.7.59 of ATA8-ACS spec (https://people.freebsd.org/~imp/asiabsdcon2015/works/d2161r5-ATAATAPI_Command_Set_-_3.pdf)
 		// to understand how physical and logical sector size can be determined
 		if (this->info->physicalLogicalSectorSize.valid) {
@@ -294,6 +294,10 @@ std::shared_ptr<Kernel::Promise<bool>> AHCI::Device::issueCommand(size_t freeSlo
 
 AHCI::Device::Type AHCI::Device::getType() const {
 	return this->type;
+}
+
+size_t AHCI::Device::getPortNumber() const {
+	return this->portNumber;
 }
 
 AHCI::Device::Device(Controller *controller, size_t portNumber) {

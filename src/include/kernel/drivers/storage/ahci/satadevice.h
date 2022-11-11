@@ -14,5 +14,5 @@ class AHCI::SataDevice : public AHCI::Device {
 		// Returns false if total byte length of data requested is greater than 32MiB,
 		// or buffer is not word boundary aligned, or buffer is not a valid virtual address
 		// mapped to a physical address, or there is no command slot currently available.
-		std::shared_ptr<Kernel::Promise<bool>> read(size_t startBlock, size_t blockCount, void *buffer) override;
+		std::shared_ptr<Kernel::Promise<bool>> read(size_t startBlock, size_t blockCount, std::shared_ptr<void> buffer) override;
 };

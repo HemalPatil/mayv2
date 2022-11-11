@@ -1,11 +1,13 @@
 #pragma once
 
 #include <drivers/filesystems.h>
+#include <string>
+#include <tuple>
 
 namespace FS {
 	class ISO9660 : public BaseFS {
 		public:
-			static constexpr const char* const cdSignature = "CD001";
+			static const std::string cdSignature;
 
 			enum VolumeDescriptorType : uint8_t {
 				Boot = 0,
@@ -13,7 +15,7 @@ namespace FS {
 				Terminator = 0xff
 			};
 
-			struct Directory {
+			struct DirectoryRecord {
 				uint8_t length;
 				uint8_t extendedAttributeLength;
 				uint32_t extentLba;
@@ -27,7 +29,7 @@ namespace FS {
 				uint16_t volumeSequenceNumber;
 				uint16_t volumeSequenceNumberMsb;
 				uint8_t fileNameLength;
-				char fileName;
+				char fileName[0];
 			} __attribute__((packed));
 
 			struct VolumeDescriptorHeader {
@@ -57,14 +59,25 @@ namespace FS {
 				uint32_t lsbOptionalPathTableLba;
 				uint32_t msbPathTableLba;
 				uint32_t msbOptionalPathTableLba;
-				Directory rootDirectory;
+				DirectoryRecord rootDirectory;
+				// Add 1 byte padding because directory record length is variable
+				uint8_t directoryRecordPadding;
 				// TODO: add other attributes present in the Primary Volume Descriptor
 				uint8_t reserved3[1858];
 			} __attribute__((packed));
 
-			ISO9660(Storage::BlockDevice &device) : BaseFS(device) {}
+		private:
+			size_t lbaSize;
+			std::unique_ptr<DirectoryRecord> rootDirectoryExtent;
+			size_t rootDirectoryExtentSize;
+
+		public:
+			ISO9660(std::shared_ptr<Storage::BlockDevice> device, size_t primarySectorNumber);
 			bool openFile() override;
 
-			static bool isIso9660(Storage::BlockDevice *device);
+			// TODO: remove
+			void listAllRootEntries();
+
+			static std::tuple<bool, size_t> isIso9660(std::shared_ptr<Storage::BlockDevice> device);
 	};
 }

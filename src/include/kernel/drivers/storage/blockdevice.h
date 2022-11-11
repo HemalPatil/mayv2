@@ -11,6 +11,6 @@ namespace Storage {
 
 		public:
 			size_t getBlockSize() const;
-			virtual std::shared_ptr<Kernel::Promise<bool>> read(size_t startBlock, size_t blockCount, void *buffer) = 0;
+			virtual std::shared_ptr<Kernel::Promise<bool>> read(size_t startBlock, size_t blockCount, std::shared_ptr<void> buffer) = 0;
 	};
 }

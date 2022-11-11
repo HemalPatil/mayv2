@@ -1,15 +1,15 @@
 #pragma once
 
 #include <drivers/storage/ahci.h>
+#include <memory>
 
 class AHCI::Controller {
 	private:
 		volatile HostBusAdapter *hba;
-		size_t deviceCount;
-		Device *devices[AHCI_PORT_COUNT];
+		std::vector<std::shared_ptr<Device>> devices;
 
 	public:
-		Device* getDevice(size_t portNumber) const;
+		const std::vector<std::shared_ptr<Device>>& getDevices() const;
 		bool initialize(PCIe::Function &pcieFunction);
 		// TODO: implement destructor that releases the virtual pages mapped to the controller's HBA
 

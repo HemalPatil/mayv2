@@ -26,11 +26,12 @@ class AHCI::Device : public Storage::BlockDevice {
 		Type type;
 
 		std::shared_ptr<Kernel::Promise<bool>> issueCommand(size_t freeSlot);
-		bool setupRead(size_t blockCount, void *buffer, size_t &freeSlot);
+		bool setupRead(size_t blockCount, std::shared_ptr<void> buffer, size_t &freeSlot);
 
 	public:
 		Device(Controller *controller, size_t portNumber);
 		size_t findFreeCommandSlot() const;
+		size_t getPortNumber() const;
 		Type getType() const;
 		bool identify();
 		bool initialize();

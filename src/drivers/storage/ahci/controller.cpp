@@ -62,26 +62,25 @@ bool AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
 			this->hba->ports[portNumber].sataStatus.deviceDetection == AHCI_PORT_DEVICE_PRESENT &&
 			this->hba->ports[portNumber].sataStatus.powerMgmt == AHCI_PORT_ACTIVE
 		) {
-			Device *ahciDevice = nullptr;
+			std::shared_ptr<Device> ahciDevice = nullptr;
 			switch (this->hba->ports[portNumber].signature) {
 				case AHCI_PORT_SIGNATURE_SATA:
-					ahciDevice = new SataDevice(this, portNumber);
+					ahciDevice = std::make_shared<SataDevice>(this, portNumber);
 					break;
 				case AHCI_PORT_SIGNATURE_SATAPI:
-					ahciDevice = new SatapiDevice(this, portNumber);
+					ahciDevice = std::make_shared<SatapiDevice>(this, portNumber);
 					break;
 				default:
 					break;
 			}
 			if (ahciDevice) {
-				this->devices[this->deviceCount] = ahciDevice;
+				this->devices.push_back(ahciDevice);
 				if (!ahciDevice->initialize() || !ahciDevice->identify()) {
 					terminalPrintString(failedStr, strlen(failedStr));
 					terminalPrintChar('\n');
 					return false;
 				}
 			}
-			++this->deviceCount;
 		}
 		portsImplemented >>= 1;
 	}
@@ -91,9 +90,6 @@ bool AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
 	return true;
 }
 
-AHCI::Device* AHCI::Controller::getDevice(size_t portNumber) const {
-	if (portNumber >= AHCI_PORT_COUNT) {
-		return nullptr;
-	}
-	return this->devices[portNumber];
+const std::vector<std::shared_ptr<AHCI::Device>>& AHCI::Controller::getDevices() const {
+	return this->devices;
 }

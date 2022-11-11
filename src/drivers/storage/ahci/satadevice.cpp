@@ -8,7 +8,7 @@ AHCI::SataDevice::SataDevice(
 	this->type = Type::Sata;
 }
 
-std::shared_ptr<Kernel::Promise<bool>> AHCI::SataDevice::read(size_t startBlock, size_t blockCount, void *buffer) {
+std::shared_ptr<Kernel::Promise<bool>> AHCI::SataDevice::read(size_t startBlock, size_t blockCount, std::shared_ptr<void> buffer) {
 	size_t freeSlot = SIZE_MAX;
 	if (!this->setupRead(blockCount, buffer, freeSlot)) {
 		return std::make_shared<Kernel::Promise<bool>>(Kernel::Promise<bool>::resolved(false));

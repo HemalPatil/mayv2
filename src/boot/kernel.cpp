@@ -133,20 +133,20 @@ extern "C" {
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
 	for (size_t controllerCount = 0; auto &controller : AHCI::controllers) {
-		for (size_t i = 0; i < AHCI_PORT_COUNT; ++i) {
-			AHCI::Device *device = controller.getDevice(i);
+		for (const auto &device : controller.getDevices()) {
 			if (device) {
 				// Try with ISO9660 for SATAPI devices first because that is the most likely FS
 				if (AHCI::Device::Type::Satapi == device->getType()) {
-					if (FS::ISO9660::isIso9660(device)) {
+					const auto isIso = FS::ISO9660::isIso9660(device);
+					if (std::get<0>(isIso)) {
 						terminalPrintSpaces4();
 						terminalPrintSpaces4();
 						terminalPrintString(isoFoundStr, strlen(isoFoundStr));
 						terminalPrintDecimal(controllerCount);
 						terminalPrintChar(':');
-						terminalPrintDecimal(i);
+						terminalPrintDecimal(device->getPortNumber());
 						terminalPrintChar('\n');
-						FS::filesystems.push_back(std::make_shared<FS::ISO9660>(*device));
+						FS::filesystems.push_back(std::make_shared<FS::ISO9660>(device, std::get<1>(isIso)));
 					}
 				}
 			}
@@ -156,6 +156,10 @@ extern "C" {
 	terminalPrintSpaces4();
 	terminalPrintString(checkingAhciDoneStr, strlen(checkingAhciDoneStr));
 	terminalPrintString(creatingFsDoneStr, strlen(creatingFsDoneStr));
+
+	for (const auto &fs : FS::filesystems) {
+		std::shared_ptr<FS::ISO9660> iso = std::dynamic_pointer_cast<FS::ISO9660>(fs);
+	}
 
 	// Set up graphical video mode
 	// if (!setupGraphicalVideoMode()) {

@@ -25,12 +25,27 @@ size_t strlen(const char* str) {
 	return length;
 }
 
-int64_t strcmp(const char* str1, const char* str2) {
+int strcmp(const char* str1, const char* str2) {
 	while (*str1 && (*str1 == *str2)) {
 		++str1;
 		++str2;
 	}
 	return *(const unsigned char*)str1 - *(const unsigned char*)str2;
+}
+
+int strncmp(const char *str1, const char *str2, size_t count) {
+	if (count == 0) {
+		return 0;
+	}
+	do {
+		if (*str1 != *str2++) {
+			return (*(const unsigned char*)str1 - *(const unsigned char*)--str2);
+		}
+		if (*str1++ == 0) {
+			break;
+		}
+	} while (--count != 0);
+	return 0;
 }
 
 void* memcpy(void *dest, const void *src, size_t n) {
