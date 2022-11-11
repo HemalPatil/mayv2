@@ -132,7 +132,7 @@ bool parseAcpi3() {
 		return false;
 	}
 	// Copy the XSDT to heap
-	xsdt = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldXsdt->length);
+	xsdt = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldXsdt->length);
 	memcpy(xsdt, oldXsdt, oldXsdt->length);
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
@@ -156,13 +156,13 @@ bool parseAcpi3() {
 		return false;
 	}
 	// Copy the tables to heap
-	apicSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldApic->length);
+	apicSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldApic->length);
 	memcpy(apicSdtHeader, oldApic, oldApic->length);
-	hpetSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldHpet->length);
+	hpetSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldHpet->length);
 	memcpy(hpetSdtHeader, oldHpet, oldHpet->length);
-	mcfgSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldMcfg->length);
+	mcfgSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldMcfg->length);
 	memcpy(mcfgSdtHeader, oldMcfg, oldMcfg->length);
-	ssdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::malloc(oldSsdt->length);
+	ssdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldSsdt->length);
 	memcpy(ssdtHeader, oldSsdt, oldSsdt->length);
 	// Free the kernel page used for parsing XSDT
 	Kernel::Memory::Virtual::freePages(

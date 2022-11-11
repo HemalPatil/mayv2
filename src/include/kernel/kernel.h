@@ -154,7 +154,7 @@ namespace Kernel {
 			extern bool create(void *newHeapAddress, void **entryTable);
 			extern void free(void *address);
 			extern void listRegions(bool forwardDirection = true);
-			extern void* malloc(size_t count);
+			extern void* allocate(size_t count);
 		}
 	}
 }

@@ -19,7 +19,7 @@ static bool validHeapEntry(
 static const char* const listStr = "List of all heap regions\n";
 static const char* const listHeaderStr = "Address              Count                Remaining            Entry table\n";
 static const char* const heapNamespaceStr = "Kernel::Memory::Heap::";
-static const char* const mallocInvalidCountStr = "malloc invalid request size ";
+static const char* const allocateInvalidCountStr = "allocate invalid request size ";
 static const char* const noHeapsStr = "No kernel heap regions created\n";
 static const char* const corruptEntryStr = "validHeapEntry corrupt entry ";
 static const char* const corruptEntryContStr = " found in heap ";
@@ -35,7 +35,7 @@ const size_t Kernel::Memory::Heap::entryTableSize = Kernel::Memory::Heap::newReg
 
 // Returns a memory chunk from one of the kernel heap regions
 // Unsafe to call before at least one heap region is created
-void* Kernel::Memory::Heap::malloc(size_t count) {
+void* Kernel::Memory::Heap::allocate(size_t count) {
 	if (!heapList) {
 		terminalPrintString(noHeapsStr, strlen(noHeapsStr));
 		panic();
@@ -44,7 +44,7 @@ void* Kernel::Memory::Heap::malloc(size_t count) {
 	// FIXME: All heap regions are currently of size 2MiB so serving more than that is not possible
 	if (count == 0 || count >= (newRegionSize - sizeof(Header) - sizeof(Entry))) {
 		terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
-		terminalPrintString(mallocInvalidCountStr, strlen(mallocInvalidCountStr));
+		terminalPrintString(allocateInvalidCountStr, strlen(allocateInvalidCountStr));
 		terminalPrintHex(&count, sizeof(count));
 		terminalPrintChar('\n');
 		panic();
@@ -56,7 +56,7 @@ void* Kernel::Memory::Heap::malloc(size_t count) {
 		count += minBlockSize - (count % minBlockSize);
 	}
 
-	void *mallocedValue = nullptr;
+	void *allocatedValue = nullptr;
 	Header *currentHeap = heapList;
 	while (currentHeap) {
 		if (count <= currentHeap->remaining) {
@@ -85,8 +85,8 @@ void* Kernel::Memory::Heap::malloc(size_t count) {
 			} else {
 				currentHeap->remaining -= entry->size;
 			}
-			mallocedValue = (void*)((uint64_t)entry + sizeof(Entry));
-			currentHeap->entryTable[currentHeap->entryCount] = mallocedValue;
+			allocatedValue = (void*)((uint64_t)entry + sizeof(Entry));
+			currentHeap->entryTable[currentHeap->entryCount] = allocatedValue;
 			++currentHeap->entryCount;
 			break;
 		}
@@ -96,7 +96,7 @@ void* Kernel::Memory::Heap::malloc(size_t count) {
 	// Traversed all existing heap regions
 	// TODO: Create new heap region and return result of recursive call
 
-	// TODO: remove expensive operation of checking integrity of all heaps for each malloc
+	// TODO: remove expensive operation of checking integrity of all heaps for each allocate
 	currentHeap = heapList;
 	while (currentHeap) {
 		if (!validHeap(currentHeap)) {
@@ -105,7 +105,7 @@ void* Kernel::Memory::Heap::malloc(size_t count) {
 		currentHeap = currentHeap->next;
 	}
 
-	return mallocedValue;
+	return allocatedValue;
 }
 
 void Kernel::Memory::Heap::free(void *address) {

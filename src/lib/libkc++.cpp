@@ -111,11 +111,11 @@ int __cxa_atexit(void (*)(void*), void*, void*) {
 }
 
 void *operator new(size_t size) {
-	return Kernel::Memory::Heap::malloc(size);
+	return Kernel::Memory::Heap::allocate(size);
 }
 
 void *operator new[](size_t size) {
-	return Kernel::Memory::Heap::malloc(size);
+	return Kernel::Memory::Heap::allocate(size);
 }
 
 void operator delete(void *memory) {
