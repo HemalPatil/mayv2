@@ -17,7 +17,7 @@ static size_t msiInterrupt = SIZE_MAX;
 std::vector<AHCI::Controller> AHCI::controllers;
 
 void ahciMsiHandler() {
-	acknowledgeLocalApicInterrupt();
+	APIC::acknowledgeLocalInterrupt();
 	for (auto &controller : AHCI::controllers) {
 		uint32_t interruptStatus = controller.hba->interruptStatus;
 		if (interruptStatus) {

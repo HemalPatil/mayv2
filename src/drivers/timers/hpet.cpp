@@ -93,7 +93,7 @@ bool initializeHpet() {
 	terminalPrintString(presentStr, strlen(presentStr));
 	terminalPrintChar('\n');
 
-	IOAPICRedirectionEntry timerEntry = readIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER);
+	APIC::IORedirectionEntry timerEntry = APIC::readIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER);
 	installIdt64Entry(availableInterrupt, &hpetHandlerWrapper);
 	timerEntry.vector = availableInterrupt;
 	timerEntry.deliveryMode = 0;
@@ -101,7 +101,7 @@ bool initializeHpet() {
 	timerEntry.pinPolarity = 0;
 	timerEntry.triggerMode = 0;
 	timerEntry.mask = 0;
-	timerEntry.destination = bootCpu;
+	timerEntry.destination = APIC::bootCpu;
 	writeIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER, timerEntry);
 	++availableInterrupt;
 	// HPET registers must be written at 8-byte boundaries hence setting the bit fields directly is not possible
@@ -117,5 +117,5 @@ bool initializeHpet() {
 
 void hpetHandler() {
 	terminalPrintString(hpetStr, strlen(hpetStr));
-	acknowledgeLocalApicInterrupt();
+	APIC::acknowledgeLocalInterrupt();
 }

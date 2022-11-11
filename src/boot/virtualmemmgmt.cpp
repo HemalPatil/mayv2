@@ -288,9 +288,9 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 			list.insert(
 				list.begin() + bestFitIndex + 1,
 				{
-					true,
-					(void*)((uint64_t)list.at(bestFitIndex).base + count * pageSize),
-					list.at(bestFitIndex).pageCount - count
+					.available = true,
+					.base = (void*)((uint64_t)list.at(bestFitIndex).base + count * pageSize),
+					.pageCount = list.at(bestFitIndex).pageCount - count
 				}
 			);
 			list.at(bestFitIndex).pageCount = count;
@@ -367,17 +367,17 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 				list.insert(
 					list.begin() + i + 1,
 					{
-						false,
-						(void*)vEnd,
-						(blockEnd - vEnd) / pageSize
+						.available = false,
+						.base = (void*)vEnd,
+						.pageCount = (blockEnd - vEnd) / pageSize
 					}
 				);
 				list.insert(
 					list.begin() + i,
 					{
-						false,
-						(void*)block.base,
-						(vBeg - blockBeg) / pageSize
+						.available = false,
+						.base = (void*)block.base,
+						.pageCount = (vBeg - blockBeg) / pageSize
 					}
 				);
 				block.available = true;

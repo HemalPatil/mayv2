@@ -84,9 +84,8 @@ extern "C" {
 	if (!parseAcpi3()) {
 		Kernel::panic();
 	}
-
 	// Disable PIC and setup APIC
-	if (!initializeApic()) {
+	if (!APIC::initialize()) {
 		Kernel::panic();
 	}
 

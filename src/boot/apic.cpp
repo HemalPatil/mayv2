@@ -6,17 +6,14 @@
 #include <kernel.h>
 #include <terminal.h>
 
-uint8_t bootCpu = 0xff;
+uint8_t APIC::bootCpu = 0xff;
+std::vector<APIC::CPUEntry> APIC::cpuEntries;
+std::vector<APIC::InterruptSourceOverrideEntry> APIC::interruptOverrideEntries;
+std::vector<APIC::IOEntry> APIC::ioEntries;
 
 static uint32_t apicFlags = 0;
-static size_t cpuCount = 0;
-static APICCPUEntry *cpuEntries = nullptr;
-static size_t interruptOverrideCount = 0;
-static APICInterruptSourceOverrideEntry *interruptOverrideEntries = nullptr;
-static size_t ioApicCount = 0;
-static APICIOEntry *ioApicEntries = nullptr;
 static void *localApicPhysicalAddress = nullptr;
-static LocalAPIC *localApic = nullptr;
+static APIC::LocalAPIC *localApic = nullptr;
 static void *ioApic = nullptr;
 
 static const char* const initApicStr = "Initializing APIC";
@@ -35,7 +32,7 @@ static const char* const mappingIoApicStr = "Mapping IOAPIC to kernel address sp
 static const char* const enablingApicStr = "Enabling APIC";
 static const char* const bootCpuStr = "Boot CpuID [";
 
-bool initializeApic() {
+bool APIC::initialize() {
 	terminalPrintString(initApicStr, strlen(initApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
@@ -79,8 +76,7 @@ bool initializeApic() {
 	terminalPrintSpaces4();
 	terminalPrintString(entryHeaderStr, strlen(entryHeaderStr));
 	uint64_t apicEnd = (uint64_t)apicSdtHeader + apicSdtHeader->length;
-	APICEntryHeader *entry = (APICEntryHeader*)((uint64_t)apicSdtHeader + sizeof(ACPISDTHeader) + sizeof(*localApicAddress) + sizeof(apicFlags));
-	APICEntryHeader *reEntry = entry;
+	EntryHeader *entry = (EntryHeader*)((uint64_t)apicSdtHeader + sizeof(ACPISDTHeader) + sizeof(*localApicAddress) + sizeof(apicFlags));
 	while ((uint64_t)entry < apicEnd) {
 		terminalPrintSpaces4();
 		terminalPrintSpaces4();
@@ -91,8 +87,8 @@ bool initializeApic() {
 		size_t x, y;
 		terminalGetCursorPosition(&x, &y);
 		if (entry->type == APIC_TYPE_CPU) {
-			++cpuCount;
-			APICCPUEntry *cpuEntry = (APICCPUEntry*)entry;
+			CPUEntry *cpuEntry = (CPUEntry*)entry;
+			cpuEntries.push_back(CPUEntry(*cpuEntry));
 			flags = cpuEntry->flags;
 			terminalPrintHex(&flags, sizeof(flags));
 			terminalPrintChar(' ');
@@ -106,8 +102,8 @@ bool initializeApic() {
 			terminalSetCursorPosition(60, y);
 			terminalPrintChar('-');
 		} else if (entry->type == APIC_TYPE_INTERRUPT_SOURCE_OVERRIDE) {
-			++interruptOverrideCount;
-			APICInterruptSourceOverrideEntry *overrideEntry = (APICInterruptSourceOverrideEntry*)entry;
+			InterruptSourceOverrideEntry *overrideEntry = (InterruptSourceOverrideEntry*)entry;
+			interruptOverrideEntries.push_back(InterruptSourceOverrideEntry(*overrideEntry));
 			flags = overrideEntry->flags;
 			terminalPrintHex(&flags, sizeof(flags));
 			terminalPrintChar(' ');
@@ -121,8 +117,8 @@ bool initializeApic() {
 			terminalSetCursorPosition(60, y);
 			terminalPrintHex(&overrideEntry->globalSystemInterrupt, sizeof(overrideEntry->globalSystemInterrupt));
 		} else if (entry->type == APIC_TYPE_IO) {
-			++ioApicCount;
-			APICIOEntry *ioEntry = (APICIOEntry*)entry;
+			IOEntry *ioEntry = (IOEntry*)entry;
+			ioEntries.push_back(IOEntry(*ioEntry));
 			terminalPrintChar('-');
 			terminalSetCursorPosition(30, y);
 			terminalPrintChar('-');
@@ -136,26 +132,7 @@ bool initializeApic() {
 			terminalPrintChar('-');
 		}
 		terminalPrintChar('\n');
-		entry = (APICEntryHeader*)((uint64_t)entry + entry->length);
-	}
-	// Go through the table once again and copy the entries to their own arrays
-	entry = reEntry;
-	cpuEntries = new APICCPUEntry[cpuCount];
-	ioApicEntries = new APICIOEntry[ioApicCount];
-	interruptOverrideEntries = new APICInterruptSourceOverrideEntry[interruptOverrideCount];
-	size_t cI = 0, ioI = 0, inI = 0;
-	while ((uint64_t)entry < apicEnd) {
-		if (entry->type == APIC_TYPE_CPU) {
-			memcpy(&cpuEntries[cI], entry, sizeof(APICCPUEntry));
-			++cI;
-		} else if (entry->type == APIC_TYPE_INTERRUPT_SOURCE_OVERRIDE) {
-			memcpy(&interruptOverrideEntries[inI], entry, sizeof(APICInterruptSourceOverrideEntry));
-			++inI;
-		} else if (entry->type == APIC_TYPE_IO) {
-			memcpy(&ioApicEntries[ioI], entry, sizeof(APICIOEntry));
-			++ioI;
-		}
-		entry = (APICEntryHeader*)((uint64_t)entry + entry->length);
+		entry = (EntryHeader*)((uint64_t)entry + entry->length);
 	}
 	terminalPrintSpaces4();
 	terminalPrintString(apicParsedStr, strlen(apicParsedStr));
@@ -213,7 +190,7 @@ bool initializeApic() {
 		requestResult.allocatedCount != 1 ||
 		!Kernel::Memory::Virtual::mapPages(
 			requestResult.address,
-			(void*)(uint64_t)ioApicEntries[0].address,
+			(void*)(uint64_t)ioEntries.at(0).address,
 			1,
 			Kernel::Memory::RequestType::CacheDisable
 		)
@@ -238,40 +215,36 @@ bool initializeApic() {
 	return true;
 }
 
-IOAPICRedirectionEntry readIoRedirectionEntry(const uint8_t irq) {
-	IOAPICRedirectionEntry x;
-	x.lowDword = readIoApic(IOAPIC_READTBL_LOW(irq));
-	x.highDword = readIoApic(IOAPIC_READTBL_HIGH(irq));
+APIC::IORedirectionEntry APIC::readIoRedirectionEntry(const uint8_t irq) {
+	IORedirectionEntry x;
+	x.lowDword = readIo(IOAPIC_READTBL_LOW(irq));
+	x.highDword = readIo(IOAPIC_READTBL_HIGH(irq));
 	return x;
 }
 
-void writeIoRedirectionEntry(const uint8_t irq, const IOAPICRedirectionEntry entry) {
-	writeIoApic(IOAPIC_READTBL_LOW(irq), entry.lowDword);
-	writeIoApic(IOAPIC_READTBL_HIGH(irq), entry.highDword);
+void APIC::writeIoRedirectionEntry(const uint8_t irq, const IORedirectionEntry entry) {
+	writeIo(IOAPIC_READTBL_LOW(irq), entry.lowDword);
+	writeIo(IOAPIC_READTBL_HIGH(irq), entry.highDword);
 }
 
-uint32_t readIoApic(const uint8_t offset) {
+uint32_t APIC::readIo(const uint8_t offset) {
 	// Put offset in IOREGSEL
 	*(volatile uint32_t*)(ioApic) = offset;
 	// Read from IOWIN
 	return *(volatile uint32_t*)((uint64_t)ioApic + 0x10);
 }
 
-void writeIoApic(const uint8_t offset, const uint32_t value) {
+void APIC::writeIo(const uint8_t offset, const uint32_t value) {
 	// Put offset in IOREGSEL
 	*(volatile uint32_t*)(ioApic) = offset;
 	// Write to IOWIN
 	*(volatile uint32_t*)((uint64_t)ioApic + 0x10) = value;
 }
 
-size_t getCpuCount() {
-	return cpuCount;
-}
-
-LocalAPIC* getLocalApic() {
+APIC::LocalAPIC* APIC::getLocal() {
 	return localApic;
 }
 
-void acknowledgeLocalApicInterrupt() {
+void APIC::acknowledgeLocalInterrupt() {
 	localApic->endOfInterrupt = 0;
 }

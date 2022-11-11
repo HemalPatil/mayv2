@@ -12,7 +12,7 @@ bool initializePs2Keyboard() {
 	terminalPrintString(initIntrStr, strlen(initIntrStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 
-	IOAPICRedirectionEntry keyEntry = readIoRedirectionEntry(IRQ_KEYBOARD);
+	APIC::IORedirectionEntry keyEntry = APIC::readIoRedirectionEntry(IRQ_KEYBOARD);
 	installIdt64Entry(availableInterrupt, &ps2KeyboardHandlerWrapper);
 	keyEntry.vector = availableInterrupt;
 	keyEntry.deliveryMode = 0;
@@ -20,7 +20,7 @@ bool initializePs2Keyboard() {
 	keyEntry.pinPolarity = 0;
 	keyEntry.triggerMode = 0;
 	keyEntry.mask = 0;
-	keyEntry.destination = bootCpu;
+	keyEntry.destination = APIC::bootCpu;
 	writeIoRedirectionEntry(IRQ_KEYBOARD, keyEntry);
 	++availableInterrupt;
 
@@ -31,5 +31,5 @@ bool initializePs2Keyboard() {
 
 void ps2KeyboardHandler() {
 	terminalPrintString(keyStr, strlen(keyStr));
-	acknowledgeLocalApicInterrupt();
+	APIC::acknowledgeLocalInterrupt();
 }
