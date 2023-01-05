@@ -434,6 +434,7 @@ extern "C" int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTabl
 		}
 	}
 
+	// Get kernel global constructors and store their info in the InfoTable
 	ELF64SectionHeader *sectionHeaders = (ELF64SectionHeader*)(kernelElfBase + (uint32_t)elfHeader->sectionTablePosition);
 	ELF64SectionHeader *ctors = nullptr;
 	char *sectionNames = (char*)(kernelElfBase + sectionHeaders[elfHeader->sectionNamesIndex].fileOffset);

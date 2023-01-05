@@ -39,6 +39,11 @@ namespace Kernel {
 	// Disables interrupts, halts the systems, and never returns
 	extern "C" [[noreturn]] void hangSystem();
 
+	enum IRQ : uint8_t {
+		Keyboard = 1,
+		Timer = 3
+	};
+
 	namespace Memory {
 		extern const size_t pageSize;
 		extern const size_t pageSizeShift;

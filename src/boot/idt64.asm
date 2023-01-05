@@ -159,11 +159,10 @@ pageFaultHandler:
 	mov rsi, 28
 	call terminalPrintString
 
-	; Pop the 32 bit error code in thrashable register
+	; Pop the 8-byte aligned 32-bit error code in thrashable register
 	pop r8
 
-	; Get the virtual address that caused this fault
-	; and display it
+	; Get the virtual address that caused this fault and display it
 	mov rax, cr2
 	push rax
 	mov rdi, rsp

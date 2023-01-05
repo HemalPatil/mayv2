@@ -9,14 +9,14 @@ kernelStack:
 
 section .lowerhalf
 	extern gdtDescriptor
-	global kernelStart
+	global kernelCompatibilityModeStart
 
-; rdi will have the address of the info table, DO NOT trash it
-; Execution starts here
+; Kernel64 execution starts here
+; rdi, rsi, rdx, and rcx will have important kernel parameters, DO NOT trash them
 ; 32-bit code of the loader cannot jump to 64-bit address directly
 ; Hence, first jump to KERNEL_LOWERHALF_ORIGIN and then jump to KERNEL_HIGHERHALF_ORIGIN
 ; Currently CPU is in 32-bit compatibility mode since GDT64 is not loaded
-kernelStart:
+kernelCompatibilityModeStart:
 	mov ax, 0x10		; 64-bit data segment
 	mov ds, ax
 	mov es, ax
@@ -29,16 +29,16 @@ kernelStart:
 	lgdt [rax]
 
 	; Jump to true 64-bit long mode
-	mov rax, higherHalfStart
+	mov rax, kernelLongModeStart
 	jmp rax
 
 section .text
 	global flushTLB
 	global haltSystem
 	global hangSystem
-	global higherHalfStart
+	global kernelLongModeStart
 	extern kernelMain
-higherHalfStart:
+kernelLongModeStart:
 	mov rax, 0x00000000ffffffff
 	and rdi, rax	; rdi contains info table address, pass it as 1st parameter to kernelMain
 	and rsi, rax	; rsi contains kernel's lower half size, 2nd parameter

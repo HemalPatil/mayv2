@@ -215,14 +215,14 @@ bool APIC::initialize() {
 	return true;
 }
 
-APIC::IORedirectionEntry APIC::readIoRedirectionEntry(const uint8_t irq) {
+APIC::IORedirectionEntry APIC::readIoRedirectionEntry(const Kernel::IRQ irq) {
 	IORedirectionEntry x;
 	x.lowDword = readIo(IOAPIC_READTBL_LOW(irq));
 	x.highDword = readIo(IOAPIC_READTBL_HIGH(irq));
 	return x;
 }
 
-void APIC::writeIoRedirectionEntry(const uint8_t irq, const IORedirectionEntry entry) {
+void APIC::writeIoRedirectionEntry(const Kernel::IRQ irq, const IORedirectionEntry entry) {
 	writeIo(IOAPIC_READTBL_LOW(irq), entry.lowDword);
 	writeIo(IOAPIC_READTBL_HIGH(irq), entry.highDword);
 }

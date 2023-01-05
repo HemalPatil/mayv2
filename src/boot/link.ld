@@ -1,4 +1,4 @@
-ENTRY(kernelStart);
+ENTRY(kernelCompatibilityModeStart);
 
 SECTIONS {
 	. = 0x80000000; /* lowerhalf origin */

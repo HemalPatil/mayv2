@@ -23,8 +23,7 @@ bool initializeHpet() {
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
 
-	// TODO: complete HPET initialization
-	// FIXME: should do HPET table checlsum verificaion
+	// FIXME: should do HPET table checksum verificaion
 	terminalPrintSpaces4();
 	terminalPrintString(mappingStr, strlen(mappingStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -93,7 +92,8 @@ bool initializeHpet() {
 	terminalPrintString(presentStr, strlen(presentStr));
 	terminalPrintChar('\n');
 
-	APIC::IORedirectionEntry timerEntry = APIC::readIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER);
+	// Install the timer IRQ handler
+	APIC::IORedirectionEntry timerEntry = APIC::readIoRedirectionEntry(Kernel::IRQ::Timer);
 	installIdt64Entry(availableInterrupt, &hpetHandlerWrapper);
 	timerEntry.vector = availableInterrupt;
 	timerEntry.deliveryMode = 0;
@@ -102,13 +102,13 @@ bool initializeHpet() {
 	timerEntry.triggerMode = 0;
 	timerEntry.mask = 0;
 	timerEntry.destination = APIC::bootCpu;
-	writeIoRedirectionEntry(IRQ_HPET_PERIODIC_TIMER, timerEntry);
+	writeIoRedirectionEntry(Kernel::IRQ::Timer, timerEntry);
 	++availableInterrupt;
 	// HPET registers must be written at 8-byte boundaries hence setting the bit fields directly is not possible
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 	uint64_t *configure = (uint64_t*)(void*)hpetPeriodicTimer;
-	*configure |= ((IRQ_HPET_PERIODIC_TIMER << 9) | HPET_TIMER_PERIODIC | HPET_TIMER_PERIODIC_INTERVAL);
+	*configure |= ((Kernel::IRQ::Timer << 9) | HPET_TIMER_PERIODIC | HPET_TIMER_PERIODIC_INTERVAL);
 	#pragma GCC diagnostic pop
 
 	terminalPrintString(initCompleteStr, strlen(initCompleteStr));

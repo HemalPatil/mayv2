@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <kernel.h>
 #include <vector>
 
 #define APIC_TYPE_CPU 0
@@ -10,9 +11,6 @@
 
 #define LOCAL_APIC_DEFAULT_ADDRESS 0xfee00000
 
-#define IOAPIC_ID 0x00
-#define IOAPIC_VER 0x01
-#define IOAPIC_ARB 0x02
 #define IOAPIC_READTBL_LOW(n) (0x10 + 2 * n)
 #define IOAPIC_READTBL_HIGH(n) (0x10 + 2 * n + 1)
 
@@ -98,9 +96,9 @@ namespace APIC {
 	extern LocalAPIC* getLocal();
 	extern bool initialize();
 	extern uint32_t readIo(const uint8_t offset);
-	extern IORedirectionEntry readIoRedirectionEntry(const uint8_t irq);
+	extern IORedirectionEntry readIoRedirectionEntry(const Kernel::IRQ irq);
 	extern void writeIo(const uint8_t offset, const uint32_t value);
-	extern void writeIoRedirectionEntry(const uint8_t irq, const IORedirectionEntry entry);
+	extern void writeIoRedirectionEntry(const Kernel::IRQ irq, const IORedirectionEntry entry);
 
 	// apicasm.asm
 	extern "C" void disableLegacyPic();

@@ -9,8 +9,6 @@
 #define HPET_TIMER_PERIODIC (1 << 3)
 #define HPET_TIMER_PERIODIC_INTERVAL (1 << 6)
 
-#define IRQ_HPET_PERIODIC_TIMER 3
-
 struct ACPIHPETTable{
 	struct ACPISDTHeader baseHeader;
 	uint8_t hardwareRevisionId;
