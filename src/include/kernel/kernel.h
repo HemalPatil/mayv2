@@ -20,6 +20,8 @@
 #define PHY_MEM_BUDDY_MAX_ORDER 10
 
 namespace Kernel {
+	extern bool debug;
+
 	typedef void(*GlobalConstructor)();
 
 	// kernelMain is not exposed to other files deliberately

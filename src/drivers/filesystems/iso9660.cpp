@@ -46,10 +46,49 @@ FS::ISO9660::ISO9660(std::shared_ptr<Storage::BlockDevice> device, size_t primar
 		Kernel::panic();
 	}
 
-	this->rootDirectoryExtentSize = primarySector->rootDirectory.extentSize;
-	this->rootDirectoryExtent = std::unique_ptr<DirectoryRecord>((DirectoryRecord*)Kernel::Memory::Heap::allocate(this->rootDirectoryExtentSize));
+	std::shared_ptr<DirectoryRecord> rootDirectoryExtent = std::shared_ptr<DirectoryRecord>(
+		(DirectoryRecord*)Kernel::Memory::Heap::allocate(primarySector->rootDirectory.extentSize)
+	);
+	this->device->read(
+		primarySector->rootDirectory.extentLba,
+		primarySector->rootDirectory.extentSize / this->lbaSize,
+		rootDirectoryExtent
+	)->awaitGet();
+	this->rootDirectoryEntries = this->extentToEntries(rootDirectoryExtent.get(), primarySector->rootDirectory.extentSize);
 }
 
-bool FS::ISO9660::openFile() {
-	return true;
+std::vector<FS::DirectoryEntry> FS::ISO9660::extentToEntries(const DirectoryRecord* const extent, size_t extentSize) {
+	std::vector<DirectoryEntry> entries;
+	entries.push_back(DirectoryEntry(".", false, true, false));
+	entries.push_back(DirectoryEntry("..", false, true, false));
+	size_t seekg = 0x44;
+	DirectoryRecord *entry = (DirectoryRecord*)((uint64_t)extent + seekg);	// Skip current, parent directory entries
+	// Check if all records have been traversed
+	while (seekg < extentSize && entry->length > 0) {
+		entries.push_back(DirectoryEntry(
+			std::string(
+				entry->fileName,
+				// Skip ";1" terminator for file names
+				entry->fileName + entry->fileNameLength - ((entry->flags & directoryFlag) ? 0 : 2)
+			),
+			!(entry->flags & directoryFlag),
+			(entry->flags & directoryFlag),
+			false
+		));
+		seekg += entry->length;
+		entry = (DirectoryRecord*)((uint64_t)extent + seekg);
+	}
+	return entries;
+}
+
+std::vector<FS::DirectoryEntry> FS::ISO9660::readDirectory(const std::string &name) {
+	std::vector<FS::DirectoryEntry> dirEntries;
+	terminalPrintString("isoreaddirs\n", 12);
+	if (name == "/") {
+		return this->rootDirectoryEntries;
+	}
+	terminalPrintString("isoreaddire\n", 12);
+	terminalPrintString("notiml\n", 8);
+	Kernel::panic();
+	return dirEntries;
 }

@@ -1,13 +1,13 @@
 #pragma once
 
 #include <drivers/filesystems.h>
-#include <string>
 #include <tuple>
 
 namespace FS {
 	class ISO9660 : public BaseFS {
 		public:
 			static const std::string cdSignature;
+			static const uint8_t directoryFlag = 2;
 
 			enum VolumeDescriptorType : uint8_t {
 				Boot = 0,
@@ -68,15 +68,13 @@ namespace FS {
 
 		private:
 			size_t lbaSize;
-			std::unique_ptr<DirectoryRecord> rootDirectoryExtent;
-			size_t rootDirectoryExtentSize;
+			std::vector<DirectoryEntry> rootDirectoryEntries;
+
+			std::vector<DirectoryEntry> extentToEntries(const DirectoryRecord* const extent, size_t extentSize);
 
 		public:
 			ISO9660(std::shared_ptr<Storage::BlockDevice> device, size_t primarySectorNumber);
-			bool openFile() override;
-
-			// TODO: remove
-			void listAllRootEntries();
+			std::vector<DirectoryEntry> readDirectory(const std::string &name) override;
 
 			static std::tuple<bool, size_t> isIso9660(std::shared_ptr<Storage::BlockDevice> device);
 	};

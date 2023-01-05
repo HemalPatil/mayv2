@@ -25,6 +25,7 @@ static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
 static const char* const isoFoundStr = "ISO filesystem found at ";
 static const char* const globalCtorStr = "Running global constructors";
 
+bool Kernel::debug = false;
 InfoTable *Kernel::infoTable;
 
 extern "C" {
@@ -158,7 +159,12 @@ extern "C" {
 	terminalPrintString(creatingFsDoneStr, strlen(creatingFsDoneStr));
 
 	for (const auto &fs : FS::filesystems) {
-		std::shared_ptr<FS::ISO9660> iso = std::dynamic_pointer_cast<FS::ISO9660>(fs);
+		terminalPrintString("loops\n", 6);
+		for (const auto &dir : fs->readDirectory("/")) {
+			terminalPrintString(dir.name.c_str(), dir.name.length());
+			terminalPrintChar('\n');
+		}
+		terminalPrintString("loope\n", 6);
 	}
 
 	// Set up graphical video mode

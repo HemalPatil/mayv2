@@ -92,6 +92,7 @@ void AHCI::Device::msiHandler() {
 					this->runningCommandsBitmap &= ~commandBit;
 					if(this->commandPromises[i]) {
 						this->commandPromises[i]->setValue(false);
+						this->commandPromises[i] = nullptr;
 					}
 				}
 			}

@@ -1,5 +1,6 @@
 #include <cstring>
 #include <drivers/storage/ahci/satapidevice.h>
+#include <terminal.h>
 
 AHCI::SatapiDevice::SatapiDevice(
 	Controller *controller,
@@ -45,6 +46,17 @@ std::shared_ptr<Kernel::Promise<bool>> AHCI::SatapiDevice::read(size_t startBloc
 	this->commandTables[freeSlot]->atapiCommand[13] = 0;
 	this->commandTables[freeSlot]->atapiCommand[14] = 0;
 	this->commandTables[freeSlot]->atapiCommand[15] = 0;
+
+	if (Kernel::debug) {
+		if (this->issueCommand(freeSlot)->awaitGet()) {
+			terminalPrintChar('[');
+			terminalPrintString((char*)buffer.get(), 192);
+			terminalPrintChar(']');
+		} else {
+			terminalPrintString("fail", 4);
+		}
+		Kernel::hangSystem();
+	}
 
 	return this->issueCommand(freeSlot);
 }
