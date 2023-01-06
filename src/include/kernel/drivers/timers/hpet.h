@@ -10,7 +10,7 @@
 #define HPET_TIMER_PERIODIC_INTERVAL (1 << 6)
 
 struct ACPIHPETTable{
-	struct ACPISDTHeader baseHeader;
+	ACPI::SDTHeader baseHeader;
 	uint8_t hardwareRevisionId;
 	uint8_t comparatorCount : 5;
 	uint8_t counterSize : 1;

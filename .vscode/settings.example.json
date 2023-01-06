@@ -1,7 +1,7 @@
 {
 	"makefile.extensionOutputFolder": "./.vscode",
 	"files.associations": {
-		"kernel.h": "c",
+		"kernel.h": "cpp",
 		"string.h": "c",
 		"*.tcc": "cpp",
 		"ostream": "cpp",
@@ -10,7 +10,7 @@
 		"fstream": "c",
 		"pml4t.h": "c",
 		"elf.h": "c",
-		"acpi.h": "c",
+		"acpi.h": "cpp",
 		"type_traits": "c",
 		"iosfwd": "cpp",
 		"float.h": "c",
@@ -66,7 +66,7 @@
 		"stdexcept": "cpp",
 		"c++config.h": "c"
 	},
-	"C_Cpp.errorSquiggles": "Enabled",
+	"C_Cpp.errorSquiggles": "enabled",
 	"C_Cpp.default.systemIncludePath": [
 		"/path-to-gcc-x86_64-elf/lib/gcc/x86_64-elf/12.1.0/include/**",
 		"/path-to-gcc-x86_64-elf/lib/gcc/x86_64-elf/12.1.0/include-fixed/**"

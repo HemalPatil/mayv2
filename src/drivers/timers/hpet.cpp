@@ -27,7 +27,7 @@ bool initializeHpet() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingStr, strlen(mappingStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	ACPIHPETTable *hpetTable = (ACPIHPETTable*)hpetSdtHeader;
+	ACPIHPETTable *hpetTable = (ACPIHPETTable*)ACPI::hpetSdtHeader;
 	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
 		1,
 		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous

@@ -37,8 +37,8 @@ bool PCIe::enumerate() {
 	terminalPrintChar('\n');
 
 	// FIXME: should verify the MCFG checksum
-	size_t groupCount = (mcfgSdtHeader->length - sizeof(ACPISDTHeader) - sizeof(uint64_t)) / sizeof(SegmentGroupEntry);
-	SegmentGroupEntry *groupEntries = (SegmentGroupEntry*)((uint64_t)mcfgSdtHeader + sizeof(ACPISDTHeader) + sizeof(uint64_t));
+	size_t groupCount = (ACPI::mcfgSdtHeader->length - sizeof(ACPI::SDTHeader) - sizeof(uint64_t)) / sizeof(SegmentGroupEntry);
+	SegmentGroupEntry *groupEntries = (SegmentGroupEntry*)((uint64_t)ACPI::mcfgSdtHeader + sizeof(ACPI::SDTHeader) + sizeof(uint64_t));
 	for (size_t i = 0; i < groupCount; ++i) {
 		terminalPrintSpaces4();
 		terminalPrintString(segmentStr, strlen(segmentStr));

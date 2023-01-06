@@ -107,14 +107,14 @@ void printString(const char *const str) {
 	}
 }
 
-ACPI3Entry* getMmapBase() {
-	return (ACPI3Entry*)((uint32_t)(infoTable->mmapEntriesSegment << 4) + infoTable->mmapEntriesOffset);
+ACPI::Entryv3* getMmapBase() {
+	return (ACPI::Entryv3*)((uint32_t)(infoTable->mmapEntriesSegment << 4) + infoTable->mmapEntriesOffset);
 }
 
 void sortMmapEntries() {
 	// Sort the MMAP entries in ascending order of their base addresses
 	// Number of MMAP entries is in the range of 5-15 typically so a simple bubble sort is used
-	ACPI3Entry *mmap = getMmapBase();
+	ACPI::Entryv3 *mmap = getMmapBase();
 	for (int i = 0; i < infoTable->mmapEntryCount - 1; ++i) {
 		int iMin = i;
 		for (size_t j = i + 1; j < infoTable->mmapEntryCount; ++j) {
@@ -136,33 +136,33 @@ void processMmapEntries() {
 	// If an overlap is found, two cases occur
 	// 1) Both regions are of same type
 	//		- Change the length of the one entry to match the base of next entry
-	// 2) Regions are of different types and one of them is of type ACPI3_MEM_TYPE_USABLE
+	// 2) Regions are of different types and one of them is of type ACPI::MemoryType::Usable
 	//		- Change the length of the first entry if it is usable
 	//		- Change the base of the second entry if it is usable
-	// 3) Overlapping of two regions of different types and none of them of type ACPI3_MEM_TYPE_USABLE
+	// 3) Overlapping of two regions of different types and none of them of type ACPI::MemoryType::Usable
 	//    is not handled right now.
 
-	ACPI3Entry *mmap = getMmapBase();
+	ACPI::Entryv3 *mmap = getMmapBase();
 	size_t actualEntries = infoTable->mmapEntryCount;
 	sortMmapEntries();
 	for (int i = 0; i < infoTable->mmapEntryCount - 1; ++i) {
-		ACPI3Entry *mmapEntry1 = mmap + i;
-		ACPI3Entry *mmapEntry2 = mmap + i + 1;
+		ACPI::Entryv3 *mmapEntry1 = mmap + i;
+		ACPI::Entryv3 *mmapEntry2 = mmap + i + 1;
 		if ((mmapEntry1->base + mmapEntry1->length) > mmapEntry2->base) {
 			if (mmapEntry1->regionType == mmapEntry2->regionType) {
 				mmapEntry1->length = mmapEntry2->base - mmapEntry1->base;
 			} else {
-				if (mmapEntry1->regionType == ACPI3_MEM_TYPE_USABLE) {
+				if (mmapEntry1->regionType == ACPI::MemoryType::Usable) {
 					mmapEntry1->length = mmapEntry2->base - mmapEntry1->base;
-				} else if (mmapEntry2->regionType == ACPI3_MEM_TYPE_USABLE) {
+				} else if (mmapEntry2->regionType == ACPI::MemoryType::Usable) {
 					mmapEntry2->base = mmapEntry1->base + mmapEntry1->length;
 				}
 			}
 		} else if ((mmapEntry1->base + mmapEntry1->length) < mmapEntry2->base) {
-			ACPI3Entry *newEntry = mmap + actualEntries;
+			ACPI::Entryv3 *newEntry = mmap + actualEntries;
 			newEntry->base = mmapEntry1->base + mmapEntry1->length;
 			newEntry->length = mmapEntry2->base - newEntry->base;
-			newEntry->regionType = ACPI3_MEM_TYPE_HOLE;
+			newEntry->regionType = ACPI::MemoryType::Hole;
 			newEntry->extendedAttributes = 1;
 			++actualEntries;
 		}
@@ -288,7 +288,7 @@ extern "C" int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTabl
 	printString("Number of MMAP entries = 0x");
 	printHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
 	printString("\n");
-	ACPI3Entry *mmap = getMmapBase();
+	ACPI::Entryv3 *mmap = getMmapBase();
 	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
 		if (
 			(mmap[i].base <= ((uint64_t)LOADER32_ORIGIN + loader32VirtualMemSize)) &&

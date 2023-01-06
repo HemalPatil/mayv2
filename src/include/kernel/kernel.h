@@ -71,7 +71,7 @@ namespace Kernel {
 				size_t bit = SIZE_MAX;
 			};
 
-			extern ACPI3Entry *map;
+			extern ACPI::Entryv3 *map;
 			extern uint8_t* buddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER];
 			extern size_t buddyBitmapSizes[PHY_MEM_BUDDY_MAX_ORDER];
 			extern uint64_t buddyMasks[PHY_MEM_BUDDY_MAX_ORDER];

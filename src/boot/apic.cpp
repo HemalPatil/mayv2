@@ -41,7 +41,7 @@ bool APIC::initialize() {
 	terminalPrintSpaces4();
 	terminalPrintString(checkingApicStr, strlen(checkingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!isApicPresent() || apicSdtHeader == nullptr || apicSdtHeader == INVALID_ADDRESS) {
+	if (!isApicPresent() || ACPI::apicSdtHeader == nullptr || ACPI::apicSdtHeader == INVALID_ADDRESS) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(presentStr, strlen(presentStr));
@@ -56,7 +56,7 @@ bool APIC::initialize() {
 	terminalPrintString(parsingApicStr, strlen(parsingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
-	uint32_t *localApicAddress = (uint32_t*)((uint64_t)apicSdtHeader + sizeof(ACPISDTHeader));
+	uint32_t *localApicAddress = (uint32_t*)((uint64_t)ACPI::apicSdtHeader + sizeof(ACPI::SDTHeader));
 	localApicPhysicalAddress = (void*)(uint64_t)(*localApicAddress);
 	apicFlags = *(localApicAddress + 1);
 	terminalPrintSpaces4();
@@ -66,7 +66,7 @@ bool APIC::initialize() {
 	terminalPrintString(flagsStr, strlen(flagsStr));
 	terminalPrintHex(&apicFlags, sizeof(apicFlags));
 	terminalPrintString(lengthStr, strlen(lengthStr));
-	terminalPrintHex(&apicSdtHeader->length, sizeof(apicSdtHeader->length));
+	terminalPrintHex(&ACPI::apicSdtHeader->length, sizeof(ACPI::apicSdtHeader->length));
 	terminalPrintChar('\n');
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
@@ -75,8 +75,8 @@ bool APIC::initialize() {
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
 	terminalPrintString(entryHeaderStr, strlen(entryHeaderStr));
-	uint64_t apicEnd = (uint64_t)apicSdtHeader + apicSdtHeader->length;
-	EntryHeader *entry = (EntryHeader*)((uint64_t)apicSdtHeader + sizeof(ACPISDTHeader) + sizeof(*localApicAddress) + sizeof(apicFlags));
+	uint64_t apicEnd = (uint64_t)ACPI::apicSdtHeader + ACPI::apicSdtHeader->length;
+	EntryHeader *entry = (EntryHeader*)((uint64_t)ACPI::apicSdtHeader + sizeof(ACPI::SDTHeader) + sizeof(*localApicAddress) + sizeof(apicFlags));
 	while ((uint64_t)entry < apicEnd) {
 		terminalPrintSpaces4();
 		terminalPrintSpaces4();

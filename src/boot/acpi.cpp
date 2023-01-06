@@ -3,14 +3,14 @@
 #include <kernel.h>
 #include <terminal.h>
 
-static RSDPDescriptor2* searchRsdp();
+static ACPI::RSDPDescriptor2* searchRsdp();
 
-ACPISDTHeader *apicSdtHeader = nullptr;
-ACPISDTHeader *hpetSdtHeader = nullptr;
-ACPISDTHeader *mcfgSdtHeader = nullptr;
-RSDPDescriptor2 *rsdp = nullptr;
-ACPISDTHeader *ssdtHeader = nullptr;
-ACPISDTHeader *xsdt = nullptr;
+ACPI::SDTHeader *ACPI::apicSdtHeader = nullptr;
+ACPI::SDTHeader *ACPI::hpetSdtHeader = nullptr;
+ACPI::SDTHeader *ACPI::mcfgSdtHeader = nullptr;
+ACPI::RSDPDescriptor2 *ACPI::rsdp = nullptr;
+ACPI::SDTHeader *ACPI::ssdtHeader = nullptr;
+ACPI::SDTHeader *ACPI::xsdt = nullptr;
 
 static const char* const parsingAcpiStr = "Parsing ACPI3";
 static const char* const searchingRsdpStr = "Searching for RSDP";
@@ -25,7 +25,7 @@ static const char* const parseCompleteStr = "ACPI3 parsed\n\n";
 static const char* const mappingXsdtStr = "Mapping XSDT to kernel address space";
 static const char* const findingAcpiTablesStr = "Searching for APIC, HPET, MCFG, and SSDT entries";
 
-bool parseAcpi3() {
+bool ACPI::parse() {
 	terminalPrintString(parsingAcpiStr, strlen(parsingAcpiStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
@@ -52,7 +52,7 @@ bool parseAcpi3() {
 	terminalPrintSpaces4();
 	terminalPrintString(checkingRevisionStr, strlen(checkingRevisionStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (rsdp->revision <= RSDP_REVISION_2_AND_ABOVE) {
+	if (rsdp->revision <= ACPI::RSDPRevision::v2AndAbove) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
@@ -83,11 +83,11 @@ bool parseAcpi3() {
 	terminalPrintChar('\n');
 
 	// Read https://uefi.org/sites/default/files/resources/ACPI_6_3_final_Jan30.pdf Section 5.2
-	ACPISDTHeader *rsdtPhy = (ACPISDTHeader*)(uint64_t)rsdp->rsdtAddress;
+	SDTHeader *rsdtPhy = (SDTHeader*)(uint64_t)rsdp->rsdtAddress;
 	terminalPrintSpaces4();
 	terminalPrintString(rsdtAddressStr, strlen(rsdtAddressStr));
 	terminalPrintHex(&rsdtPhy, sizeof(rsdtPhy));
-	ACPISDTHeader *xsdtPhy = (ACPISDTHeader*)rsdp->xsdtAddress;
+	SDTHeader *xsdtPhy = (SDTHeader*)rsdp->xsdtAddress;
 	terminalPrintString(xsdtAddressStr, strlen(xsdtAddressStr));
 	terminalPrintHex(&xsdtPhy, sizeof(xsdtPhy));
 	terminalPrintChar('\n');
@@ -119,12 +119,12 @@ bool parseAcpi3() {
 	terminalPrintChar('\n');
 
 	// Verify the XSDT signature
-	ACPISDTHeader *oldXsdt = (ACPISDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~Kernel::Memory::Physical::buddyMasks[0]));
+	SDTHeader *oldXsdt = (SDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~Kernel::Memory::Physical::buddyMasks[0]));
 	terminalPrintSpaces4();
 	terminalPrintString(verifyingXsdtSigStr, strlen(verifyingXsdtSigStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	// Assumes the entrie XSDT lies in the same page as XSDT
-	if (*(uint32_t*)oldXsdt->signature != ACPI_XSDT_SIGNATURE || !validAcpi3Table(oldXsdt)) {
+	if (*(uint32_t*)oldXsdt->signature != ACPI::Signature::XSDT || !validTable(oldXsdt)) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
@@ -132,7 +132,7 @@ bool parseAcpi3() {
 		return false;
 	}
 	// Copy the XSDT to heap
-	xsdt = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldXsdt->length);
+	xsdt = (SDTHeader*)Kernel::Memory::Heap::allocate(oldXsdt->length);
 	memcpy(xsdt, oldXsdt, oldXsdt->length);
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
@@ -141,10 +141,10 @@ bool parseAcpi3() {
 	terminalPrintSpaces4();
 	terminalPrintString(findingAcpiTablesStr, strlen(findingAcpiTablesStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	ACPISDTHeader* oldApic = findAcpiTable(oldXsdt, ACPI_APIC_SIGNATURE);
-	ACPISDTHeader* oldHpet = findAcpiTable(oldXsdt, ACPI_HPET_SIGNATURE);
-	ACPISDTHeader* oldMcfg = findAcpiTable(oldXsdt, ACPI_MCFG_SIGNATURE);
-	ACPISDTHeader* oldSsdt = findAcpiTable(oldXsdt, ACPI_SSDT_SIGNATURE);
+	SDTHeader* oldApic = findTable(oldXsdt, ACPI::Signature::APIC);
+	SDTHeader* oldHpet = findTable(oldXsdt, ACPI::Signature::HPET);
+	SDTHeader* oldMcfg = findTable(oldXsdt, ACPI::Signature::MCFG);
+	SDTHeader* oldSsdt = findTable(oldXsdt, ACPI::Signature::SSDT);
 	if (
 		oldApic == INVALID_ADDRESS ||
 		oldHpet == INVALID_ADDRESS ||
@@ -156,13 +156,13 @@ bool parseAcpi3() {
 		return false;
 	}
 	// Copy the tables to heap
-	apicSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldApic->length);
+	apicSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldApic->length);
 	memcpy(apicSdtHeader, oldApic, oldApic->length);
-	hpetSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldHpet->length);
+	hpetSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldHpet->length);
 	memcpy(hpetSdtHeader, oldHpet, oldHpet->length);
-	mcfgSdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldMcfg->length);
+	mcfgSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldMcfg->length);
 	memcpy(mcfgSdtHeader, oldMcfg, oldMcfg->length);
-	ssdtHeader = (ACPISDTHeader*)Kernel::Memory::Heap::allocate(oldSsdt->length);
+	ssdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldSsdt->length);
 	memcpy(ssdtHeader, oldSsdt, oldSsdt->length);
 	// Free the kernel page used for parsing XSDT
 	Kernel::Memory::Virtual::freePages(
@@ -180,10 +180,10 @@ bool parseAcpi3() {
 // Finds the ACPI table with a given signature and returns its address
 // Returns INVALID_ADDRESS is not found
 // Assumes the entire XSDT and the tables pointed to by it are mapped in the same page as XSDT
-ACPISDTHeader* findAcpiTable(ACPISDTHeader *xsdt, uint32_t signature) {
-	size_t tableCount = (xsdt->length - sizeof(ACPISDTHeader)) / sizeof(uint64_t);
+ACPI::SDTHeader* ACPI::findTable(SDTHeader *xsdt, uint32_t signature) {
+	size_t tableCount = (xsdt->length - sizeof(SDTHeader)) / sizeof(uint64_t);
 	for (size_t i = 0; i < tableCount; ++i) {
-		ACPISDTHeader *table = (ACPISDTHeader*)(
+		SDTHeader *table = (SDTHeader*)(
 			((uint64_t)xsdt & Kernel::Memory::Physical::buddyMasks[0]) |
 			(((uint64_t*)(xsdt + 1))[i] & ~Kernel::Memory::Physical::buddyMasks[0])
 		);
@@ -191,12 +191,12 @@ ACPISDTHeader* findAcpiTable(ACPISDTHeader *xsdt, uint32_t signature) {
 			return table;
 		}
 	}
-	return (ACPISDTHeader*)INVALID_ADDRESS;
+	return (SDTHeader*)INVALID_ADDRESS;
 }
 
 // Adds up all the bytes in an ACPI table and returns true only if the checksum is 0
 // Assumes the entire table is mapped in the address space
-bool validAcpi3Table(ACPISDTHeader* header) {
+bool ACPI::validTable(SDTHeader* header) {
 	uint8_t checksum = 0;
 	for (size_t i = 0; i < header->length; ++i) {
 		checksum += ((uint8_t*)header)[i];
@@ -204,17 +204,17 @@ bool validAcpi3Table(ACPISDTHeader* header) {
 	return checksum == 0;
 }
 
-static RSDPDescriptor2* searchRsdp() {
+static ACPI::RSDPDescriptor2* searchRsdp() {
 	// Search for the magic string 'RSD PTR ' at every 8 byte boundary
 	uint64_t rsdPtr = 0x2052545020445352;
 	for (uint64_t *p = 0; p < (uint64_t*)L32K64_SCRATCH_BASE; ++p) {
 		if (*p == rsdPtr) {
-			return (RSDPDescriptor2*)p;
+			return (ACPI::RSDPDescriptor2*)p;
 		}
 	}
 	for (uint64_t *p = (uint64_t*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH); p < (uint64_t*)0x100000; ++p) {
 		if (*p == rsdPtr) {
-			return (RSDPDescriptor2*)p;
+			return (ACPI::RSDPDescriptor2*)p;
 		}
 	}
 	return nullptr;

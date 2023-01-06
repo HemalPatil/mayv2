@@ -82,7 +82,7 @@ extern "C" {
 	}
 	terminalPrintChar('\n');
 
-	if (!parseAcpi3()) {
+	if (!ACPI::parse()) {
 		Kernel::panic();
 	}
 	// Disable PIC and setup APIC

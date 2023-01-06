@@ -23,7 +23,7 @@ static const char* const creatingBuddyStr = "Creating buddy bitmaps";
 const size_t Kernel::Memory::pageSizeShift = 12;
 const size_t Kernel::Memory::pageSize = 1 << pageSizeShift;
 
-ACPI3Entry* Kernel::Memory::Physical::map = nullptr;
+ACPI::Entryv3* Kernel::Memory::Physical::map = nullptr;
 uint8_t* Kernel::Memory::Physical::buddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 size_t Kernel::Memory::Physical::buddyBitmapSizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 uint64_t Kernel::Memory::Physical::buddyMasks[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
@@ -108,7 +108,7 @@ bool Kernel::Memory::Physical::initialize(
 
 	// Mark all the unusable areas in MMAP as used
 	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
-		if (map[i].regionType == ACPI3_MEM_TYPE_USABLE) {
+		if (map[i].regionType == ACPI::MemoryType::Usable) {
 			continue;
 		}
 		size_t unusuableCount = map[i].length / pageSize;
@@ -363,7 +363,7 @@ bool Kernel::Memory::Physical::areBuddiesOfType(void* address, size_t order, siz
 
 // Initializes base address of MMAP entries
 void Kernel::Memory::Physical::initMap() {
-	map = (ACPI3Entry*)((uint64_t)(infoTable->mmapEntriesSegment << 4) + infoTable->mmapEntriesOffset);
+	map = (ACPI::Entryv3*)((uint64_t)(infoTable->mmapEntriesSegment << 4) + infoTable->mmapEntriesOffset);
 }
 
 // Initializes physical memory total size in bytes
@@ -374,11 +374,11 @@ void Kernel::Memory::Physical::initSize() {
 	}
 }
 
-// Initializes usable (conventional ACPI3_MEM_TYPE_USABLE) physical memory size
+// Initializes usable (conventional ACPI::MemoryType::Usable) physical memory size
 void Kernel::Memory::Physical::initUsableSize() {
 	phyMemUsableSize = 0;
 	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
-		if (map[i].regionType == ACPI3_MEM_TYPE_USABLE) {
+		if (map[i].regionType == ACPI::MemoryType::Usable) {
 			phyMemUsableSize += map[i].length;
 		}
 	}
