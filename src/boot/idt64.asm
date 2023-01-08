@@ -51,7 +51,6 @@ idtDescriptor:
 	defaultInterruptStr db 'Default interrupt handler!', 10, 0
 	doubleFaultStr db 'Double Fault!', 10, 0
 	idtLoadingStr db 'Loading IDT', 0
-	interruptsEnabledStr db 'Enabled interrupts', 10, 0
 	pageFaultStr db 'Page Fault! Tried to access ', 0
 	invalidOpcodeStr db 'Invalid opcode', 0
 	invalidInterruptStr db 'Invalid interrupt number [', 0
@@ -69,6 +68,7 @@ section .text
 	extern terminalPrintDecimal
 	extern terminalPrintHex
 	extern terminalPrintString
+	global disableInterrupts
 	global enableInterrupts
 	global installIdt64Entry
 	global setupIdt64
@@ -140,11 +140,12 @@ installIdt64EntryInvalidInterrupt:
 	call hangSystem
 	ret
 
+disableInterrupts:
+	cli
+	ret
+
 enableInterrupts:
 	sti
-	mov rdi, interruptsEnabledStr
-	mov rsi, 19
-	call terminalPrintString
 	ret
 
 doubleFaultHandler:

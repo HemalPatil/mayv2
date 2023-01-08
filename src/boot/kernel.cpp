@@ -24,6 +24,7 @@ static const char* const checkingAhciStr = "Checking AHCI controllers";
 static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
 static const char* const isoFoundStr = "ISO filesystem found at ";
 static const char* const globalCtorStr = "Running global constructors";
+static const char* const enabledInterruptsStr = "\nEnabled interrupts\n\n";
 
 bool Kernel::debug = false;
 InfoTable *Kernel::infoTable;
@@ -100,10 +101,8 @@ extern "C" {
 		Kernel::panic();
 	}
 
-	// Enable interrupts
-	terminalPrintChar('\n');
 	enableInterrupts();
-	terminalPrintChar('\n');
+	terminalPrintString(enabledInterruptsStr, strlen(enabledInterruptsStr));
 
 	// Enumerate PCIe devices
 	if (!PCIe::enumerate()) {
@@ -174,7 +173,7 @@ extern "C" {
 	Kernel::hangSystem();
 }
 
-void panic() {
+void Kernel::panic() {
 	// TODO : improve kernel panic implementation
 	terminalPrintString(kernelPanicStr, strlen(kernelPanicStr));
 	Kernel::hangSystem();
