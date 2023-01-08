@@ -13,12 +13,13 @@ static const char* const mappingStr = "Mapping HPET registers to kernel address 
 static const char* const check64Str = "Checking clock period and 64-bit capability";
 static const char* const periodicTimerStr = "Checking for 64-bit capable edge-triggered periodic timer";
 static const char* const minTickStr = "Minimum tick ";
+static const char* const timerCountStr = ", Timers - ";
 static const char* const hpetStr = "hpet";
 
-HPETRegisters *hpet = nullptr;
-HPETTimer *hpetPeriodicTimer = nullptr;
+Drivers::Timers::HPET::Registers *Drivers::Timers::HPET::hpet = nullptr;
+Drivers::Timers::HPET::Timer *Drivers::Timers::HPET::hpetPeriodicTimer = nullptr;
 
-bool initializeHpet() {
+bool Drivers::Timers::HPET::initialize() {
 	terminalPrintString(initStr, strlen(initStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
@@ -27,7 +28,7 @@ bool initializeHpet() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingStr, strlen(mappingStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	ACPIHPETTable *hpetTable = (ACPIHPETTable*)ACPI::hpetSdtHeader;
+	Info *hpetTable = (Info*)ACPI::hpetSdtHeader;
 	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
 		1,
 		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
@@ -46,7 +47,7 @@ bool initializeHpet() {
 		terminalPrintChar('\n');
 		return false;
 	}
-	hpet = (HPETRegisters*)requestResult.address;
+	hpet = (Registers*)requestResult.address;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -67,6 +68,8 @@ bool initializeHpet() {
 	terminalPrintSpaces4();
 	terminalPrintString(minTickStr, strlen(minTickStr));
 	terminalPrintHex(&hpetTable->minimumTick, sizeof(hpetTable->minimumTick));
+	terminalPrintString(timerCountStr, strlen(timerCountStr));
+	terminalPrintDecimal(hpet->timerCount + 1);
 	terminalPrintChar('\n');
 
 	// Find at least one timer with 64-bit and periodic interrupt capability
@@ -80,6 +83,7 @@ bool initializeHpet() {
 			hpet->timers[i].periodicCapable
 		) {
 			hpetPeriodicTimer = &hpet->timers[i];
+			break;
 		}
 	}
 	if (!hpetPeriodicTimer) {
@@ -108,7 +112,10 @@ bool initializeHpet() {
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 	uint64_t *configure = (uint64_t*)(void*)hpetPeriodicTimer;
-	*configure |= ((Kernel::IRQ::Timer << 9) | HPET_TIMER_PERIODIC | HPET_TIMER_PERIODIC_INTERVAL);
+	*configure |= ((Kernel::IRQ::Timer << 9) | TimerParamters::Enable | TimerParamters::Periodic | TimerParamters::PeriodicInterval);
+	hpetPeriodicTimer->comparatorValue = 1000000000000000UL / hpet->period;
+	configure = (uint64_t*)(void*)hpet;
+	configure[2] |= 1;
 	#pragma GCC diagnostic pop
 
 	terminalPrintString(initCompleteStr, strlen(initCompleteStr));

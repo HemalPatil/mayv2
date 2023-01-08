@@ -91,7 +91,7 @@ extern "C" {
 	}
 
 	// Get at least 1 periodic 64-bit edge-triggered HPET
-	if (!initializeHpet()) {
+	if (!Drivers::Timers::HPET::initialize()) {
 		Kernel::panic();
 	}
 
@@ -171,7 +171,9 @@ extern "C" {
 	// if (!setupGraphicalVideoMode()) {
 	// 	panic();
 	// }
-	Kernel::hangSystem();
+	while (true) {
+		Kernel::haltSystem();
+	}
 }
 
 void panic() {
