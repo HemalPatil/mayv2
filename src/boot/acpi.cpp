@@ -147,7 +147,6 @@ bool ACPI::parse() {
 	SDTHeader* oldSsdt = findTable(oldXsdt, ACPI::Signature::SSDT);
 	if (
 		oldApic == INVALID_ADDRESS ||
-		oldHpet == INVALID_ADDRESS ||
 		oldMcfg == INVALID_ADDRESS ||
 		oldSsdt == INVALID_ADDRESS
 	) {
@@ -158,12 +157,14 @@ bool ACPI::parse() {
 	// Copy the tables to heap
 	apicSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldApic->length);
 	memcpy(apicSdtHeader, oldApic, oldApic->length);
-	hpetSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldHpet->length);
-	memcpy(hpetSdtHeader, oldHpet, oldHpet->length);
 	mcfgSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldMcfg->length);
 	memcpy(mcfgSdtHeader, oldMcfg, oldMcfg->length);
 	ssdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldSsdt->length);
 	memcpy(ssdtHeader, oldSsdt, oldSsdt->length);
+	if (oldHpet != INVALID_ADDRESS) {
+		hpetSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldHpet->length);
+		memcpy(hpetSdtHeader, oldHpet, oldHpet->length);
+	}
 	// Free the kernel page used for parsing XSDT
 	Kernel::Memory::Virtual::freePages(
 		(void*)((uint64_t)oldXsdt & Kernel::Memory::Physical::buddyMasks[0]),

@@ -7,7 +7,6 @@
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
-#include <drivers/timers/hpet.h>
 #include <idt64.h>
 #include <kernel.h>
 #include <pcie.h>
@@ -90,13 +89,7 @@ extern "C" {
 		Kernel::panic();
 	}
 
-	// Get at least 1 periodic 64-bit edge-triggered HPET
-	if (!Drivers::Timers::HPET::initialize()) {
-		Kernel::panic();
-	}
-
-	// Setup basic hardware interrupts
-	if (!initializePs2Keyboard()) {
+	if (!Kernel::Scheduler::initialize()) {
 		Kernel::panic();
 	}
 
@@ -105,75 +98,8 @@ extern "C" {
 	enableInterrupts();
 	terminalPrintChar('\n');
 
-	// Enumerate PCIe devices
-	if (!PCIe::enumerate()) {
-		Kernel::panic();
-	}
-
-	// Start drivers for PCIe devices
-	for (auto &function : PCIe::functions) {
-		bool (*initializer)(PCIe::Function &pcieFunction) = nullptr;
-		if (
-			function.configurationSpace->mainClass == PCIe::Class::Storage &&
-			function.configurationSpace->subClass == PCIe::Subclass::Sata &&
-			function.configurationSpace->progIf == PCIe::ProgramType::Ahci
-		) {
-			initializer = &AHCI::initialize;
-		}
-		if (initializer && !((*initializer)(function))) {
-			Kernel::panic();
-		}
-	}
-
-	// Create filesystems
-	terminalPrintString(creatingFsStr, strlen(creatingFsStr));
-	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	terminalPrintChar('\n');
-	terminalPrintSpaces4();
-	terminalPrintString(checkingAhciStr, strlen(checkingAhciStr));
-	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	terminalPrintChar('\n');
-	for (size_t controllerCount = 0; auto &controller : AHCI::controllers) {
-		for (const auto &device : controller.getDevices()) {
-			if (device) {
-				// Try with ISO9660 for SATAPI devices first because that is the most likely FS
-				if (AHCI::Device::Type::Satapi == device->getType()) {
-					const auto isIso = FS::ISO9660::isIso9660(device);
-					if (std::get<0>(isIso)) {
-						terminalPrintSpaces4();
-						terminalPrintSpaces4();
-						terminalPrintString(isoFoundStr, strlen(isoFoundStr));
-						terminalPrintDecimal(controllerCount);
-						terminalPrintChar(':');
-						terminalPrintDecimal(device->getPortNumber());
-						terminalPrintChar('\n');
-						FS::filesystems.push_back(std::make_shared<FS::ISO9660>(device, std::get<1>(isIso)));
-					}
-				}
-			}
-		}
-		++controllerCount;
-	}
-	terminalPrintSpaces4();
-	terminalPrintString(checkingAhciDoneStr, strlen(checkingAhciDoneStr));
-	terminalPrintString(creatingFsDoneStr, strlen(creatingFsDoneStr));
-
-	for (const auto &fs : FS::filesystems) {
-		terminalPrintString("loops\n", 6);
-		for (const auto &dir : fs->readDirectory("/")) {
-			terminalPrintString(dir.name.c_str(), dir.name.length());
-			terminalPrintChar('\n');
-		}
-		terminalPrintString("loope\n", 6);
-	}
-
-	// Set up graphical video mode
-	// if (!setupGraphicalVideoMode()) {
-	// 	panic();
-	// }
-	while (true) {
-		Kernel::haltSystem();
-	}
+	// Wait perpetually and let the scheduler and interrupts do their thing
+	Kernel::Scheduler::start();
 }
 
 void panic() {

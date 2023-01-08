@@ -73,7 +73,7 @@ namespace Drivers {
 			extern Registers *hpet;
 			extern Timer *hpetPeriodicTimer;
 
-			extern bool initialize();
+			extern bool initialize(size_t intervalNanoseconds, void (*timerInterruptCallback)());
 		}
 	}
 }

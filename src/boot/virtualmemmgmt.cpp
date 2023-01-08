@@ -179,8 +179,6 @@ bool Kernel::Memory::Virtual::initialize(
 		terminalPrintChar('\n');
 		return false;
 	}
-	// Heap::valid((Heap::Header*)usableKernelSpaceStart);
-	// hangSystem();
 	usableKernelSpaceStart = (void*)((uint64_t)usableKernelSpaceStart + Heap::newRegionSize + Heap::entryTableSize);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
@@ -194,7 +192,6 @@ bool Kernel::Memory::Virtual::initialize(
 	}
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
-	// hangSystem();
 
 	// Used areas of virtual address space so far
 	// 1) 0x0 to L32K64_SCRATCH_BASE

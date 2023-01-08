@@ -44,6 +44,12 @@ namespace Kernel {
 		Timer = 3
 	};
 
+	namespace Scheduler {
+		bool initialize();
+		[[noreturn]] void start();
+		void periodicTimerHandler();
+	}
+
 	namespace Memory {
 		extern const size_t pageSize;
 		extern const size_t pageSizeShift;
