@@ -28,9 +28,7 @@ static const char* const enabledInterruptsStr = "\nEnabled interrupts\n\n";
 bool Kernel::debug = false;
 InfoTable *Kernel::infoTable;
 
-extern "C" {
-
-[[noreturn]] void kernelMain(
+extern "C" [[noreturn]] void kernelMain(
 	InfoTable *infoTableAddress,
 	size_t lowerHalfSize,
 	size_t higherHalfSize,
@@ -105,6 +103,4 @@ void Kernel::panic() {
 	// TODO : improve kernel panic implementation
 	terminalPrintString(kernelPanicStr, strlen(kernelPanicStr));
 	Kernel::hangSystem();
-}
-
 }

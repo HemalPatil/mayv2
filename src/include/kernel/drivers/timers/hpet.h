@@ -70,10 +70,11 @@ namespace Drivers {
 				Timer timers[32];
 			} __attribute__((packed));
 
-			extern Registers *hpet;
-			extern Timer *hpetPeriodicTimer;
+			extern Registers *registers;
+			extern Timer *periodicTimer;
+			extern void (*timerInterruptCallback)();
 
-			extern bool initialize(size_t intervalNanoseconds, void (*timerInterruptCallback)());
+			extern bool initialize();
 		}
 	}
 }

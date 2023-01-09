@@ -3,7 +3,6 @@
 #include <commonstrings.h>
 #include <cstring>
 #include <drivers/timers/hpet.h>
-#include <idt64.h>
 #include <kernel.h>
 #include <terminal.h>
 
@@ -16,12 +15,11 @@ static const char* const minTickStr = "Minimum tick ";
 static const char* const timerCountStr = ", Timers - ";
 static const char* const hpetStr = "hpet";
 
-Drivers::Timers::HPET::Registers *Drivers::Timers::HPET::hpet = nullptr;
-Drivers::Timers::HPET::Timer *Drivers::Timers::HPET::hpetPeriodicTimer = nullptr;
+Drivers::Timers::HPET::Registers *Drivers::Timers::HPET::registers = nullptr;
+Drivers::Timers::HPET::Timer *Drivers::Timers::HPET::periodicTimer = nullptr;
+void (*Drivers::Timers::HPET::timerInterruptCallback)() = nullptr;
 
-static void (*timerInterruptCallback)() = nullptr;
-
-bool Drivers::Timers::HPET::initialize(size_t intervalNanoseconds, void (*timerCallback)()) {
+bool Drivers::Timers::HPET::initialize() {
 	terminalPrintSpaces4();
 	terminalPrintString(initHpetStr, strlen(initHpetStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -51,7 +49,7 @@ bool Drivers::Timers::HPET::initialize(size_t intervalNanoseconds, void (*timerC
 		terminalPrintChar('\n');
 		return false;
 	}
-	hpet = (Registers*)requestResult.address;
+	registers = (Registers*)requestResult.address;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -60,7 +58,7 @@ bool Drivers::Timers::HPET::initialize(size_t intervalNanoseconds, void (*timerC
 	terminalPrintSpaces4();
 	terminalPrintString(check64Str, strlen(check64Str));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!hpet->bit64Capable || hpet->period == 0 || hpet->period > 100000000) {
+	if (!registers->bit64Capable || registers->period == 0 || registers->period > 100000000) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
@@ -75,7 +73,7 @@ bool Drivers::Timers::HPET::initialize(size_t intervalNanoseconds, void (*timerC
 	terminalPrintString(minTickStr, strlen(minTickStr));
 	terminalPrintHex(&hpetTable->minimumTick, sizeof(hpetTable->minimumTick));
 	terminalPrintString(timerCountStr, strlen(timerCountStr));
-	terminalPrintDecimal(hpet->timerCount + 1);
+	terminalPrintDecimal(registers->timerCount + 1);
 	terminalPrintChar('\n');
 
 	// Find at least one timer with 64-bit and periodic interrupt capability
@@ -83,17 +81,17 @@ bool Drivers::Timers::HPET::initialize(size_t intervalNanoseconds, void (*timerC
 	terminalPrintSpaces4();
 	terminalPrintString(periodicTimerStr, strlen(periodicTimerStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	for (size_t i = 0; i < (size_t)hpet->timerCount + 1; ++i) {
+	for (size_t i = 0; i < (size_t)registers->timerCount + 1; ++i) {
 		if (
-			hpet->timers[i].bit64Capable &&
-			!hpet->timers[i].interruptType &&
-			hpet->timers[i].periodicCapable
+			registers->timers[i].bit64Capable &&
+			!registers->timers[i].interruptType &&
+			registers->timers[i].periodicCapable
 		) {
-			hpetPeriodicTimer = &hpet->timers[i];
+			periodicTimer = &registers->timers[i];
 			break;
 		}
 	}
-	if (!hpetPeriodicTimer) {
+	if (!periodicTimer) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(presentStr, strlen(presentStr));
@@ -103,30 +101,6 @@ bool Drivers::Timers::HPET::initialize(size_t intervalNanoseconds, void (*timerC
 	terminalPrintString(presentStr, strlen(presentStr));
 	terminalPrintChar('\n');
 
-	// Install the timer IRQ handler
-	APIC::IORedirectionEntry timerEntry = APIC::readIoRedirectionEntry(Kernel::IRQ::Timer);
-	installIdt64Entry(availableInterrupt, &hpetHandlerWrapper);
-	timerEntry.vector = availableInterrupt;
-	timerEntry.deliveryMode = 0;
-	timerEntry.destinationMode = 0;
-	timerEntry.pinPolarity = 0;
-	timerEntry.triggerMode = 0;
-	timerEntry.mask = 0;
-	timerEntry.destination = APIC::bootCpu;
-	writeIoRedirectionEntry(Kernel::IRQ::Timer, timerEntry);
-	++availableInterrupt;
-	// HPET registers must be written at 8-byte boundaries hence setting the bit fields directly is not possible
-	#pragma GCC diagnostic push
-	#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
-	uint64_t *configure = (uint64_t*)(void*)hpetPeriodicTimer;
-	*configure |= ((Kernel::IRQ::Timer << 9) | TimerParamters::Enable | TimerParamters::Periodic | TimerParamters::PeriodicInterval);
-	hpetPeriodicTimer->comparatorValue = 1000000UL * intervalNanoseconds / hpet->period;
-	configure = (uint64_t*)(void*)hpet;
-	configure[2] |= 1;
-	#pragma GCC diagnostic pop
-
-	timerInterruptCallback = timerCallback;
-
 	terminalPrintSpaces4();
 	terminalPrintString(initHpetCompleteStr, strlen(initHpetCompleteStr));
 	return true;
@@ -134,8 +108,8 @@ bool Drivers::Timers::HPET::initialize(size_t intervalNanoseconds, void (*timerC
 
 void hpetHandler() {
 	APIC::acknowledgeLocalInterrupt();
-	if (timerInterruptCallback) {
-		timerInterruptCallback();
+	if (Drivers::Timers::HPET::timerInterruptCallback) {
+		Drivers::Timers::HPET::timerInterruptCallback();
 	} else {
 		terminalPrintString(hpetStr, strlen(hpetStr));
 	}

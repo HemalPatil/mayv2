@@ -45,6 +45,13 @@ namespace Kernel {
 	};
 
 	namespace Scheduler {
+		enum TimerType {
+			None = 0,
+			HPET = 1
+		};
+
+		extern TimerType timerUsed;
+
 		bool initialize();
 		[[noreturn]] void start();
 		void periodicTimerHandler();
