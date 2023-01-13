@@ -107,6 +107,7 @@ namespace Kernel {
 				size_t pageCount = 0;
 			};
 
+			// TODO: Should perhaps use std::list as the container instead of std::vector
 			using AddressSpaceList = std::vector<Kernel::Memory::Virtual::AddressSpaceNode>;
 
 			extern AddressSpaceList generalAddressSpaceList;
