@@ -89,7 +89,7 @@ setupIdt64DescriptorLoop:
 	call fillOffsets
 	add rdx, 16
 	cmp rdx, IDT_END
-	jle setupIdt64DescriptorLoop
+	jl setupIdt64DescriptorLoop
 	mov rdx, pageFaultDescriptor
 	mov rax, pageFaultHandler
 	call fillOffsets

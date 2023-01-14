@@ -3,8 +3,6 @@
 ; TSS for 64 bit mode
 
 section .TSS64
-	extern IDT_START
-	extern IDT_END
 	extern IST1_STACK_END
 	extern IST2_STACK_END
 TSS_START:

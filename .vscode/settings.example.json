@@ -64,7 +64,8 @@
 		"limits": "cpp",
 		"numbers": "cpp",
 		"stdexcept": "cpp",
-		"c++config.h": "c"
+		"c++config.h": "c",
+		"coroutine": "cpp"
 	},
 	"C_Cpp.errorSquiggles": "Enabled",
 	"C_Cpp.default.systemIncludePath": [
