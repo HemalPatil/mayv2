@@ -268,18 +268,18 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 		return result;
 	}
 	AddressSpaceList &list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
-	size_t bestFitIndex = SIZE_MAX;
-	for (size_t i = 0; const auto &block : list) {
-		if (
-			block.available &&
-			block.pageCount >= count &&
-			(bestFitIndex == SIZE_MAX || list.at(bestFitIndex).pageCount > block.pageCount)
-		) {
-			bestFitIndex = i;
-		}
-		++i;
-	}
 	if (flags & RequestType::Contiguous) {
+		size_t bestFitIndex = SIZE_MAX;
+		for (size_t i = 0; const auto &block : list) {
+			if (
+				block.available &&
+				block.pageCount >= count &&
+				(bestFitIndex == SIZE_MAX || list.at(bestFitIndex).pageCount > block.pageCount)
+			) {
+				bestFitIndex = i;
+			}
+			++i;
+		}
 		list.at(bestFitIndex).available = false;
 		if (list.at(bestFitIndex).pageCount != count) {
 			list.insert(
