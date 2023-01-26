@@ -185,6 +185,8 @@ Async::Thenable<bool> AHCI::Device::identify() {
 }
 
 bool AHCI::Device::initialize() {
+	using namespace Kernel::Memory;
+
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
@@ -205,22 +207,23 @@ bool AHCI::Device::initialize() {
 
 	// Request a page where the command list (1024 bytes) and received FISes (256 bytes) can be placed
 	// Get the physical address of this page and put it in the commandListBase and fisBase
-	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
+	PageRequestResult requestResult = Virtual::requestPages(
 		1,
 		(
-			Kernel::Memory::RequestType::Kernel |
-			Kernel::Memory::RequestType::Contiguous |
-			Kernel::Memory::RequestType::AllocatePhysical |
-			Kernel::Memory::RequestType::CacheDisable
+			RequestType::Kernel |
+			RequestType::PhysicalContiguous |
+			RequestType::VirtualContiguous |
+			RequestType::AllocatePhysical |
+			RequestType::CacheDisable
 		)
 	);
 	if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
 		return false;
 	}
-	Kernel::Memory::Virtual::CrawlResult crawlResult(requestResult.address);
+	Virtual::CrawlResult crawlResult(requestResult.address);
 	uint64_t phyAddr = (uint64_t)crawlResult.physicalTables[0];
 	uint64_t virAddr = (uint64_t)requestResult.address;
-	memset(requestResult.address, 0, Kernel::Memory::pageSize);
+	memset(requestResult.address, 0, pageSize);
 	this->commandHeaders = (CommandHeader*)virAddr;
 	this->port->commandListBase = (uint32_t)phyAddr;
 	if (this->controller->hba->hostCapabilities.bit64Addressing) {
@@ -240,17 +243,20 @@ bool AHCI::Device::initialize() {
 	// To make all the 32 command tables fit nicely in 2 pages, solve the equation for prdtLength
 	// 2 * 4096 = 32 * (64 + 16 + 48 + prdtLength * 16)
 	// Hence, prdtLength works out to 8
-	// FIXME: Kernel::Memory::Virtual::requestPages does not guarantee the physical pages alloted will be contiguous
-	requestResult = Kernel::Memory::Virtual::requestPages(
+	requestResult = Virtual::requestPages(
 		2,
 		(
-			Kernel::Memory::RequestType::Kernel |
-			Kernel::Memory::RequestType::Contiguous |
-			Kernel::Memory::RequestType::AllocatePhysical |
-			Kernel::Memory::RequestType::CacheDisable
+			RequestType::Kernel |
+			RequestType::PhysicalContiguous |
+			RequestType::VirtualContiguous |
+			RequestType::AllocatePhysical |
+			RequestType::CacheDisable
 		)
 	);
-	if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 2) {
+	if (
+		requestResult.address == INVALID_ADDRESS ||
+		requestResult.allocatedCount != 2
+	) {
 		return false;
 	}
 	crawlResult = Kernel::Memory::Virtual::CrawlResult(requestResult.address);

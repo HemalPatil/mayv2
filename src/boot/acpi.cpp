@@ -26,6 +26,8 @@ static const char* const mappingXsdtStr = "Mapping XSDT to kernel address space"
 static const char* const findingAcpiTablesStr = "Searching for APIC, HPET, MCFG, and SSDT entries";
 
 bool ACPI::parse() {
+	using namespace Kernel::Memory;
+
 	terminalPrintString(parsingAcpiStr, strlen(parsingAcpiStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
@@ -97,16 +99,20 @@ bool ACPI::parse() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingXsdtStr, strlen(mappingXsdtStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
+	PageRequestResult requestResult = Virtual::requestPages(
 		1,
-		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
+		(
+			RequestType::Kernel |
+			RequestType::PhysicalContiguous |
+			RequestType::VirtualContiguous
+		)
 	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!Kernel::Memory::Virtual::mapPages(
+		!Virtual::mapPages(
 			requestResult.address,
-			(void*)((uint64_t)xsdtPhy & Kernel::Memory::Physical::buddyMasks[0]),
+			(void*)((uint64_t)xsdtPhy & Physical::buddyMasks[0]),
 			1,
 			0
 		)
@@ -119,7 +125,7 @@ bool ACPI::parse() {
 	terminalPrintChar('\n');
 
 	// Verify the XSDT signature
-	SDTHeader *oldXsdt = (SDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~Kernel::Memory::Physical::buddyMasks[0]));
+	SDTHeader *oldXsdt = (SDTHeader*)((uint64_t)requestResult.address | ((uint64_t)xsdtPhy & ~Physical::buddyMasks[0]));
 	terminalPrintSpaces4();
 	terminalPrintString(verifyingXsdtSigStr, strlen(verifyingXsdtSigStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -132,7 +138,7 @@ bool ACPI::parse() {
 		return false;
 	}
 	// Copy the XSDT to heap
-	xsdt = (SDTHeader*)Kernel::Memory::Heap::allocate(oldXsdt->length);
+	xsdt = (SDTHeader*)Heap::allocate(oldXsdt->length);
 	memcpy(xsdt, oldXsdt, oldXsdt->length);
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
@@ -155,21 +161,21 @@ bool ACPI::parse() {
 		return false;
 	}
 	// Copy the tables to heap
-	apicSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldApic->length);
+	apicSdtHeader = (SDTHeader*)Heap::allocate(oldApic->length);
 	memcpy(apicSdtHeader, oldApic, oldApic->length);
-	mcfgSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldMcfg->length);
+	mcfgSdtHeader = (SDTHeader*)Heap::allocate(oldMcfg->length);
 	memcpy(mcfgSdtHeader, oldMcfg, oldMcfg->length);
-	ssdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldSsdt->length);
+	ssdtHeader = (SDTHeader*)Heap::allocate(oldSsdt->length);
 	memcpy(ssdtHeader, oldSsdt, oldSsdt->length);
 	if (oldHpet != INVALID_ADDRESS) {
-		hpetSdtHeader = (SDTHeader*)Kernel::Memory::Heap::allocate(oldHpet->length);
+		hpetSdtHeader = (SDTHeader*)Heap::allocate(oldHpet->length);
 		memcpy(hpetSdtHeader, oldHpet, oldHpet->length);
 	}
 	// Free the kernel page used for parsing XSDT
-	Kernel::Memory::Virtual::freePages(
-		(void*)((uint64_t)oldXsdt & Kernel::Memory::Physical::buddyMasks[0]),
+	Virtual::freePages(
+		(void*)((uint64_t)oldXsdt & Physical::buddyMasks[0]),
 		1,
-		Kernel::Memory::RequestType::Kernel
+		RequestType::Kernel
 	);
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
@@ -182,11 +188,13 @@ bool ACPI::parse() {
 // Returns INVALID_ADDRESS is not found
 // Assumes the entire XSDT and the tables pointed to by it are mapped in the same page as XSDT
 ACPI::SDTHeader* ACPI::findTable(SDTHeader *xsdt, uint32_t signature) {
+	using namespace Kernel::Memory;
+
 	size_t tableCount = (xsdt->length - sizeof(SDTHeader)) / sizeof(uint64_t);
 	for (size_t i = 0; i < tableCount; ++i) {
 		SDTHeader *table = (SDTHeader*)(
-			((uint64_t)xsdt & Kernel::Memory::Physical::buddyMasks[0]) |
-			(((uint64_t*)(xsdt + 1))[i] & ~Kernel::Memory::Physical::buddyMasks[0])
+			((uint64_t)xsdt & Physical::buddyMasks[0]) |
+			(((uint64_t*)(xsdt + 1))[i] & ~Physical::buddyMasks[0])
 		);
 		if (*(uint32_t*)table->signature == signature) {
 			return table;

@@ -20,6 +20,8 @@ Drivers::Timers::HPET::Timer *Drivers::Timers::HPET::periodicTimer = nullptr;
 void (*Drivers::Timers::HPET::timerInterruptCallback)() = nullptr;
 
 bool Drivers::Timers::HPET::initialize() {
+	using namespace Kernel::Memory;
+
 	terminalPrintSpaces4();
 	terminalPrintString(initHpetStr, strlen(initHpetStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -31,18 +33,22 @@ bool Drivers::Timers::HPET::initialize() {
 	terminalPrintString(mappingStr, strlen(mappingStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	Info *hpetTable = (Info*)ACPI::hpetSdtHeader;
-	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
+	PageRequestResult requestResult = Virtual::requestPages(
 		1,
-		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
+		(
+			RequestType::Kernel |
+			RequestType::PhysicalContiguous |
+			RequestType::VirtualContiguous
+		)
 	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!Kernel::Memory::Virtual::mapPages(
+		!Virtual::mapPages(
 			requestResult.address,
 			(void*)hpetTable->address,
 			1,
-			Kernel::Memory::RequestType::CacheDisable
+			RequestType::CacheDisable
 		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));

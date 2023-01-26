@@ -39,7 +39,7 @@ static const char* const virtualNamespaceStr = "Kernel::Memory::Virtual::";
 static const char* const freeErrorStr = "freePages tried to free already free pages";
 static const char* const requestPagesStr = "requestPages ";
 static const char* const mapPagesStr = "mapPages ";
-static const char* const requestErrorStr = "did not pass RequestType::Contiguous\n";
+static const char* const requestErrorStr = "did not pass RequestType::VirtualContiguous\n";
 static const char* const globalCtorStr = "Running global constructors";
 static const char* const listDefragFailStr = "defragAddressSpaceList integrity check failed for ";
 
@@ -270,7 +270,7 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 		return result;
 	}
 	AddressSpaceList &list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
-	if (flags & RequestType::Contiguous) {
+	if (flags & RequestType::VirtualContiguous) {
 		size_t bestFitIndex = SIZE_MAX;
 		for (size_t i = 0; const auto &block : list) {
 			if (
@@ -306,7 +306,7 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 		if (flags & RequestType::AllocatePhysical) {
 			size_t total = 0;
 			while (total != count) {
-				PageRequestResult phyResult = Physical::requestPages(count - total, 0);
+				PageRequestResult phyResult = Physical::requestPages(count - total, flags);
 				if (phyResult.address == INVALID_ADDRESS || phyResult.allocatedCount == 0) {
 					// Out of memory
 					// TODO: should swap out pages instead of 
@@ -465,7 +465,7 @@ bool Kernel::Memory::Virtual::mapPages(void* virtualAddress, void* physicalAddre
 		for (size_t j = 3; j >= 1; --j) {
 			if (crawlResult.physicalTables[j] == INVALID_ADDRESS) {
 				// Create a new page table if entry is not present
-				requestResult = Physical::requestPages(1, 0);
+				requestResult = Physical::requestPages(1, RequestType::PhysicalContiguous);
 				if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
 					// TODO: should swap out a physical page instead of panicking
 					terminalPrintString(entryCreationFailed, strlen(entryCreationFailed));
@@ -635,7 +635,6 @@ void Kernel::Memory::Virtual::displayCrawlPageTablesResult(void *virtualAddress)
 }
 
 // Debug helper to list all entries in a given virtual address space list
-// depending on flags MEMORY_REQUEST_KERNEL_PAGE
 void Kernel::Memory::Virtual::showAddressSpaceList(bool kernelList) {
 	std::vector<AddressSpaceNode> &list = kernelList ? kernelAddressSpaceList : generalAddressSpaceList;
 	terminalPrintString(kernelList ? "Kernel" : "General", kernelList ? 6 : 7);

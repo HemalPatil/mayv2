@@ -65,7 +65,11 @@ static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8
 	uint64_t functionAddress = baseAddress + (bus << 20 | device << 15 | function << 12);
 	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
 		1,
-		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
+		(
+			Kernel::Memory::RequestType::Kernel |
+			Kernel::Memory::RequestType::PhysicalContiguous |
+			Kernel::Memory::RequestType::VirtualContiguous
+		)
 	);
 	if (
 		requestResult.address != INVALID_ADDRESS &&

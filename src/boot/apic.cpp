@@ -33,6 +33,8 @@ static const char* const enablingApicStr = "Enabling APIC";
 static const char* const bootCpuStr = "Boot CpuID [";
 
 bool APIC::initialize() {
+	using namespace Kernel::Memory;
+
 	terminalPrintString(initApicStr, strlen(initApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
@@ -152,14 +154,18 @@ bool APIC::initialize() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingApicStr, strlen(mappingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
+	PageRequestResult requestResult = Virtual::requestPages(
 		1,
-		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
+		(
+			RequestType::Kernel |
+			RequestType::PhysicalContiguous |
+			RequestType::VirtualContiguous
+		)
 	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!Kernel::Memory::Virtual::mapPages(requestResult.address, localApicPhysicalAddress, 1, Kernel::Memory::RequestType::CacheDisable)
+		!Virtual::mapPages(requestResult.address, localApicPhysicalAddress, 1, RequestType::CacheDisable)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -181,18 +187,22 @@ bool APIC::initialize() {
 	terminalPrintSpaces4();
 	terminalPrintString(mappingIoApicStr, strlen(mappingIoApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	requestResult = Kernel::Memory::Virtual::requestPages(
+	requestResult = Virtual::requestPages(
 		1,
-		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous
+		(
+			RequestType::Kernel |
+			RequestType::PhysicalContiguous |
+			RequestType::VirtualContiguous
+		)
 	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 1 ||
-		!Kernel::Memory::Virtual::mapPages(
+		!Virtual::mapPages(
 			requestResult.address,
 			(void*)(uint64_t)ioEntries.at(0).address,
 			1,
-			Kernel::Memory::RequestType::CacheDisable
+			RequestType::CacheDisable
 		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));

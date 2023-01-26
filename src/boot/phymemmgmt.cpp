@@ -19,6 +19,7 @@ static const char* const mmapTableHeader = "Base address         Length         
 static const char* const phyMemTableHeader = "Base                 Length\n";
 static const char* const rangeOfUsed = "Range of used physical memory\n";
 static const char* const creatingBuddyStr = "Creating buddy bitmaps";
+static const char* const physicalNamespaceStr = "Kernel::Memory::Physical::";
 
 const size_t Kernel::Memory::pageSizeShift = 12;
 const size_t Kernel::Memory::pageSize = 1 << pageSizeShift;
@@ -83,13 +84,12 @@ bool Kernel::Memory::Physical::initialize(
 		buddySizes[i] = 1 << i;
 		buddyMasks[i] = ~(buddySizes[i] * pageSize - 1);
 		uint64_t currentLevelBitsRequired = phyMemPagesTotalCount / buddySizes[i];
-		uint64_t currentLevelBytesRequired = currentLevelBitsRequired / 8;
-		if (currentLevelBitsRequired != currentLevelBytesRequired * 8) {
-			++currentLevelBytesRequired;
+		buddyBitmapSizes[i] = currentLevelBitsRequired / 8;
+		if (currentLevelBitsRequired != buddyBitmapSizes[i] * 8) {
+			++buddyBitmapSizes[i];
 		}
-		totalBytesRequired += currentLevelBytesRequired;
+		totalBytesRequired += buddyBitmapSizes[i];
 		buddyBitmaps[i] = (i == 0 ? (uint8_t*)usablePhyMemStart : buddyBitmaps[i - 1]) + buddyBitmapSizes[i - 1];
-		buddyBitmapSizes[i] = currentLevelBytesRequired;
 	}
 	phyMemBuddyPagesCount = totalBytesRequired / pageSize;
 	if (phyMemBuddyPagesCount * pageSize != totalBytesRequired) {
@@ -103,7 +103,7 @@ bool Kernel::Memory::Physical::initialize(
 	markPages(0, L32K64_SCRATCH_BASE / pageSize, MarkPageType::Used);
 	markPages(
 		(void*)(L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH),
-		(0x100000 - (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH)) / pageSize,
+		(MIB_2 / 2 - (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH)) / pageSize,
 		MarkPageType::Used
 	);
 
@@ -135,87 +135,112 @@ bool Kernel::Memory::Physical::initialize(
 // Actual number of pages assigned is returned in allocatedCount
 // Returns INVALID_ADDRESS and allocatedCount = 0 if request count is count == 0
 // or greater than currently available pages
+// If RequestType::PhysicalContiguous flag is not passed, then count must < 512 (i.e. < 2MiB)
 // Unsafe to call this function until virtual memory manager is initialized
 Kernel::Memory::PageRequestResult Kernel::Memory::Physical::requestPages(size_t count, uint32_t flags) {
 	PageRequestResult result;
-	// FIXME: handle requests for sizes > 2MiB i.e. 512 count
-	// FIXME: handle contiguous allocation
 	if (
 		count == 0 ||
-		count > phyMemPagesAvailableCount ||
-		count > buddySizes[PHY_MEM_BUDDY_MAX_ORDER - 1] ||
-		flags & RequestType::Contiguous
+		count > phyMemPagesAvailableCount
 	) {
 		return result;
 	}
-	size_t closestLevel;
-	for (closestLevel = 0; closestLevel < PHY_MEM_BUDDY_MAX_ORDER; ++closestLevel) {
-		if (count <= buddySizes[closestLevel]) {
-			break;
-		}
-	}
-	bool perfectFit = count == buddySizes[closestLevel];
-	size_t byte, bit;
-	uint8_t currentBitmap;
-	uint64_t addr;
-	bool found;
-	if (!perfectFit) {
-		// Page requests of count == 1 || count == 2 will have perfect fits
-		// So it's guaranteed that closestLevel is >= 2 here
-		// If remaining count is < buddySizes[closestLevel - 2], i.e. count < 0.75 * buddySizes[closestLevel]
-		// find and assign a buddy of closest fit less than count or go down to lower levels and return address
-		// otherwise find and assign a buddy from closestLevel or go down to lower levels
-		size_t remaining = count - buddySizes[closestLevel - 1];
-		if (remaining < buddySizes[closestLevel - 2]) {
-			--closestLevel;
-		}
-	}
-	found = false;
-	for (byte = 0; byte < buddyBitmapSizes[closestLevel]; ++byte) {
-		if (buddyBitmaps[closestLevel][byte] != 0xff) {
-			found = true;
-			break;
-		}
-	}
-	if (found) {
-		currentBitmap = buddyBitmaps[closestLevel][byte];
-		for (bit = 0; bit < 8; ++bit) {
-			if (!(currentBitmap & 1)) {
-				break;
-			}
-			currentBitmap >>= 1;
-		}
-		addr = (bit + byte * 8) << (pageSizeShift + closestLevel);
-		markPages((void*) addr, buddySizes[closestLevel], MarkPageType::Used);
-		result.allocatedCount = buddySizes[closestLevel];
-		result.address = (void*) addr;
-		return result;
-	} else {
-		// Page requests of count == 1 will have perfect fits
-		// So it's guaranteed that closestLevel is >= 1 here
-		// Go down to lower levels, find the biggest possible buddy
-		// that can be assigned and return its address
-		for (int i = closestLevel - 1; i >= 0; --i) {
-			found = false;
-			for (byte = 0; byte < buddyBitmapSizes[i]; ++byte) {
-				if (buddyBitmaps[i][byte] != 0xff) {
-					found = true;
+	if (flags & RequestType::PhysicalContiguous) {
+		// Look for empty pages starting from 1 MiB mark to avoid messing with real mode memory
+		bool allocated = false;
+		size_t allocateStartIndex = MIB_2 / 2 / pageSize;
+		size_t countedSoFar = 0;
+		for (size_t pageIndex = allocateStartIndex; pageIndex < phyMemPagesTotalCount; ++pageIndex) {
+			const size_t byteIndex = pageIndex / 8;
+			const size_t bitIndex = pageIndex - byteIndex * 8;
+			bool used = buddyBitmaps[0][byteIndex] & (1 << bitIndex);
+			if (used) {
+				countedSoFar = 0;
+				allocateStartIndex = pageIndex + 1;
+			} else {
+				++countedSoFar;
+				if (countedSoFar == count) {
+					allocated = true;
 					break;
 				}
 			}
-			if (found) {
-				currentBitmap = buddyBitmaps[i][byte];
-				for (bit = 0; bit < 8; ++bit) {
-					if (!(currentBitmap & 1)) {
+		}
+		if (allocated) {
+			result.address = (void*)(allocateStartIndex * pageSize);
+			result.allocatedCount = count;
+			markPages(result.address, count, MarkPageType::Used);
+			return result;
+		}
+	} else if (!(flags & RequestType::PhysicalContiguous) && count <= buddySizes[PHY_MEM_BUDDY_MAX_ORDER - 1]) {
+		// FIXME: handle requests for sizes > 2MiB i.e. 512 count
+		size_t closestLevel;
+		for (closestLevel = 0; closestLevel < PHY_MEM_BUDDY_MAX_ORDER; ++closestLevel) {
+			if (count <= buddySizes[closestLevel]) {
+				break;
+			}
+		}
+		bool perfectFit = count == buddySizes[closestLevel];
+		if (!perfectFit) {
+			// Page requests of count == 1 || count == 2 will have perfect fits
+			// So it's guaranteed that closestLevel is >= 2 here
+			// If remaining count is < buddySizes[closestLevel - 2], i.e. count < 0.75 * buddySizes[closestLevel]
+			// find and assign a buddy of closest fit less than count or go down to lower levels and return address
+			// otherwise find and assign a buddy from closestLevel or go down to lower levels
+			size_t remaining = count - buddySizes[closestLevel - 1];
+			if (remaining < buddySizes[closestLevel - 2]) {
+				--closestLevel;
+			}
+		}
+		size_t byte, bit;
+		uint8_t currentBitmap;
+		uint64_t addr;
+		bool found = false;
+		for (byte = 0; byte < buddyBitmapSizes[closestLevel]; ++byte) {
+			if (buddyBitmaps[closestLevel][byte] != 0xff) {
+				found = true;
+				break;
+			}
+		}
+		if (found) {
+			currentBitmap = buddyBitmaps[closestLevel][byte];
+			for (bit = 0; bit < 8; ++bit) {
+				if (!(currentBitmap & 1)) {
+					break;
+				}
+				currentBitmap >>= 1;
+			}
+			addr = (bit + byte * 8) << (pageSizeShift + closestLevel);
+			markPages((void*) addr, buddySizes[closestLevel], MarkPageType::Used);
+			result.allocatedCount = buddySizes[closestLevel];
+			result.address = (void*) addr;
+			return result;
+		} else {
+			// Page requests of count == 1 will have perfect fits
+			// So it's guaranteed that closestLevel is >= 1 here
+			// Go down to lower levels, find the biggest possible buddy
+			// that can be assigned and return its address
+			for (int i = closestLevel - 1; i >= 0; --i) {
+				found = false;
+				for (byte = 0; byte < buddyBitmapSizes[i]; ++byte) {
+					if (buddyBitmaps[i][byte] != 0xff) {
+						found = true;
 						break;
 					}
-					currentBitmap >>= 1;
 				}
-				addr = (bit + byte * 8) << (pageSizeShift + i);
-				markPages((void*) addr, buddySizes[i], MarkPageType::Used);
-				result.allocatedCount = buddySizes[i];
-				result.address = (void*) addr;
-				return result;
+				if (found) {
+					currentBitmap = buddyBitmaps[i][byte];
+					for (bit = 0; bit < 8; ++bit) {
+						if (!(currentBitmap & 1)) {
+							break;
+						}
+						currentBitmap >>= 1;
+					}
+					addr = (bit + byte * 8) << (pageSizeShift + i);
+					markPages((void*) addr, buddySizes[i], MarkPageType::Used);
+					result.allocatedCount = buddySizes[i];
+					result.address = (void*) addr;
+					return result;
+				}
 			}
 		}
 	}
@@ -224,16 +249,14 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Physical::requestPages(size_t 
 
 // Returns the byte and bit index of a physical buddy
 // Returns SIZE_MAX in both byte and bit if the address or order is out of bounds
-Kernel::Memory::Physical::BuddyBitmapIndex Kernel::Memory::Physical::getBuddyBitmapIndex(void* address, size_t order) {
+Kernel::Memory::Physical::BuddyBitmapIndex::BuddyBitmapIndex(void* address, size_t order) {
+	this->byte = this->bit = SIZE_MAX;
 	uint64_t addr = (uint64_t) address;
-	BuddyBitmapIndex index;
-	if (addr >= phyMemPagesTotalCount * pageSize || order >= PHY_MEM_BUDDY_MAX_ORDER) {
-		return index;
+	if (addr < phyMemPagesTotalCount * pageSize && order < PHY_MEM_BUDDY_MAX_ORDER) {
+		addr >>= (pageSizeShift + order);
+		this->byte = addr / 8;
+		this->bit = addr - this->byte * 8;
 	}
-	addr >>= (pageSizeShift + order);
-	index.byte = addr / 8;
-	index.bit = addr - index.byte * 8;
-	return index;
 }
 
 // Marks physical pages as used or free in the physical memory manager
@@ -251,7 +274,7 @@ void Kernel::Memory::Physical::markPages(void* address, size_t count, MarkPageTy
 	addr &= buddyMasks[0];
 	// TODO: performance can be improved by working in groups of 8 pages
 	for (size_t i = 0; i < count; ++i) {
-		BuddyBitmapIndex index = getBuddyBitmapIndex((void*)(addr + i * pageSize), 0);
+		BuddyBitmapIndex index((void*)(addr + i * pageSize), 0);
 		bool currentUsed = buddyBitmaps[0][index.byte] & (1 << index.bit);
 		if (type == MarkPageType::Used) {
 			buddyBitmaps[0][index.byte] |= (1 << index.bit);
@@ -273,7 +296,7 @@ void Kernel::Memory::Physical::markPages(void* address, size_t count, MarkPageTy
 		while (currentLevelAddr < endAddr) {
 			bool bothBuddiesFree = areBuddiesOfType((void*)currentLevelAddr, i - 1, 2, MarkPageType::Free);
 			if (!bothBuddiesFree) {
-				BuddyBitmapIndex index = getBuddyBitmapIndex((void*)currentLevelAddr, i);
+				BuddyBitmapIndex index((void*)currentLevelAddr, i);
 				buddyBitmaps[i][index.byte] |= (1 << index.bit);
 			}
 			currentLevelAddr += buddySizes[i] * pageSize;
@@ -319,9 +342,7 @@ void Kernel::Memory::Physical::listUsedBuddies(size_t order) {
 	bool ongoingAvailable = false;
 	for (uint64_t i = 0; i < phyMemPagesTotalCount * pageSize; i += buddySizes[order] * pageSize) {
 		if (areBuddiesOfType((void*)i, order, 1, MarkPageType::Free)) {
-			if (ongoingAvailable) {
-				continue;
-			} else {
+			if (!ongoingAvailable) {
 				lastUsed = i - length;
 				terminalPrintSpaces4();
 				terminalPrintHex(&lastUsed, sizeof(lastUsed));
@@ -358,7 +379,7 @@ bool Kernel::Memory::Physical::areBuddiesOfType(void* address, size_t order, siz
 	}
 	addr &= buddyMasks[order];
 	for (size_t i = 0; i < count; ++i) {
-		BuddyBitmapIndex index = getBuddyBitmapIndex(
+		BuddyBitmapIndex index(
 			(void*)(addr + i * buddySizes[order] * pageSize),
 			order
 		);

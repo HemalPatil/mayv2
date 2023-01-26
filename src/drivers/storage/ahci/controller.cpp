@@ -14,23 +14,30 @@ static const char* const configuredStr = "Ports configured";
 static const char* const portStr = "Port ";
 
 Async::Thenable<bool> AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
+	using namespace Kernel::Memory;
+
 	// Map the HBA control registers to kernel address space
 	terminalPrintSpaces4();
 	terminalPrintString(mappingHbaStr, strlen(mappingHbaStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PCIe::Type0Header *ahciHeader = (PCIe::Type0Header*)(pcieFunction.configurationSpace);
-	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
+	PageRequestResult requestResult = Virtual::requestPages(
 		2,
-		Kernel::Memory::RequestType::Kernel | Kernel::Memory::RequestType::Contiguous | Kernel::Memory::RequestType::CacheDisable
+		(
+			RequestType::Kernel |
+			RequestType::PhysicalContiguous |
+			RequestType::VirtualContiguous |
+			RequestType::CacheDisable
+		)
 	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != 2 ||
-		!Kernel::Memory::Virtual::mapPages(
+		!Virtual::mapPages(
 			requestResult.address,
 			(void*)(uint64_t)ahciHeader->bar5,
 			2,
-			Kernel::Memory::RequestType::CacheDisable
+			RequestType::CacheDisable
 		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));

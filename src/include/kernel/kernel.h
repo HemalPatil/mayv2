@@ -65,10 +65,11 @@ namespace Kernel {
 		extern const size_t pageSizeShift;
 
 		enum RequestType : uint32_t {
-			Contiguous = 1,
-			Kernel = 2,
-			AllocatePhysical = 4,
-			CacheDisable = 8
+			Kernel = 1,
+			AllocatePhysical = 2,
+			CacheDisable = 4,
+			PhysicalContiguous = 8,
+			VirtualContiguous = 16,
 		};
 
 		enum MarkPageType {
@@ -82,9 +83,12 @@ namespace Kernel {
 		};
 
 		namespace Physical {
-			struct BuddyBitmapIndex {
-				size_t byte = SIZE_MAX;
-				size_t bit = SIZE_MAX;
+			class [[nodiscard]] BuddyBitmapIndex {
+				public:
+					size_t byte = SIZE_MAX;
+					size_t bit = SIZE_MAX;
+
+					BuddyBitmapIndex(void *address, size_t order);
 			};
 
 			extern uint8_t* buddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER];
@@ -93,7 +97,6 @@ namespace Kernel {
 			extern size_t buddySizes[PHY_MEM_BUDDY_MAX_ORDER];
 
 			bool areBuddiesOfType(void* address, size_t order, size_t count, MarkPageType type);
-			BuddyBitmapIndex getBuddyBitmapIndex(void* address, size_t order);
 			bool initialize(
 				void* usablePhyMemStart,
 				size_t kernelLowerHalfSize,
@@ -107,7 +110,7 @@ namespace Kernel {
 		}
 
 		namespace Virtual {
-			class CrawlResult {
+			class [[nodiscard]] CrawlResult {
 				public:
 					size_t indexes[5];
 					bool isCanonical;
