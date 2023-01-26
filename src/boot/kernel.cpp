@@ -28,9 +28,9 @@ static const char* const enabledInterruptsStr = "Enabled interrupts\n\n";
 bool Kernel::debug = false;
 InfoTable *Kernel::infoTable;
 
-Kernel::Async::Thenable<bool> startPcieDrivers() {
+Async::Thenable<void> startPcieDrivers() {
 	for (auto &function : PCIe::functions) {
-		Kernel::Async::Thenable<bool> (*initializer)(PCIe::Function &pcieFunction) = nullptr;
+		Async::Thenable<bool> (*initializer)(PCIe::Function &pcieFunction) = nullptr;
 		if (
 			function.configurationSpace->mainClass == PCIe::Class::Storage &&
 			function.configurationSpace->subClass == PCIe::Subclass::Sata &&
@@ -42,7 +42,7 @@ Kernel::Async::Thenable<bool> startPcieDrivers() {
 			Kernel::panic();
 		}
 	}
-	co_return true;
+	co_return;
 }
 
 extern "C" [[noreturn]] void kernelMain(

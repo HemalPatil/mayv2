@@ -36,7 +36,7 @@ void ahciMsiHandler() {
 	}
 }
 
-Kernel::Async::Thenable<bool> AHCI::initialize(PCIe::Function &pcieFunction) {
+Async::Thenable<bool> AHCI::initialize(PCIe::Function &pcieFunction) {
 	terminalPrintString(initAhciStr, strlen(initAhciStr));
 	terminalPrintDecimal(AHCI::controllers.size());
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));

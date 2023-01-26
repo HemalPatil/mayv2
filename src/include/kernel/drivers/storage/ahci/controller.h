@@ -10,7 +10,7 @@ class AHCI::Controller {
 
 	public:
 		const std::vector<std::shared_ptr<Device>>& getDevices() const;
-		Kernel::Async::Thenable<bool> initialize(PCIe::Function &pcieFunction);
+		Async::Thenable<bool> initialize(PCIe::Function &pcieFunction);
 		// TODO: implement destructor that releases the virtual pages mapped to the controller's HBA
 
 	friend void ::ahciMsiHandler();

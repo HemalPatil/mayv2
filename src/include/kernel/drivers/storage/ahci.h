@@ -1,5 +1,6 @@
 #pragma once
 
+#include <async.h>
 #include <pcie.h>
 
 #define ATAPI_READTOC 0xa8
@@ -571,7 +572,7 @@ namespace AHCI {
 
 	extern std::vector<Controller> controllers;
 
-	extern Kernel::Async::Thenable<bool> initialize(PCIe::Function &pcieFunction);
+	extern Async::Thenable<bool> initialize(PCIe::Function &pcieFunction);
 }
 
 extern "C" void ahciMsiHandler();

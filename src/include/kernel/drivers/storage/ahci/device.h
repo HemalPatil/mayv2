@@ -56,7 +56,7 @@ class AHCI::Device : public Storage::BlockDevice {
 		size_t findFreeCommandSlot() const;
 		size_t getPortNumber() const;
 		Type getType() const;
-		Kernel::Async::Thenable<bool> identify();
+		Async::Thenable<bool> identify();
 		bool initialize();
 		void msiHandler();
 		// TODO: implement destructor that releases the virtual pages used for command list and tables

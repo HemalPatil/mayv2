@@ -130,7 +130,7 @@ void AHCI::Device::msiHandler() {
 	}
 }
 
-Kernel::Async::Thenable<bool> AHCI::Device::identify() {
+Async::Thenable<bool> AHCI::Device::identify() {
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
