@@ -87,7 +87,6 @@ namespace Kernel {
 				size_t bit = SIZE_MAX;
 			};
 
-			extern ACPI::Entryv3 *map;
 			extern uint8_t* buddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER];
 			extern size_t buddyBitmapSizes[PHY_MEM_BUDDY_MAX_ORDER];
 			extern uint64_t buddyMasks[PHY_MEM_BUDDY_MAX_ORDER];
@@ -101,9 +100,6 @@ namespace Kernel {
 				size_t kernelHigherHalfSize,
 				size_t &phyMemBuddyPagesCount
 			);
-			void initMap();
-			void initSize();
-			void initUsableSize();
 			void listMapEntries();
 			void listUsedBuddies(size_t order);
 			void markPages(void* address, size_t count, MarkPageType type);

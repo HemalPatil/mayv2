@@ -23,7 +23,7 @@ static const char* const creatingBuddyStr = "Creating buddy bitmaps";
 const size_t Kernel::Memory::pageSizeShift = 12;
 const size_t Kernel::Memory::pageSize = 1 << pageSizeShift;
 
-ACPI::Entryv3* Kernel::Memory::Physical::map = nullptr;
+ACPI::Entryv3* map = nullptr;
 uint8_t* Kernel::Memory::Physical::buddyBitmaps[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 size_t Kernel::Memory::Physical::buddyBitmapSizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 uint64_t Kernel::Memory::Physical::buddyMasks[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
@@ -40,18 +40,26 @@ bool Kernel::Memory::Physical::initialize(
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
 
-	// Display diagnostic information about memory like MMAP entries,
-	// physical and usable memory size
-	initMap();
+	map = (ACPI::Entryv3*)((uint64_t)(Kernel::infoTable->mmapEntriesSegment << 4) + Kernel::infoTable->mmapEntriesOffset);
 
-	initSize();
+	phyMemTotalSize = 0;
+	for (size_t i = 0; i < Kernel::infoTable->mmapEntryCount; ++i) {
+		phyMemTotalSize += map[i].length;
+	}
 	terminalPrintSpaces4();
 	terminalPrintString(totalStr, strlen(totalStr));
 	terminalPrintString(phyMemStr, strlen(phyMemStr));
 	terminalPrintHex(&phyMemTotalSize, sizeof(phyMemTotalSize));
 	terminalPrintChar('\n');
 
-	initUsableSize();
+	phyMemUsableSize = 0;
+	for (size_t i = 0; i < Kernel::infoTable->mmapEntryCount; ++i) {
+		if (map[i].regionType == ACPI::MemoryType::Usable) {
+			phyMemUsableSize += map[i].length;
+		}
+	}
+	// Make it 4KiB aligned
+	phyMemUsableSize = (phyMemUsableSize >> Kernel::Memory::pageSizeShift) * Kernel::Memory::pageSize;
 	terminalPrintSpaces4();
 	terminalPrintString(usableStr, strlen(usableStr));
 	terminalPrintString(phyMemStr, strlen(phyMemStr));
@@ -359,29 +367,4 @@ bool Kernel::Memory::Physical::areBuddiesOfType(void* address, size_t order, siz
 		}
 	}
 	return true;
-}
-
-// Initializes base address of MMAP entries
-void Kernel::Memory::Physical::initMap() {
-	map = (ACPI::Entryv3*)((uint64_t)(infoTable->mmapEntriesSegment << 4) + infoTable->mmapEntriesOffset);
-}
-
-// Initializes physical memory total size in bytes
-void Kernel::Memory::Physical::initSize() {
-	phyMemTotalSize = 0;
-	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
-		phyMemTotalSize += map[i].length;
-	}
-}
-
-// Initializes usable (conventional ACPI::MemoryType::Usable) physical memory size
-void Kernel::Memory::Physical::initUsableSize() {
-	phyMemUsableSize = 0;
-	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
-		if (map[i].regionType == ACPI::MemoryType::Usable) {
-			phyMemUsableSize += map[i].length;
-		}
-	}
-	// Make it 4KiB aligned
-	phyMemUsableSize = (phyMemUsableSize >> pageSizeShift) * pageSize;
 }
