@@ -37,7 +37,9 @@ static const char* const recursiveStr = "Creating PML4 recursive entry";
 static const char* const checkingMaxBitsStr = "Checking max virtual address bits";
 static const char* const virtualNamespaceStr = "Kernel::Memory::Virtual::";
 static const char* const freeErrorStr = "freePages tried to free already free pages";
-static const char* const requestErrorStr = "requestPages did not pass RequestType::Contiguous\n";
+static const char* const requestPagesStr = "requestPages ";
+static const char* const mapPagesStr = "mapPages ";
+static const char* const requestErrorStr = "did not pass RequestType::Contiguous\n";
 static const char* const globalCtorStr = "Running global constructors";
 static const char* const listDefragFailStr = "defragAddressSpaceList integrity check failed for ";
 
@@ -307,7 +309,9 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 				PageRequestResult phyResult = Physical::requestPages(count - total, 0);
 				if (phyResult.address == INVALID_ADDRESS || phyResult.allocatedCount == 0) {
 					// Out of memory
-					// TODO: should swap out pages instead of panicking
+					// TODO: should swap out pages instead of 
+					terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
+					terminalPrintString(requestPagesStr, strlen(requestPagesStr));
 					terminalPrintString(outOfMemoryStr, strlen(outOfMemoryStr));
 					panic();
 				}
@@ -324,6 +328,7 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 		// FIXME: serve non-contiguous virtual addresses
 		// is this case even needed?
 		terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
+		terminalPrintString(requestPagesStr, strlen(requestPagesStr));
 		terminalPrintString(requestErrorStr, strlen(requestErrorStr));
 		panic();
 	}
@@ -351,7 +356,7 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 		uint64_t blockEnd = blockBeg + block.pageCount * pageSize;
 		if (blockBeg <= vBeg && blockEnd >= vEnd) {
 			if (block.available) {
-				// Tried to free already block
+				// Tried to free an available block
 				terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
 				terminalPrintString(freeErrorStr, strlen(freeErrorStr));
 				panic();
@@ -468,6 +473,8 @@ bool Kernel::Memory::Virtual::mapPages(void* virtualAddress, void* physicalAddre
 					terminalPrintString(forAddress, strlen(forAddress));
 					terminalPrintHex(&virAddr, sizeof(virAddr));
 					terminalPrintChar('\n');
+					terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
+					terminalPrintString(mapPagesStr, strlen(mapPagesStr));
 					terminalPrintString(outOfMemoryStr, strlen(outOfMemoryStr));
 					panic();
 				}
