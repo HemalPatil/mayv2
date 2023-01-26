@@ -46,7 +46,7 @@ ISO_NAME := mayv2.iso
 .PHONY: all clean directories todolist
 
 # Include the rules from subdirectories recursively using stack-like structure
-# (See implementing non-recursive make article https://evbergen.home.xs4all.nl/nonrecursive-make.html)
+# (See implementing non-recursive make article https://accu.org/journals/overload/14/71/miller_2004/)
 dir := $(SRC_DIR)/include
 include $(dir)/Rules.mk
 dir := $(SRC_DIR)/lib

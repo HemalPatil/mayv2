@@ -178,7 +178,8 @@ defaultInterruptHandler:
 	mov rdi, defaultInterruptStr
 	mov rsi, 27
 	call terminalPrintString
-	pop r8	; Pop the 64 bit error code in thrashable register
+	cli
+	hlt
 	iretq
 
 invalidOpcodeHandler:

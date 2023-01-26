@@ -5,36 +5,51 @@
 #include <drivers/timers/hpet.h>
 #include <idt64.h>
 #include <kernel.h>
+#include <queue>
 #include <terminal.h>
 
+#define SCHEDULER_EVENT_DISPATCH_LIMIT 100
+
 static const char* const initSchedulerStr = "Initializing scheduler";
-static const char* const initSchedulerCompleteStr = "Scheduler initialized\n";
+static const char* const initSchedulerCompleteStr = "Scheduler initialized\n\n";
 static const char* const checkHpetStr = "Checking HPET presence";
 static const char* const timerInitFailedStr = "Failed to initialize periodic timers\n";
-static const char* const schedStr = "schd";
-static const char* const schedulerStartStr = "Scheduler started";
+
+static std::queue<std::coroutine_handle<>> eventQueue;
 
 static void enableHpet();
 
 Kernel::Scheduler::TimerType Kernel::Scheduler::timerUsed = Kernel::Scheduler::TimerType::None;
 
 void Kernel::Scheduler::start() {
-	switch (timerUsed) {
-		case HPET:
-			enableHpet();
-			break;
-		default:
-			terminalPrintString(timerInitFailedStr, strlen(timerInitFailedStr));
-			panic();
-	}
-	terminalPrintString(schedulerStartStr, strlen(schedulerStartStr));
 	while (true) {
 		haltSystem();
 	}
 }
 
-void Kernel::Scheduler::periodicTimerHandler() {
-	terminalPrintString(schedStr, strlen(schedStr));
+void Kernel::Scheduler::timerLoop() {
+	// Dispatch events synchronously until the queue has dispatchable events and < SCHEDULER_EVENT_DISPATCH_LIMIT in 1 loop
+	size_t dispatchedEventsCount = 0;
+	while (!eventQueue.empty() && dispatchedEventsCount < SCHEDULER_EVENT_DISPATCH_LIMIT) {
+		std::coroutine_handle<> x = eventQueue.front();
+		if (x) {
+			if (x.done()) {
+				terminalPrintString("[done]", 6);
+			} else {
+				x.resume();
+			}
+		} else {
+			terminalPrintString("[inv]", 5);
+		}
+		eventQueue.pop();
+		++dispatchedEventsCount;
+	}
+
+	// TODO: do rest of scheduling
+}
+
+void Kernel::Scheduler::queueEvent(std::coroutine_handle<> event) {
+	eventQueue.push(event);
 }
 
 bool Kernel::Scheduler::initialize() {
@@ -67,9 +82,20 @@ bool Kernel::Scheduler::initialize() {
 		}
 	}
 
+	// Initialization of any timer drivers implemented in the future will go here
+
 	if (!timerInitialized) {
 		terminalPrintString(timerInitFailedStr, strlen(timerInitFailedStr));
 		return false;
+	}
+
+	switch (timerUsed) {
+		case HPET:
+			enableHpet();
+			break;
+		default:
+			terminalPrintString(timerInitFailedStr, strlen(timerInitFailedStr));
+			panic();
 	}
 
 	terminalPrintString(initSchedulerCompleteStr, strlen(initSchedulerCompleteStr));
@@ -101,5 +127,5 @@ static void enableHpet() {
 	configure = (uint64_t*)(void*)registers;
 	configure[2] |= 1;
 	#pragma GCC diagnostic pop
-	timerInterruptCallback = Kernel::Scheduler::periodicTimerHandler;
+	timerInterruptCallback = Kernel::Scheduler::timerLoop;
 }

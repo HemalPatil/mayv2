@@ -36,7 +36,7 @@ void ahciMsiHandler() {
 	}
 }
 
-bool AHCI::initialize(PCIe::Function &pcieFunction) {
+Kernel::Async::Thenable<bool> AHCI::initialize(PCIe::Function &pcieFunction) {
 	terminalPrintString(initAhciStr, strlen(initAhciStr));
 	terminalPrintDecimal(AHCI::controllers.size());
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -63,7 +63,7 @@ bool AHCI::initialize(PCIe::Function &pcieFunction) {
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
 		terminalPrintChar('\n');
-		return false;
+		co_return false;
 	}
 	if (pcieFunction.msi->bit64Capable) {
 		PCIe::MSI64Capability *msi64 = (PCIe::MSI64Capability*)pcieFunction.msi;
@@ -78,11 +78,11 @@ bool AHCI::initialize(PCIe::Function &pcieFunction) {
 	terminalPrintString(okStr, strlen(okStr));
 	terminalPrintChar('\n');
 
-	// Create new controller, add to the list, and initialize it
+	// Create new controller, add it to the list, and initialize it
 	AHCI::controllers.push_back(AHCI::Controller());
-	bool result = AHCI::controllers.back().initialize(pcieFunction);
+	bool result = co_await AHCI::controllers.back().initialize(pcieFunction);
 	if (result) {
 		terminalPrintString(initAhciCompleteStr, strlen(initAhciCompleteStr));
 	}
-	return result;
+	co_return result;
 }

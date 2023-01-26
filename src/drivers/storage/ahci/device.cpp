@@ -5,7 +5,9 @@
 #include <kernel.h>
 #include <terminal.h>
 
-static const char* const configuringStr = "Configuring port ";
+static const char* const multiSetStr = "\nTried setting AHCI::Device::Command result multiple times\n";
+static const char* const initStr = "Initializing";
+static const char* const identStr = "Identifying";
 static const char* const tfeStr = "AHCI task file error caused by commands ";
 static const char* const tfeUnsolicitedStr = "AHCI unsolicited task file error ";
 static const char* const d2hUnsolicitedStr = "AHCI unsolicited register D2H FIS ";
@@ -90,9 +92,9 @@ void AHCI::Device::msiHandler() {
 				uint32_t commandBit = (uint32_t)1 << i;
 				if (completedCommands & commandBit) {
 					this->runningCommandsBitmap &= ~commandBit;
-					if(this->commandPromises[i]) {
-						this->commandPromises[i]->setValue(false);
-						this->commandPromises[i] = nullptr;
+					if (this->commands[i]) {
+						this->commands[i]->setResult(false);
+						this->commands[i] = nullptr;
 					}
 				}
 			}
@@ -112,9 +114,9 @@ void AHCI::Device::msiHandler() {
 				uint32_t commandBit = (uint32_t)1 << i;
 				if (completedCommands & commandBit) {
 					this->runningCommandsBitmap &= ~commandBit;
-					// TODO: should schedule the callback on some thread instead of blocking execution
-					if (this->commandPromises[i]) {
-						this->commandPromises[i]->setValue(true);
+					if (this->commands[i]) {
+						this->commands[i]->setResult(true);
+						this->commands[i] = nullptr;
 					}
 				}
 			}
@@ -128,17 +130,23 @@ void AHCI::Device::msiHandler() {
 	}
 }
 
-bool AHCI::Device::identify() {
+Kernel::Async::Thenable<bool> AHCI::Device::identify() {
+	terminalPrintSpaces4();
+	terminalPrintSpaces4();
+	terminalPrintSpaces4();
+	terminalPrintString(identStr, strlen(identStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+
 	this->info = new IdentifyDeviceData();
 	Kernel::Memory::Virtual::CrawlResult crawl(this->info);
 	if (crawl.physicalTables[0] == INVALID_ADDRESS || crawl.indexes[0] % 2 != 0) {
-		return false;
+		co_return false;
 	}
 	uint64_t bufferPhyAddr = (uint64_t)crawl.physicalTables[0] + crawl.indexes[0];
 
 	size_t freeSlot = this->findFreeCommandSlot();
 	if (freeSlot == SIZE_MAX) {
-		return false;
+		co_return false;
 	}
 	this->commandHeaders[freeSlot].prdtLength = 1;
 	this->commandHeaders[freeSlot].commandFisLength = sizeof(FIS::RegisterH2D) / sizeof(uint32_t);
@@ -159,7 +167,7 @@ bool AHCI::Device::identify() {
 	commandFis->commandControl = 1;
 	commandFis->command = (this->type == Type::Satapi) ? AHCI_IDENTIFY_PACKET_DEVICE : AHCI_IDENTIFY_DEVICE;
 
-	if (this->issueCommand(freeSlot)->awaitGet()) {
+	if (co_await Command(this, freeSlot)) {
 		// Read section 7.16.7, 7.16.7.54, 7.16.7.59 of ATA8-ACS spec (https://people.freebsd.org/~imp/asiabsdcon2015/works/d2161r5-ATAATAPI_Command_Set_-_3.pdf)
 		// to understand how physical and logical sector size can be determined
 		if (this->info->physicalLogicalSectorSize.valid) {
@@ -168,18 +176,19 @@ bool AHCI::Device::identify() {
 			// Assume sector size of 512 bytes for SATA and 2048 bytes for SATAPI
 			this->blockSize = this->type == Type::Sata ? 512 : 2048;
 		}
-	} else {
-		return false;
+		terminalPrintString(doneStr, strlen(doneStr));
+		terminalPrintChar('\n');
+		co_return true;
 	}
 
-	return true;
+	co_return false;
 }
 
 bool AHCI::Device::initialize() {
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
-	terminalPrintString(configuringStr, strlen(configuringStr));
-	terminalPrintDecimal(this->portNumber);
+	terminalPrintSpaces4();
+	terminalPrintString(initStr, strlen(initStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 
 	// Busy wait till the HBA is receiving FIS or running some command
@@ -231,7 +240,7 @@ bool AHCI::Device::initialize() {
 	// To make all the 32 command tables fit nicely in 2 pages, solve the equation for prdtLength
 	// 2 * 4096 = 32 * (64 + 16 + 48 + prdtLength * 16)
 	// Hence, prdtLength works out to 8
-	// FIXME: requestVirtualPages does not guarantee the physical pages alloted will be contiguous
+	// FIXME: Kernel::Memory::Virtual::requestPages does not guarantee the physical pages alloted will be contiguous
 	requestResult = Kernel::Memory::Virtual::requestPages(
 		2,
 		(
@@ -286,13 +295,6 @@ size_t AHCI::Device::findFreeCommandSlot() const {
 	return SIZE_MAX;
 }
 
-std::shared_ptr<Kernel::Promise<bool>> AHCI::Device::issueCommand(size_t freeSlot) {
-	this->runningCommandsBitmap |= 1 << freeSlot;
-	this->commandPromises[freeSlot] = std::make_shared<Kernel::Promise<bool>>();
-	this->port->commandIssue = 1 << freeSlot;
-	return this->commandPromises[freeSlot];
-}
-
 AHCI::Device::Type AHCI::Device::getType() const {
 	return this->type;
 }
@@ -313,4 +315,46 @@ AHCI::Device::Device(Controller *controller, size_t portNumber) {
 	this->runningCommandsBitmap = 0;
 	this->info = nullptr;
 	this->controller = controller;
+}
+
+AHCI::Device::Command::Command(Device *device, size_t freeSlot) : device(device), freeSlot(freeSlot) {}
+
+AHCI::Device::Command::~Command() {
+	if (this->awaitingCoroutine) {
+		delete this->awaitingCoroutine;
+		this->awaitingCoroutine = nullptr;
+	}
+	if (this->result) {
+		delete result;
+		this->result = nullptr;
+	}
+}
+
+constexpr bool AHCI::Device::Command::await_ready() const noexcept {
+	return false;
+}
+
+void AHCI::Device::Command::await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept {
+	this->awaitingCoroutine = new std::coroutine_handle<>(awaitingCoroutine);
+	this->device->commands[freeSlot] = this;
+	this->device->runningCommandsBitmap |= 1 << freeSlot;
+	this->device->port->commandIssue = 1 << this->freeSlot;
+}
+
+bool AHCI::Device::Command::await_resume() const noexcept {
+	if (this->result) {
+		return *this->result;
+	}
+	return false;
+}
+
+void AHCI::Device::Command::setResult(bool result) noexcept {
+	if (this->result) {
+		terminalPrintString(multiSetStr, strlen(multiSetStr));
+		Kernel::panic();
+	}
+	this->result = new bool(result);
+	if (this->awaitingCoroutine) {
+		Kernel::Scheduler::queueEvent(*this->awaitingCoroutine);
+	}
 }

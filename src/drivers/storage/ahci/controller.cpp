@@ -11,8 +11,9 @@ static const char* const mappingHbaStr = "Mapping HBA control registers to kerne
 static const char* const ahciSwitchStr = "Switching to AHCI mode";
 static const char* const probingPortsStr = "Enumerating and configuring ports";
 static const char* const configuredStr = "Ports configured";
+static const char* const portStr = "Port ";
 
-bool AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
+Kernel::Async::Thenable<bool> AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
 	// Map the HBA control registers to kernel address space
 	terminalPrintSpaces4();
 	terminalPrintString(mappingHbaStr, strlen(mappingHbaStr));
@@ -33,7 +34,7 @@ bool AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
 		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
-		return false;
+		co_return false;
 	}
 	this->hba = (HostBusAdapter*)requestResult.address;
 	terminalPrintString(doneStr, strlen(doneStr));
@@ -64,10 +65,10 @@ bool AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
 		) {
 			std::shared_ptr<Device> ahciDevice = nullptr;
 			switch (this->hba->ports[portNumber].signature) {
-				case AHCI_PORT_SIGNATURE_SATA:
+				case PortSignature::SATA:
 					ahciDevice = std::make_shared<SataDevice>(this, portNumber);
 					break;
-				case AHCI_PORT_SIGNATURE_SATAPI:
+				case PortSignature::SATAPI:
 					ahciDevice = std::make_shared<SatapiDevice>(this, portNumber);
 					break;
 				default:
@@ -75,10 +76,16 @@ bool AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
 			}
 			if (ahciDevice) {
 				this->devices.push_back(ahciDevice);
-				if (!ahciDevice->initialize() || !ahciDevice->identify()) {
+				terminalPrintSpaces4();
+				terminalPrintSpaces4();
+				terminalPrintString(portStr, strlen(portStr));
+				terminalPrintDecimal(ahciDevice->portNumber);
+				terminalPrintChar(':');
+				terminalPrintChar('\n');
+				if (!ahciDevice->initialize() || !(co_await ahciDevice->identify())) {
 					terminalPrintString(failedStr, strlen(failedStr));
 					terminalPrintChar('\n');
-					return false;
+					co_return false;
 				}
 			}
 		}
@@ -87,7 +94,7 @@ bool AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
 	terminalPrintSpaces4();
 	terminalPrintString(configuredStr, strlen(configuredStr));
 	terminalPrintChar('\n');
-	return true;
+	co_return true;
 }
 
 const std::vector<std::shared_ptr<AHCI::Device>>& AHCI::Controller::getDevices() const {

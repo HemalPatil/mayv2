@@ -532,7 +532,6 @@ namespace std {
 	if (_M_empty()) {
 		__throw_bad_function_call();
 		// TODO: throw an exception or panic or do something else
-		return;
 	}
 	return _M_invoker(_M_functor, std::forward<_ArgTypes>(__args)...);
       }

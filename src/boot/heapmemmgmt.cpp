@@ -24,7 +24,7 @@ static const char* const noHeapsStr = "No kernel heap regions created\n";
 static const char* const corruptEntryStr = "validHeapEntry corrupt entry ";
 static const char* const corruptEntryContStr = " found in heap ";
 static const char* const corruptHeapStr = "validHeap corrupt heap ";
-static const char* const invalidFreeStr = "\nfree invalid free ";
+static const char* const invalidFreeStr = "free invalid free ";
 
 const size_t Kernel::Memory::Heap::newRegionSize = 0x200000;
 const size_t Kernel::Memory::Heap::minBlockSize = 8;

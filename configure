@@ -72,3 +72,7 @@ KERNEL_HIGHERHALF_ORIGIN=0xffffffff80000000
 sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* higherhalf origin \*\//\. = $KERNEL_HIGHERHALF_ORIGIN; \/\* higherhalf origin \*\//" src/boot/link.ld
 sed -i "s/\#define KERNEL_HIGHERHALF_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define KERNEL_HIGHERHALF_ORIGIN $KERNEL_HIGHERHALF_ORIGIN/" src/boot/stage2/loader32.cpp
 sed -i "s/\#define KERNEL_HIGHERHALF_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define KERNEL_HIGHERHALF_ORIGIN $KERNEL_HIGHERHALF_ORIGIN/" src/include/kernel/kernel.h
+
+# Configure scheduler event loop dispatch limit
+SCHEDULER_EVENT_DISPATCH_LIMIT=100
+sed -i "s/\#define SCHEDULER_EVENT_DISPATCH_LIMIT $SED_HEX_OR_NUMBER_REGEX/\#define SCHEDULER_EVENT_DISPATCH_LIMIT $SCHEDULER_EVENT_DISPATCH_LIMIT/" src/boot/scheduler.cpp

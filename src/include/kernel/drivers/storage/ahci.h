@@ -1,8 +1,6 @@
 #pragma once
 
-#include <cstddef>
 #include <pcie.h>
-#include <vector>
 
 #define ATAPI_READTOC 0xa8
 
@@ -23,9 +21,6 @@
 #define AHCI_PORT_COUNT 32
 #define AHCI_PORT_DEVICE_PRESENT 3
 
-#define AHCI_PORT_SIGNATURE_SATA 0x00000101
-#define AHCI_PORT_SIGNATURE_SATAPI 0xeb140101
-
 #define AHCI_SECTOR_SIZE 512
 
 #define AHCI_MODE ((uint32_t)1 << 31)
@@ -34,7 +29,6 @@
 #define AHCI_REGISTER_D2H 1
 
 namespace AHCI {
-
 	// Refer AHCI spec https://www.intel.com.au/content/dam/www/public/us/en/documents/technical-specifications/serial-ata-ahci-spec-rev1-3-1.pdf
 	struct PortStatus {
 		uint8_t deviceDetection : 4;
@@ -570,9 +564,14 @@ namespace AHCI {
 	class SataDevice;
 	class SatapiDevice;
 
+	enum PortSignature : uint32_t {
+		SATA = 0x00000101,
+		SATAPI = 0xeb140101
+	};
+
 	extern std::vector<Controller> controllers;
 
-	extern bool initialize(PCIe::Function &pcieFunction);
+	extern Kernel::Async::Thenable<bool> initialize(PCIe::Function &pcieFunction);
 }
 
 extern "C" void ahciMsiHandler();

@@ -6,7 +6,7 @@
 #include <kernel.h>
 #include <terminal.h>
 
-static const char* const keyStr = "key";
+static const char* const keyStr = "key ";
 static const char* const initIntrStr = "Initializing PS2 keyboard";
 
 bool initializePs2Keyboard() {
@@ -26,6 +26,7 @@ bool initializePs2Keyboard() {
 	++availableInterrupt;
 
 	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
 	terminalPrintChar('\n');
 	return true;
 }

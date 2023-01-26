@@ -23,10 +23,27 @@ static const char* const checkingAhciStr = "Checking AHCI controllers";
 static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
 static const char* const isoFoundStr = "ISO filesystem found at ";
 static const char* const globalCtorStr = "Running global constructors";
-static const char* const enabledInterruptsStr = "\nEnabled interrupts\n\n";
+static const char* const enabledInterruptsStr = "Enabled interrupts\n\n";
 
 bool Kernel::debug = false;
 InfoTable *Kernel::infoTable;
+
+Kernel::Async::Thenable<bool> startPcieDrivers() {
+	for (auto &function : PCIe::functions) {
+		Kernel::Async::Thenable<bool> (*initializer)(PCIe::Function &pcieFunction) = nullptr;
+		if (
+			function.configurationSpace->mainClass == PCIe::Class::Storage &&
+			function.configurationSpace->subClass == PCIe::Subclass::Sata &&
+			function.configurationSpace->progIf == PCIe::ProgramType::Ahci
+		) {
+			initializer = &AHCI::initialize;
+		}
+		if (initializer && !(co_await (*initializer)(function))) {
+			Kernel::panic();
+		}
+	}
+	co_return true;
+}
 
 extern "C" [[noreturn]] void kernelMain(
 	InfoTable *infoTableAddress,
@@ -50,6 +67,11 @@ extern "C" [[noreturn]] void kernelMain(
 	terminalClearScreen();
 	terminalSetCursorPosition(0, 0);
 	terminalPrintString(kernelLoadedStr, strlen(kernelLoadedStr));
+
+	if (!enableSse4()) {
+		Kernel::panic();
+	}
+	terminalPrintChar('\n');
 
 	// Initialize physical memory
 	size_t phyMemBuddyPagesCount;
@@ -75,10 +97,6 @@ extern "C" [[noreturn]] void kernelMain(
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();
 	setupIdt64();
-	if (!enableSse4()) {
-		Kernel::panic();
-	}
-	terminalPrintChar('\n');
 
 	if (!ACPI::parse()) {
 		Kernel::panic();
@@ -88,12 +106,22 @@ extern "C" [[noreturn]] void kernelMain(
 		Kernel::panic();
 	}
 
+	initializePs2Keyboard();
+
+	// Enumerate PCIe devices
+	if (!PCIe::enumerate()) {
+		Kernel::panic();
+	}
+
 	if (!Kernel::Scheduler::initialize()) {
 		Kernel::panic();
 	}
 
 	enableInterrupts();
 	terminalPrintString(enabledInterruptsStr, strlen(enabledInterruptsStr));
+
+	// Start drivers for PCIe devices
+	auto initResults = startPcieDrivers();
 
 	// Wait perpetually and let the scheduler and interrupts do their thing
 	Kernel::Scheduler::start();
