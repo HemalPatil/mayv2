@@ -32,14 +32,8 @@ void Kernel::Scheduler::timerLoop() {
 	size_t dispatchedEventsCount = 0;
 	while (!eventQueue.empty() && dispatchedEventsCount < SCHEDULER_EVENT_DISPATCH_LIMIT) {
 		std::coroutine_handle<> x = eventQueue.front();
-		if (x) {
-			if (x.done()) {
-				terminalPrintString("[done]", 6);
-			} else {
-				x.resume();
-			}
-		} else {
-			terminalPrintString("[inv]", 5);
+		if (x && !x.done()) {
+			x.resume();
 		}
 		eventQueue.pop();
 		++dispatchedEventsCount;

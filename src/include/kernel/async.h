@@ -31,7 +31,7 @@ namespace Async {
 				return {};
 			}
 
-			std::suspend_always final_suspend() noexcept {
+			std::suspend_never final_suspend() noexcept {
 				for (auto awaitingCoroutine : this->awaitingCoroutines) {
 					if (awaitingCoroutine && !awaitingCoroutine.done()) {
 						awaitingCoroutine.resume();
@@ -82,7 +82,7 @@ namespace Async {
 				return {};
 			}
 
-			std::suspend_always final_suspend() noexcept {
+			std::suspend_never final_suspend() noexcept {
 				for (auto awaitingCoroutine : this->awaitingCoroutines) {
 					if (awaitingCoroutine && !awaitingCoroutine.done()) {
 						awaitingCoroutine.resume();
@@ -123,15 +123,14 @@ namespace Async {
 				other.coroutineHandle = nullptr;
 			}
 
+			Thenable& operator=(Thenable &&other) noexcept {
+				this->coroutineHandle = other.coroutineHandle;
+				other.coroutineHandle = nullptr;
+				return *this;
+			}
+
 			Thenable(const Thenable&) = delete;
 			Thenable& operator=(const Thenable&) = delete;
-
-			~Thenable() noexcept {
-				if (this->coroutineHandle && this->coroutineHandle.done()) {
-					this->coroutineHandle.destroy();
-					this->coroutineHandle = nullptr;
-				}
-			}
 
 			bool await_ready() const noexcept {
 				return this->coroutineHandle.promise().isDone();
@@ -201,15 +200,14 @@ namespace Async {
 				other.coroutineHandle = nullptr;
 			}
 
+			Thenable& operator=(Thenable &&other) noexcept {
+				this->coroutineHandle = other.coroutineHandle;
+				other.coroutineHandle = nullptr;
+				return *this;
+			}
+
 			Thenable(const Thenable&) = delete;
 			Thenable& operator=(const Thenable&) = delete;
-
-			~Thenable() noexcept {
-				if (this->coroutineHandle && this->coroutineHandle.done()) {
-					this->coroutineHandle.destroy();
-					this->coroutineHandle = nullptr;
-				}
-			}
 
 			bool await_ready() const noexcept {
 				return this->coroutineHandle.promise().isDone();

@@ -43,7 +43,7 @@ static const char* const requestErrorStr = "did not pass RequestType::VirtualCon
 static const char* const globalCtorStr = "Running global constructors";
 static const char* const listDefragFailStr = "defragAddressSpaceList integrity check failed for ";
 
-static void defragAddressSpaceList(bool kernelList = true);
+static void defragAddressSpaceList(uint32_t flags);
 
 Kernel::Memory::Virtual::AddressSpaceList Kernel::Memory::Virtual::generalAddressSpaceList(8);
 Kernel::Memory::Virtual::AddressSpaceList Kernel::Memory::Virtual::kernelAddressSpaceList(2);
@@ -301,7 +301,7 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 		}
 		result.address = list.at(bestFitIndex).base;
 		result.allocatedCount = count;
-		defragAddressSpaceList((flags & RequestType::Kernel) ? true : false);
+		defragAddressSpaceList(flags);
 
 		if (flags & RequestType::AllocatePhysical) {
 			size_t total = 0;
@@ -391,7 +391,7 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 			} else {
 				generalPagesAvailableCount += count;
 			}
-			defragAddressSpaceList((flags & RequestType::Kernel) ? true : false);
+			defragAddressSpaceList(flags);
 
 			unmapPages(virtualAddress, count, flags & RequestType::AllocatePhysical);
 			return true;
@@ -401,8 +401,10 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 	return true;
 }
 
-static void defragAddressSpaceList(bool kernelList) {
+static void defragAddressSpaceList(uint32_t flags) {
 	using namespace Kernel::Memory::Virtual;
+
+	bool kernelList = flags & Kernel::Memory::RequestType::Kernel;
 	Kernel::Memory::Virtual::AddressSpaceList &list = kernelList ? kernelAddressSpaceList : generalAddressSpaceList;
 
 	// Merge all blocks that have same availability
