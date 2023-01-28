@@ -133,9 +133,9 @@ bool Kernel::Memory::Physical::initialize(
 // Returns the closest size match physical buddy
 // If wastage in a buddy is more than 25% of its size then returns a smaller size buddy
 // Actual number of pages assigned is returned in allocatedCount
-// Returns INVALID_ADDRESS and allocatedCount = 0 if request count is count == 0
+// Returns INVALID_ADDRESS and allocatedCount = 0 if request count == 0
 // or greater than currently available pages
-// If RequestType::PhysicalContiguous flag is not passed, then count must < 512 (i.e. < 2MiB)
+// If RequestType::PhysicalContiguous flag is not passed, then count must be < 512 (i.e. < 2MiB)
 // Unsafe to call this function until virtual memory manager is initialized
 Kernel::Memory::PageRequestResult Kernel::Memory::Physical::requestPages(size_t count, uint32_t flags) {
 	PageRequestResult result;
@@ -172,7 +172,7 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Physical::requestPages(size_t 
 			return result;
 		}
 	} else if (!(flags & RequestType::PhysicalContiguous) && count <= buddySizes[PHY_MEM_BUDDY_MAX_ORDER - 1]) {
-		// FIXME: handle requests for sizes > 2MiB i.e. 512 count
+		// FIXME: handle requests for sizes > 2MiB i.e. count > 512
 		size_t closestLevel;
 		for (closestLevel = 0; closestLevel < PHY_MEM_BUDDY_MAX_ORDER; ++closestLevel) {
 			if (count <= buddySizes[closestLevel]) {

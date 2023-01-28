@@ -1,16 +1,29 @@
 #pragma once
 
-#include <cstddef>
+#include <async.h>
 #include <memory>
-#include <promise.h>
 
 namespace Storage {
+	class Buffer {
+		private:
+			void *data = nullptr;
+			size_t pageCount = SIZE_MAX;
+			uint64_t physicalAddress = UINT64_MAX;
+
+		public:
+			Buffer(size_t size, size_t alignAt);
+			~Buffer();
+			explicit operator bool() const;
+			void* getData() const;
+			uint64_t getPhysicalAddress() const;
+	};
+
 	class BlockDevice {
 		protected:
-			size_t blockSize = 0;
+			size_t blockSize = 666;
 
 		public:
 			size_t getBlockSize() const;
-			virtual std::shared_ptr<Kernel::Promise<bool>> read(size_t startBlock, size_t blockCount, std::shared_ptr<void> buffer) = 0;
+			virtual Async::Thenable<std::shared_ptr<Buffer>> read(size_t startBlock, size_t blockCount) = 0;
 	};
 }

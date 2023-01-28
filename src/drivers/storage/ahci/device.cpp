@@ -13,26 +13,22 @@ static const char* const tfeUnsolicitedStr = "AHCI unsolicited task file error "
 static const char* const d2hUnsolicitedStr = "AHCI unsolicited register D2H FIS ";
 static const char* const atDeviceStr = "at device";
 
-bool AHCI::Device::setupRead(size_t blockCount, std::shared_ptr<void> buffer, size_t &freeSlot) {
-	// Each command has 8 PRDTs (read AHCI::Device::initialize comments to know why 8 PRDTs)
-	// and each PRDT can handle 4MiB i.e. maximum of 32MiB
-	const size_t mib4 = 4 * 1024 * 1024UL;
-	const size_t mib32 = 8 * mib4;
-	const size_t totalBytes = blockCount * this->blockSize;
-	if (totalBytes > mib32) {
-		return false;
+std::shared_ptr<Storage::Buffer> AHCI::Device::setupRead(size_t blockCount, size_t &freeSlot) {
+	if (blockCount == 0) {
+		return nullptr;
 	}
 
-	// Make sure buffer is mapped to a physical page and word boundary aligned
-	Kernel::Memory::Virtual::CrawlResult crawlResult(buffer.get());
-	if (crawlResult.physicalTables[0] == INVALID_ADDRESS || crawlResult.indexes[0] % 2 != 0) {
-		return false;
+	// Each command has 8 PRDTs (read AHCI::Device::initialize comments to know why 8 PRDTs)
+	// and each PRDT can handle 4MiB i.e. maximum of 32MiB
+	const size_t mib4 = 2UL * MIB_2;
+	const size_t totalBytes = blockCount * this->blockSize;
+	if (totalBytes > 8 * mib4) {
+		return nullptr;
 	}
-	uint64_t bufferPhyAddr = (uint64_t)crawlResult.physicalTables[0] + crawlResult.indexes[0];
 
 	freeSlot = this->findFreeCommandSlot();
 	if (freeSlot == SIZE_MAX) {
-		return false;
+		return nullptr;
 	}
 
 	size_t prdsRequired = totalBytes / mib4;
@@ -51,9 +47,10 @@ bool AHCI::Device::setupRead(size_t blockCount, std::shared_ptr<void> buffer, si
 	// Setup PRDT entries
 	// First (prdsRequired - 1) will all have byteCount set to (mib4 - 1) and will not interrupt.
 	// The last PRDT entry will have remaining byteCount and must interrupt to signal command completion.
+	std::shared_ptr<Storage::Buffer> buffer = std::make_shared<Storage::Buffer>(totalBytes, AHCI_BUFFER_ALIGN_AT);
 	uint64_t bufferSegmentPhyAddr;
 	for (size_t i = 0; i < prdsRequired - 1; ++i) {
-		bufferSegmentPhyAddr = bufferPhyAddr + i * mib4;
+		bufferSegmentPhyAddr = buffer->getPhysicalAddress() + i * mib4;
 		this->commandTables[freeSlot]->prdtEntries[i].dataBase = (uint32_t)(bufferSegmentPhyAddr);
 		if (controller->hba->hostCapabilities.bit64Addressing) {
 			this->commandTables[freeSlot]->prdtEntries[i].dataBaseUpper = (uint32_t)(bufferSegmentPhyAddr >> 32);
@@ -61,7 +58,7 @@ bool AHCI::Device::setupRead(size_t blockCount, std::shared_ptr<void> buffer, si
 		this->commandTables[freeSlot]->prdtEntries[i].byteCount = mib4 - 1;
 		this->commandTables[freeSlot]->prdtEntries[i].interruptOnCompletion = 0;
 	}
-	bufferSegmentPhyAddr = bufferPhyAddr + (prdsRequired - 1) * mib4;
+	bufferSegmentPhyAddr = buffer->getPhysicalAddress() + (prdsRequired - 1) * mib4;
 	this->commandTables[freeSlot]->prdtEntries[prdsRequired - 1].dataBase = (uint32_t)bufferSegmentPhyAddr;
 	if (controller->hba->hostCapabilities.bit64Addressing) {
 		this->commandTables[freeSlot]->prdtEntries[prdsRequired - 1].dataBaseUpper = (uint32_t)(bufferSegmentPhyAddr >> 32);
@@ -74,7 +71,7 @@ bool AHCI::Device::setupRead(size_t blockCount, std::shared_ptr<void> buffer, si
 	memset(commandFis, 0, sizeof(FIS::RegisterH2D));
 	commandFis->fisType = AHCI_FIS_TYPE_REG_H2D;
 	commandFis->commandControl = 1;
-	return true;
+	return buffer;
 }
 
 void AHCI::Device::msiHandler() {
@@ -239,7 +236,7 @@ bool AHCI::Device::initialize() {
 
 	// There are AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader) i.e. 32 command tables
 	// PRDT entry size is 16 bytes
-	// Each command tables's size is CommandFIS(64 bytes) + ACMD(16 bytes) + reserved(48 bytes) + prdtLength * PRDT entry size(16 bytes)
+	// Each command table's size is CommandFIS(64 bytes) + ACMD(16 bytes) + reserved(48 bytes) + prdtLength * PRDT entry size(16 bytes)
 	// To make all the 32 command tables fit nicely in 2 pages, solve the equation for prdtLength
 	// 2 * 4096 = 32 * (64 + 16 + 48 + prdtLength * 16)
 	// Hence, prdtLength works out to 8
@@ -323,7 +320,7 @@ AHCI::Device::Device(Controller *controller, size_t portNumber) {
 	this->controller = controller;
 }
 
-AHCI::Device::Command::Command(Device *device, size_t freeSlot) : device(device), freeSlot(freeSlot) {}
+AHCI::Device::Command::Command(Device *device, size_t freeSlot) : device(device), freeSlot(freeSlot), awaitingCoroutine(nullptr), result(nullptr) {}
 
 AHCI::Device::Command::~Command() {
 	if (this->awaitingCoroutine) {
@@ -334,10 +331,6 @@ AHCI::Device::Command::~Command() {
 		delete result;
 		this->result = nullptr;
 	}
-}
-
-constexpr bool AHCI::Device::Command::await_ready() const noexcept {
-	return false;
 }
 
 void AHCI::Device::Command::await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept {

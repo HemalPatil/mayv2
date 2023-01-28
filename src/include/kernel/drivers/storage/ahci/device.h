@@ -2,8 +2,6 @@
 
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/blockdevice.h>
-#include <memory>
-#include <promise.h>
 
 class AHCI::Device : public Storage::BlockDevice {
 	public:
@@ -30,7 +28,9 @@ class AHCI::Device : public Storage::BlockDevice {
 
 				~Command();
 
-				constexpr bool await_ready() const noexcept;
+				constexpr bool await_ready() const noexcept {
+					return false;
+				};
 
 				void await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept;
 
@@ -51,7 +51,7 @@ class AHCI::Device : public Storage::BlockDevice {
 		Controller *controller;
 		Type type;
 
-		bool setupRead(size_t blockCount, std::shared_ptr<void> buffer, size_t &freeSlot);
+		std::shared_ptr<Storage::Buffer> setupRead(size_t blockCount, size_t &freeSlot);
 
 	public:
 		Device(Controller *controller, size_t portNumber);

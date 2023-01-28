@@ -24,6 +24,8 @@
 
 #define AHCI_SECTOR_SIZE 512
 
+#define AHCI_BUFFER_ALIGN_AT 2
+
 #define AHCI_MODE ((uint32_t)1 << 31)
 #define AHCI_GHC_INTERRUPT_ENABLE ((uint32_t)1 << 1)
 #define AHCI_TASK_FILE_ERROR ((uint32_t)1 << 30)

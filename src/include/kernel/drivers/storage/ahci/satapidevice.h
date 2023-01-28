@@ -9,10 +9,7 @@ class AHCI::SatapiDevice : public AHCI::Device {
 		SatapiDevice(Controller *controller, size_t portNumber);
 
 		// Reads maximum of 32MiB data from an ATA/ATAPI device attached to an AHCI controller.
-		// It is assumed that buffer is a valid virtual address mapped to some physical address,
-		// contiguous, word boundary aligned, and big enough to handle the entire data requested.
-		// Returns false if total byte length of data requested is greater than 32MiB,
-		// or buffer is not word boundary aligned, or buffer is not a valid virtual address
-		// mapped to a physical address, or there is no command slot currently available.
-		std::shared_ptr<Kernel::Promise<bool>> read(size_t startBlock, size_t blockCount, std::shared_ptr<void> buffer) override;
+		// Returns Storage::Buffer containing the data read
+		// Returns nullptr if the read failed or size constraints are not met
+		Async::Thenable<std::shared_ptr<Storage::Buffer>> read(size_t startBlock, size_t blockCount) override;
 };

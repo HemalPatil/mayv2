@@ -73,9 +73,9 @@ namespace FS {
 			std::vector<DirectoryEntry> extentToEntries(const DirectoryRecord* const extent, size_t extentSize);
 
 		public:
-			ISO9660(std::shared_ptr<Storage::BlockDevice> device, size_t primarySectorNumber);
+			ISO9660(std::shared_ptr<Storage::BlockDevice> device, std::shared_ptr<Storage::Buffer> primarySectorBuffer);
 			std::vector<DirectoryEntry> readDirectory(const std::string &name) override;
 
-			static std::tuple<bool, size_t> isIso9660(std::shared_ptr<Storage::BlockDevice> device);
+			static Async::Thenable<std::shared_ptr<Storage::Buffer>> isIso9660(std::shared_ptr<Storage::BlockDevice> device);
 	};
 }

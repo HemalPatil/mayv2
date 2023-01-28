@@ -26,7 +26,7 @@ static const char* const corruptEntryContStr = " found in heap ";
 static const char* const corruptHeapStr = "validHeap corrupt heap ";
 static const char* const invalidFreeStr = "free invalid free ";
 
-const size_t Kernel::Memory::Heap::newRegionSize = 0x200000;
+const size_t Kernel::Memory::Heap::newRegionSize = MIB_2;
 const size_t Kernel::Memory::Heap::minBlockSize = 8;
 const size_t Kernel::Memory::Heap::entryTableSize = Kernel::Memory::Heap::newRegionSize / (
 	sizeof(Kernel::Memory::Heap::Entry) +
@@ -265,10 +265,13 @@ static bool validHeapEntry(
 	terminalPrintString(heapNamespaceStr, strlen(heapNamespaceStr));
 	terminalPrintString(corruptEntryStr, strlen(corruptEntryStr));
 	terminalPrintHex(&entry, sizeof(entry));
+	terminalPrintChar('(');
+	terminalPrintHex(entry, 8);
+	terminalPrintChar(')');
 	terminalPrintString(corruptEntryContStr, strlen(corruptEntryContStr));
 	terminalPrintHex(&heap, sizeof(heap));
 	terminalPrintChar('\n');
-	terminalPrintHex(entry, 8);
+	Kernel::Memory::Virtual::displayCrawlPageTablesResult(entry);
 	Kernel::panic();
 	return false;
 }

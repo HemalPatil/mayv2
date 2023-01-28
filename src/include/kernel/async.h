@@ -1,3 +1,5 @@
+#pragma once
+
 #include <coroutine>
 #include <functional>
 #include <kernel.h>
@@ -168,6 +170,19 @@ namespace Async {
 				Thenable<T> moveThis(std::move(*this));
 				T result = co_await moveThis;
 				co_return func(result);
+			}
+
+			template<typename ThenT>
+			Thenable<ThenT> then(Thenable<ThenT> (*func)()) & noexcept {
+				co_await *this;
+				co_return co_await func();
+			}
+
+			template<typename ThenT>
+			Thenable<ThenT> then(Thenable<ThenT> (*func)()) && noexcept {
+				Thenable<T> moveThis(std::move(*this));
+				co_await moveThis;
+				co_return co_await func();
 			}
 
 			template<typename ThenT>

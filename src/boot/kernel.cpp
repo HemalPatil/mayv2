@@ -18,7 +18,7 @@
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
 static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
 static const char* const creatingFsStr = "Creating file systems";
-static const char* const creatingFsDoneStr = "File systems created\n";
+static const char* const creatingFsDoneStr = "File systems created (";
 static const char* const checkingAhciStr = "Checking AHCI controllers";
 static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
 static const char* const isoFoundStr = "ISO filesystem found at ";
@@ -42,6 +42,47 @@ Async::Thenable<void> startPcieDrivers() {
 			Kernel::panic();
 		}
 	}
+	co_return;
+}
+
+Async::Thenable<void> createFileSystems() {
+	terminalPrintString(creatingFsStr, strlen(creatingFsStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
+
+	// Create filesystems from AHCI devices
+	terminalPrintSpaces4();
+	terminalPrintString(checkingAhciStr, strlen(checkingAhciStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
+	for (size_t controllerCount = 0; auto &controller : AHCI::controllers) {
+		for (const auto &device : controller.getDevices()) {
+			// Try with ISO9660 for SATAPI devices first because that is the most likely FS
+			if (AHCI::Device::Type::Satapi == device->getType()) {
+				auto primaryDescriptor = co_await FS::ISO9660::isIso9660(device);
+				if (primaryDescriptor) {
+					FS::filesystems.push_back(std::make_shared<FS::ISO9660>(device, primaryDescriptor));
+					terminalPrintSpaces4();
+					terminalPrintSpaces4();
+					terminalPrintString(isoFoundStr, strlen(isoFoundStr));
+					terminalPrintDecimal(controllerCount);
+					terminalPrintChar(':');
+					terminalPrintDecimal(device->getPortNumber());
+					terminalPrintChar('\n');
+				}
+			}
+		}
+		++controllerCount;
+	}
+	terminalPrintSpaces4();
+	terminalPrintString(checkingAhciDoneStr, strlen(checkingAhciDoneStr));
+
+	// Create filesystems from other device types here when appropriate drivers are added
+
+	terminalPrintString(creatingFsDoneStr, strlen(creatingFsDoneStr));
+	terminalPrintDecimal(FS::filesystems.size());
+	terminalPrintChar(')');
+	terminalPrintChar('\n');
 	co_return;
 }
 
@@ -108,11 +149,6 @@ extern "C" [[noreturn]] void kernelMain(
 
 	initializePs2Keyboard();
 
-	// Enumerate PCIe devices
-	if (!PCIe::enumerate()) {
-		Kernel::panic();
-	}
-
 	if (!Kernel::Scheduler::initialize()) {
 		Kernel::panic();
 	}
@@ -120,8 +156,13 @@ extern "C" [[noreturn]] void kernelMain(
 	enableInterrupts();
 	terminalPrintString(enabledInterruptsStr, strlen(enabledInterruptsStr));
 
+	// Enumerate PCIe devices
+	if (!PCIe::enumerate()) {
+		Kernel::panic();
+	}
+
 	// Start drivers for PCIe devices
-	auto initResults = startPcieDrivers();
+	auto initResults = startPcieDrivers().then(&createFileSystems);
 
 	// Wait perpetually and let the scheduler and interrupts do their thing
 	Kernel::Scheduler::start();

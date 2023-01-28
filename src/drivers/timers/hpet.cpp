@@ -113,10 +113,10 @@ bool Drivers::Timers::HPET::initialize() {
 }
 
 void hpetHandler() {
-	APIC::acknowledgeLocalInterrupt();
 	if (Drivers::Timers::HPET::timerInterruptCallback) {
 		Drivers::Timers::HPET::timerInterruptCallback();
 	} else {
 		terminalPrintString(hpetStr, strlen(hpetStr));
 	}
+	APIC::acknowledgeLocalInterrupt();
 }
