@@ -41,57 +41,65 @@ FS::ISO9660::ISO9660(std::shared_ptr<Storage::BlockDevice> device, const Storage
 		Kernel::panic();
 	}
 
-	this->rootDirectoryLba = primarySector->rootDirectory.extentLba;
-	this->rootDirectoryExtentSize = primarySector->rootDirectory.extentSize;
+	this->rootDirLba = primarySector->rootDirectory.extentLba;
+	this->rootDirExtentSize = primarySector->rootDirectory.extentSize;
 }
 
 Async::Thenable<bool> FS::ISO9660::initialize() {
-	Storage::Buffer buffer = std::move(co_await this->device->read(this->rootDirectoryLba, this->rootDirectoryExtentSize / this->lbaSize));
+	Storage::Buffer buffer = std::move(
+		co_await this->device->read(this->rootDirLba, this->rootDirExtentSize / this->lbaSize)
+	);
 	if (!buffer) {
 		co_return false;
 	}
-	this->rootDirectoryEntries = FS::ISO9660::extentToEntries((DirectoryRecord*)buffer.getData(), this->rootDirectoryExtentSize);
+	this->rootDirEntries = FS::ISO9660::extentToEntries(
+		(DirectoryRecord*)buffer.getData(),
+		this->rootDirLba,
+		this->rootDirExtentSize,
+		this->rootDirLba,
+		this->rootDirExtentSize
+	);
 	co_return true;
 }
 
-std::vector<FS::DirectoryEntry> FS::ISO9660::extentToEntries(const DirectoryRecord* const extent, size_t extentSize) {
+std::vector<FS::DirectoryEntry> FS::ISO9660::extentToEntries(
+	const DirectoryRecord* const extent,
+	size_t lba,
+	size_t size,
+	size_t parentLba,
+	size_t parentSize
+) {
 	std::vector<DirectoryEntry> entries;
 	entries.reserve(2);
-	entries.push_back(DirectoryEntry(".", false, true, false));
-	entries.push_back(DirectoryEntry("..", false, true, false));
+	entries.push_back({.name = ".", .isFile = false, .isDir = true, .isSymLink = false, .lba = lba, .size = size});
+	entries.push_back({.name = "..", .isFile = false, .isDir = true, .isSymLink = false, .lba = parentLba, .size = parentSize});
 	size_t seekg = 0x44;
 	DirectoryRecord *entry = (DirectoryRecord*)((uint64_t)extent + seekg);	// Skip current, parent directory entries
 	// Traverse all the remaining records in this extent
-	while (seekg < extentSize && entry->length > 0) {
-		entries.push_back(DirectoryEntry(
-			std::string(
+	while (seekg < size && entry->length > 0) {
+		entries.push_back({
+			.name = std::string(
 				entry->fileName,
 				// Skip ";1" terminator for file names
 				entry->fileName + entry->fileNameLength - ((entry->flags & directoryFlag) ? 0 : 2)
 			),
-			!(entry->flags & directoryFlag),
-			(entry->flags & directoryFlag),
-			false
-		));
+			.isFile = !(entry->flags & directoryFlag),
+			.isDir = bool(entry->flags & directoryFlag),
+			.isSymLink = false,
+			.lba = entry->extentLba,
+			.size = entry->extentSize
+		});
 		seekg += entry->length;
 		entry = (DirectoryRecord*)((uint64_t)extent + seekg);
 	}
 	return entries;
 }
 
-Async::Thenable<std::vector<FS::DirectoryEntry>> FS::ISO9660::readDirectory(const std::string &name) {
-	// std::vector<FS::DirectoryEntry> dirEntries;
-	// terminalPrintString("isoreaddirs\n", 12);
-	// if (name == "/") {
-	// 	co_return this->rootDirectoryEntries;
-	// }
-	// terminalPrintString("isoreaddire\n", 12);
-	// terminalPrintString("notiml\n", 8);
-	// Kernel::panic();
+Async::Thenable<std::vector<FS::DirectoryEntry>> FS::ISO9660::readDirectory(const std::string &absolutePath) {
+	if (absolutePath == "/") {
+		co_return std::vector<DirectoryEntry>(this->rootDirEntries);
+	}
+	Kernel::panic();
 	std::vector<FS::DirectoryEntry> dirEntries;
-	dirEntries.push_back(DirectoryEntry("hello", true, false, false));
-	dirEntries.push_back(DirectoryEntry("world", true, false, false));
-	Storage::Buffer buffer = std::move(co_await device->read(16, 1));
-	terminalPrintString((char*)buffer.getData(), 6);
 	co_return std::move(dirEntries);
 }

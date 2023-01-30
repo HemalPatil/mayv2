@@ -6,11 +6,13 @@
 #include <vector>
 
 namespace FS {
-	struct DirectoryEntry {
+	struct [[nodiscard]] DirectoryEntry {
 		std::string name;
 		bool isFile;
 		bool isDir;
 		bool isSymLink;
+		size_t lba;
+		size_t size;
 	};
 
 	class BaseFS {
@@ -19,8 +21,13 @@ namespace FS {
 
 		public:
 			BaseFS(std::shared_ptr<Storage::BlockDevice> blockDevice) : device(blockDevice) {}
-			virtual Async::Thenable<std::vector<DirectoryEntry>> readDirectory(const std::string &name) = 0;
+
+			// Reads directory at given absolute path
+			// Returns empty vector if given path cannot be resolved to a valid directory
+			virtual Async::Thenable<std::vector<DirectoryEntry>> readDirectory(const std::string &absolutePath) = 0;
 	};
 
 	extern std::vector<std::shared_ptr<BaseFS>> filesystems;
+
+	std::vector<std::string> splitAbsolutePath(const std::string &absolutePath);
 }

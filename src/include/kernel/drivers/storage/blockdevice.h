@@ -6,8 +6,9 @@ namespace Storage {
 	class Buffer {
 		private:
 			void *data = nullptr;
-			size_t pageCount = SIZE_MAX;
-			uint64_t physicalAddress = UINT64_MAX;
+			size_t pageCount = 0;
+			uint64_t physicalAddress = (uint64_t)INVALID_ADDRESS;
+			size_t size = 0;
 
 		public:
 			Buffer() = default;
@@ -22,6 +23,7 @@ namespace Storage {
 			explicit operator bool() const;
 			void* getData() const;
 			uint64_t getPhysicalAddress() const;
+			size_t getSize() const;
 	};
 
 	class BlockDevice {

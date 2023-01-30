@@ -134,10 +134,19 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintString(apuBootStr, strlen(apuBootStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	for (const auto &fs : FS::filesystems) {
-		// const auto dirs = co_await fs->readDirectory("/");
-		// for (const auto &dir : dirs) {
+		terminalPrintChar('\n');
 		for (const auto &dir : co_await fs->readDirectory("/")) {
 			terminalPrintString(dir.name.c_str(), dir.name.length());
+			terminalPrintChar(' ');
+			terminalPrintDecimal(dir.isFile);
+			terminalPrintChar(' ');
+			terminalPrintDecimal(dir.isDir);
+			terminalPrintChar(' ');
+			terminalPrintDecimal(dir.isSymLink);
+			terminalPrintChar(' ');
+			terminalPrintDecimal(dir.lba);
+			terminalPrintChar(' ');
+			terminalPrintDecimal(dir.size);
 			terminalPrintChar('\n');
 		}
 	}

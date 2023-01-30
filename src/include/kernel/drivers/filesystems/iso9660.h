@@ -67,17 +67,25 @@ namespace FS {
 
 		private:
 			size_t lbaSize;
-			std::vector<DirectoryEntry> rootDirectoryEntries;
-			size_t rootDirectoryLba;
-			size_t rootDirectoryExtentSize;
+			std::vector<DirectoryEntry> rootDirEntries;
+			size_t rootDirLba;
+			size_t rootDirExtentSize;
 
-			static std::vector<DirectoryEntry> extentToEntries(const DirectoryRecord* const extent, size_t extentSize);
+			static std::vector<DirectoryEntry> extentToEntries(
+				const DirectoryRecord* const extent,
+				size_t lba,
+				size_t size,
+				size_t parentLba,
+				size_t parentSize
+			);
 
 		public:
 			ISO9660(std::shared_ptr<Storage::BlockDevice> device, const Storage::Buffer &primarySectorBuffer);
 
 			Async::Thenable<bool> initialize();
-			Async::Thenable<std::vector<DirectoryEntry>> readDirectory(const std::string &name) override;
+
+			// Reads directory at given absolute path
+			Async::Thenable<std::vector<DirectoryEntry>> readDirectory(const std::string &absolutePath) override;
 
 			static Async::Thenable<Storage::Buffer> isIso9660(std::shared_ptr<Storage::BlockDevice> device);
 	};

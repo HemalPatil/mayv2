@@ -1,14 +1,15 @@
+#include <cstring>
 #include <drivers/storage/blockdevice.h>
-#include <string.h>
 
 static const char* const bufAllocErrorStr = "Storage::Buffer::Buffer could not allocate buffer or wrong alignment";
 static const char* const freeFailStr = "Storage::Buffer::operator= failed to free buffer pages";
 
-Storage::Buffer::Buffer(std::nullptr_t) : data(nullptr), pageCount(SIZE_MAX), physicalAddress(UINT64_MAX) {}
+Storage::Buffer::Buffer(std::nullptr_t) : data(nullptr), pageCount(0), physicalAddress((uint64_t)INVALID_ADDRESS), size(0) {}
 
 Storage::Buffer::Buffer(size_t size, size_t alignAt) {
 	using namespace Kernel::Memory;
 
+	this->size = size;
 	this->pageCount = size / pageSize;
 	if (size != this->pageCount * pageSize) {
 		++this->pageCount;
@@ -38,10 +39,10 @@ Storage::Buffer::Buffer(size_t size, size_t alignAt) {
 	this->physicalAddress = (uint64_t)crawlResult.physicalTables[0] + crawlResult.indexes[0];
 }
 
-Storage::Buffer::Buffer(Buffer &&other) : data(other.data), pageCount(other.pageCount), physicalAddress(other.physicalAddress) {
+Storage::Buffer::Buffer(Buffer &&other) : data(other.data), pageCount(other.pageCount), physicalAddress(other.physicalAddress), size(other.size) {
 	other.data = nullptr;
-	other.pageCount = SIZE_MAX;
-	other.physicalAddress = UINT64_MAX;
+	other.pageCount = other.size = 0;
+	other.physicalAddress = (uint64_t)INVALID_ADDRESS;
 }
 
 Storage::Buffer::~Buffer() {
@@ -53,15 +54,15 @@ Storage::Buffer& Storage::Buffer::operator=(std::nullptr_t) {
 
 	if (
 		this->data &&
-		this->pageCount != SIZE_MAX &&
+		this->pageCount != 0 &&
 		!Virtual::freePages(this->data, this->pageCount, RequestType::Kernel | RequestType::AllocatePhysical)
 	) {
 		terminalPrintString(freeFailStr, strlen(freeFailStr));
 		Kernel::panic();
 	}
 	this->data = nullptr;
-	this->pageCount = SIZE_MAX;
-	this->physicalAddress = UINT64_MAX;
+	this->pageCount = this->size = 0;
+	this->physicalAddress = (uint64_t)INVALID_ADDRESS;
 	return *this;
 }
 
@@ -71,8 +72,8 @@ Storage::Buffer& Storage::Buffer::operator=(Buffer &&other) {
 	this->pageCount = other.pageCount;
 	this->physicalAddress = other.physicalAddress;
 	other.data = nullptr;
-	other.pageCount = SIZE_MAX;
-	other.physicalAddress = UINT64_MAX;
+	other.pageCount = other.size = 0;
+	other.physicalAddress = (uint64_t)INVALID_ADDRESS;
 	return *this;
 }
 
