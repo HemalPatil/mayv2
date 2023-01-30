@@ -12,7 +12,7 @@ static const char* const mappingStr = "Mapping HPET registers to kernel address 
 static const char* const check64Str = "Checking clock period and 64-bit capability";
 static const char* const periodicTimerStr = "Checking for 64-bit capable edge-triggered periodic timer";
 static const char* const minTickStr = "Minimum tick ";
-static const char* const timerCountStr = ", Timers - ";
+static const char* const timerCountStr = ", Timers [";
 static const char* const hpetStr = "hpet";
 
 Drivers::Timers::HPET::Registers *Drivers::Timers::HPET::registers = nullptr;
@@ -80,6 +80,7 @@ bool Drivers::Timers::HPET::initialize() {
 	terminalPrintHex(&hpetTable->minimumTick, sizeof(hpetTable->minimumTick));
 	terminalPrintString(timerCountStr, strlen(timerCountStr));
 	terminalPrintDecimal(registers->timerCount + 1);
+	terminalPrintChar(']');
 	terminalPrintChar('\n');
 
 	// Find at least one timer with 64-bit and periodic interrupt capability

@@ -22,8 +22,10 @@ static const char* const xsdtAddressStr = ", XSDT ";
 static const char* const oldAcpi = "ACPI version found is older than ACPI3\n";
 static const char* const checkingRevisionStr = "Checking ACPI revision";
 static const char* const parseCompleteStr = "ACPI3 parsed\n\n";
-static const char* const mappingXsdtStr = "Mapping XSDT to kernel address space";
+static const char* const kAddrSpaceStr = " kernel address space";
+static const char* const mappingXsdtStr = "Mapping XSDT to";
 static const char* const findingAcpiTablesStr = "Searching for APIC, HPET, MCFG, and SSDT entries";
+static const char* const unmappingXsdtStr = "Unmapping XSDT from";
 
 bool ACPI::parse() {
 	using namespace Kernel::Memory;
@@ -98,6 +100,7 @@ bool ACPI::parse() {
 	// Request a kernel page and map it to XSDT's page
 	terminalPrintSpaces4();
 	terminalPrintString(mappingXsdtStr, strlen(mappingXsdtStr));
+	terminalPrintString(kAddrSpaceStr, strlen(kAddrSpaceStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PageRequestResult requestResult = Virtual::requestPages(
 		1,
@@ -121,7 +124,7 @@ bool ACPI::parse() {
 		terminalPrintChar('\n');
 		return false;
 	}
-	terminalPrintString(okStr, strlen(okStr));
+	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
 	// Verify the XSDT signature
@@ -171,12 +174,22 @@ bool ACPI::parse() {
 		hpetSdtHeader = (SDTHeader*)Heap::allocate(oldHpet->length);
 		memcpy(hpetSdtHeader, oldHpet, oldHpet->length);
 	}
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
 	// Free the kernel page used for parsing XSDT
-	Virtual::freePages(
+	terminalPrintSpaces4();
+	terminalPrintString(unmappingXsdtStr, strlen(unmappingXsdtStr));
+	terminalPrintString(kAddrSpaceStr, strlen(kAddrSpaceStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (!Virtual::freePages(
 		(void*)((uint64_t)oldXsdt & Physical::buddyMasks[0]),
 		1,
 		RequestType::Kernel
-	);
+	)) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		Kernel::panic();
+	}
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
