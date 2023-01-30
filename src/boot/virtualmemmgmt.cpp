@@ -268,7 +268,7 @@ bool Kernel::Memory::Virtual::initialize(
 // Unsafe to call this function until virtual memory manager is initialized
 Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t count, uint32_t flags) {
 	PageRequestResult result;
-	if (count > ((flags & RequestType::Kernel) ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
+	if (count == 0 || count > ((flags & RequestType::Kernel) ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
 		return result;
 	}
 	AddressSpaceList &list = (flags & RequestType::Kernel) ? kernelAddressSpaceList : generalAddressSpaceList;
@@ -353,7 +353,7 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 	uint64_t vEnd = vBeg + count * pageSize;
 
 	// Ensure the virtual addresses are pageSize boundary aligned and canonical
-	if ((vBeg & ~Physical::buddyMasks[0]) || !isCanonical(virtualAddress)) {
+	if (count == 0 || (vBeg & ~Physical::buddyMasks[0]) || !isCanonical(virtualAddress)) {
 		return false;
 	}
 
@@ -477,7 +477,7 @@ bool Kernel::Memory::Virtual::mapPages(void* virtualAddress, void* physicalAddre
 	uint64_t virAddr = (uint64_t)virtualAddress;
 
 	// Ensure both physical and virtual address are pageSize boundary aligned
-	if (phyAddr & ~Physical::buddyMasks[0] || virAddr & ~Physical::buddyMasks[0]) {
+	if (count == 0 || phyAddr & ~Physical::buddyMasks[0] || virAddr & ~Physical::buddyMasks[0]) {
 		return false;
 	}
 
@@ -530,7 +530,7 @@ bool Kernel::Memory::Virtual::unmapPages(void* virtualAddress, size_t count, boo
 	uint64_t addr = (uint64_t) virtualAddress;
 
 	// Ensure the virtual addresses are pageSize boundary aligned
-	if (addr & ~Physical::buddyMasks[0]) {
+	if (count == 0 || addr & ~Physical::buddyMasks[0]) {
 		return false;
 	}
 
