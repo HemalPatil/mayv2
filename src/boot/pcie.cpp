@@ -28,6 +28,7 @@ static const char* const deviceStr = " device ";
 static const char* const multiStr = " multi function";
 static const char* const funcStr = "Function ";
 static const char* const nonMsiStr = "non-MSI";
+static const char* const unmapFailStr = "Failed to unmap configuration page";
 
 std::vector<PCIe::Function> PCIe::functions;
 
@@ -62,23 +63,25 @@ bool PCIe::enumerate() {
 }
 
 static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8_t function) {
+	using namespace Kernel::Memory;
+
 	uint64_t functionAddress = baseAddress + (bus << 20 | device << 15 | function << 12);
-	Kernel::Memory::PageRequestResult requestResult = Kernel::Memory::Virtual::requestPages(
+	PageRequestResult requestResult = Virtual::requestPages(
 		1,
 		(
-			Kernel::Memory::RequestType::Kernel |
-			Kernel::Memory::RequestType::PhysicalContiguous |
-			Kernel::Memory::RequestType::VirtualContiguous
+			RequestType::Kernel |
+			RequestType::PhysicalContiguous |
+			RequestType::VirtualContiguous
 		)
 	);
 	if (
 		requestResult.address != INVALID_ADDRESS &&
 		requestResult.allocatedCount == 1 &&
-		Kernel::Memory::Virtual::mapPages(
+		Virtual::mapPages(
 			requestResult.address,
 			(void*) functionAddress,
 			1,
-			Kernel::Memory::RequestType::CacheDisable
+			RequestType::CacheDisable
 		)
 	) {
 		return requestResult.address;
@@ -142,6 +145,8 @@ static bool enumerateFunction(uint8_t function, PCIe::BaseHeader *pcieHeader, PC
 }
 
 static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
+	using namespace Kernel::Memory;
+
 	uint8_t function = 0;
 	PCIe::BaseHeader *pcieHeader = (PCIe::BaseHeader*) mapBDFPage(baseAddress, bus, device, function);
 	if (!pcieHeader) {
@@ -157,7 +162,11 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 	}
 	if (pcieHeader->deviceId == PCI_INVALID_DEVICE) {
 		// Unmap the configuration page
-		Kernel::Memory::Virtual::freePages(pcieHeader, 1, Kernel::Memory::RequestType::Kernel);
+		if (!Virtual::freePages(pcieHeader, 1, RequestType::Kernel)) {
+			terminalPrintSpaces4();
+			terminalPrintString(unmapFailStr, strlen(unmapFailStr));
+			Kernel::panic();
+		}
 		return true;
 	}
 	terminalPrintSpaces4();
@@ -202,7 +211,11 @@ static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {
 			}
 			if (pcieHeader->deviceId == PCI_INVALID_DEVICE) {
 				// Unmap the configuration page
-				Kernel::Memory::Virtual::freePages(pcieHeader, 1, Kernel::Memory::RequestType::Kernel);
+				if (!Virtual::freePages(pcieHeader, 1, RequestType::Kernel)) {
+					terminalPrintSpaces4();
+					terminalPrintString(unmapFailStr, strlen(unmapFailStr));
+					Kernel::panic();
+				}
 				continue;
 			}
 			if (!enumerateFunction(function, pcieHeader, &msi)) {

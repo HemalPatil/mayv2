@@ -36,12 +36,14 @@ static const char* const creatingListsStr = "Creating virtual address space list
 static const char* const recursiveStr = "Creating PML4 recursive entry";
 static const char* const checkingMaxBitsStr = "Checking max virtual address bits";
 static const char* const virtualNamespaceStr = "Kernel::Memory::Virtual::";
-static const char* const freeErrorStr = "freePages tried to free already free pages";
+static const char* const freeErrorStr = "tried to free already free pages";
+static const char* const freePagesStr = "freePages ";
 static const char* const requestPagesStr = "requestPages ";
 static const char* const mapPagesStr = "mapPages ";
 static const char* const requestErrorStr = "did not pass RequestType::VirtualContiguous\n";
 static const char* const globalCtorStr = "Running global constructors";
 static const char* const listDefragFailStr = "defragAddressSpaceList integrity check failed for ";
+static const char* const mapFailStr = "failed to (un)map pages";
 
 static void defragAddressSpaceList(uint32_t flags);
 
@@ -309,18 +311,23 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 				PageRequestResult phyResult = Physical::requestPages(count - total, flags);
 				if (phyResult.address == INVALID_ADDRESS || phyResult.allocatedCount == 0) {
 					// Out of memory
-					// TODO: should swap out pages instead of 
+					// TODO: should swap out pages instead of panicking
 					terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
 					terminalPrintString(requestPagesStr, strlen(requestPagesStr));
 					terminalPrintString(outOfMemoryStr, strlen(outOfMemoryStr));
 					panic();
 				}
-				mapPages(
+				if (!mapPages(
 					(void*)((uint64_t)result.address + total * pageSize),
 					phyResult.address,
 					phyResult.allocatedCount,
 					flags
-				);
+				)) {
+					terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
+					terminalPrintString(requestPagesStr, strlen(requestPagesStr));
+					terminalPrintString(mapFailStr, strlen(mapFailStr));
+					panic();
+				}
 				total += phyResult.allocatedCount;
 			}
 		}
@@ -341,7 +348,7 @@ Kernel::Memory::PageRequestResult Kernel::Memory::Virtual::requestPages(size_t c
 // If RequestType::AllocatePhysical flag is passed,
 // the physical pages to which a virtual page is mapped is also freed
 // Returns false if the virtual pages to be freed do not entirely fit in a used region
-bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint8_t flags) {
+bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint32_t flags) {
 	uint64_t vBeg = (uint64_t)virtualAddress;
 	uint64_t vEnd = vBeg + count * pageSize;
 
@@ -358,6 +365,7 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 			if (block.available) {
 				// Tried to free an available block
 				terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
+				terminalPrintString(freePagesStr, strlen(freePagesStr));
 				terminalPrintString(freeErrorStr, strlen(freeErrorStr));
 				panic();
 				return false;
@@ -375,16 +383,14 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 					}
 				);
 				list.insert(
-					list.begin() + i,
+					list.begin() + i + 1,
 					{
-						.available = false,
-						.base = (void*)block.base,
-						.pageCount = (vBeg - blockBeg) / pageSize
+						.available = true,
+						.base = (void*)vBeg,
+						.pageCount = count
 					}
 				);
-				block.available = true;
-				block.base = (void*)vBeg;
-				block.pageCount = count;
+				block.pageCount -= count;
 			}
 			if (flags & RequestType::Kernel) {
 				kernelPagesAvailableCount += count;
@@ -393,7 +399,12 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 			}
 			defragAddressSpaceList(flags);
 
-			unmapPages(virtualAddress, count, flags & RequestType::AllocatePhysical);
+			if (!unmapPages(virtualAddress, count, flags & RequestType::AllocatePhysical ? true : false)) {
+				terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
+				terminalPrintString(freePagesStr, strlen(freePagesStr));
+				terminalPrintString(mapFailStr, strlen(mapFailStr));
+				panic();
+			}
 			return true;
 		}
 		++i;
@@ -407,6 +418,14 @@ static void defragAddressSpaceList(uint32_t flags) {
 	bool kernelList = flags & Kernel::Memory::RequestType::Kernel;
 	Kernel::Memory::Virtual::AddressSpaceList &list = kernelList ? kernelAddressSpaceList : generalAddressSpaceList;
 
+	// Remove blocks with pageCount = 0
+	for (size_t i = 0; i < list.size(); ++i) {
+		if (list.at(i).pageCount == 0) {
+			list.erase(list.begin() + i);
+			--i;
+		}
+	}
+
 	// Merge all blocks that have same availability
 	for (size_t i = 0; i < list.size() - 1; ++i) {
 		if (list.at(i).available == list.at(i + 1).available) {
@@ -416,22 +435,30 @@ static void defragAddressSpaceList(uint32_t flags) {
 		}
 	}
 
-	// Remove blocks with pageCount = 0
-	for (size_t i = 0; i < list.size(); ++i) {
-		if (list.at(i).pageCount == 0) {
-			list.erase(list.begin() + i);
-			--i;
-		}
-	}
-
 	// TODO: remove expensive address space list integrity check
 	size_t total = 0;
-	for (const auto &block : list) {
-		if (block.available) {
-			total += block.pageCount;
+	bool listMono = true;
+	for (size_t i = 0; i < list.size() - 1; ++i) {
+		if (list.at(i).available) {
+			total += list.at(i).pageCount;
+		}
+		if (
+			list.at(i).pageCount == 0 ||
+			list.at(i).available == list.at(i + 1).available ||
+			(uint64_t)list.at(i + 1).base != (uint64_t)list.at(i).base + list.at(i).pageCount * Kernel::Memory::pageSize
+		) {
+			listMono = false;
+			break;
 		}
 	}
-	if (total != (kernelList ? kernelPagesAvailableCount : generalPagesAvailableCount)) {
+	total += list.back().pageCount;
+	bool isStartValid = kernelList ? list.at(0).base == (void*)KERNEL_HIGHERHALF_ORIGIN : list.at(0).base == (void*)0;
+	if (
+		!isStartValid ||
+		!listMono ||
+		list.back().pageCount == 0 ||
+		total != (kernelList ? kernelPagesAvailableCount : generalPagesAvailableCount)
+	) {
 		terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
 		terminalPrintString(listDefragFailStr, strlen(listDefragFailStr));
 		terminalPrintString(kernelList ? "Kernel" : "General", kernelList ? 6 : 7);
@@ -456,10 +483,6 @@ bool Kernel::Memory::Virtual::mapPages(void* virtualAddress, void* physicalAddre
 
 	PageRequestResult requestResult;
 	for (size_t i = 0; i < count; ++i, phyAddr += pageSize, virAddr += pageSize) {
-		// if (virAddr == 0xffffffff802a5000UL) {
-		// 	terminalPrintString("!!!!!!!!", 8);
-		// 	hangSystem();
-		// }
 		CrawlResult crawlResult((void*)virAddr);
 		if (!crawlResult.isCanonical) {
 			return false;

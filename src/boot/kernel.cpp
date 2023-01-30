@@ -92,6 +92,7 @@ extern "C" [[noreturn]] void kernelMain(
 	if (!ACPI::parse()) {
 		Kernel::panic();
 	}
+
 	// Disable PIC and setup APIC
 	if (!APIC::initialize()) {
 		Kernel::panic();

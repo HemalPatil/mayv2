@@ -76,7 +76,7 @@ namespace Kernel {
 			Used
 		};
 
-		struct PageRequestResult {
+		struct [[nodiscard]] PageRequestResult {
 			void* address = INVALID_ADDRESS;
 			size_t allocatedCount = 0;
 		};
@@ -95,8 +95,8 @@ namespace Kernel {
 			extern uint64_t buddyMasks[PHY_MEM_BUDDY_MAX_ORDER];
 			extern size_t buddySizes[PHY_MEM_BUDDY_MAX_ORDER];
 
-			bool areBuddiesOfType(void* address, size_t order, size_t count, MarkPageType type);
-			bool initialize(
+			[[nodiscard]] bool areBuddiesOfType(void* address, size_t order, size_t count, MarkPageType type);
+			[[nodiscard]] bool initialize(
 				void* usablePhyMemStart,
 				size_t kernelLowerHalfSize,
 				size_t kernelHigherHalfSize,
@@ -105,7 +105,7 @@ namespace Kernel {
 			void listMapEntries();
 			void listUsedBuddies(size_t order);
 			void markPages(void* address, size_t count, MarkPageType type);
-			PageRequestResult requestPages(size_t count, uint32_t flags);
+			[[nodiscard]] PageRequestResult requestPages(size_t count, uint32_t flags);
 		}
 
 		namespace Virtual {
@@ -120,7 +120,7 @@ namespace Kernel {
 					CrawlResult(void* virtualAddress);
 			};
 
-			struct AddressSpaceNode {
+			struct [[nodiscard]] AddressSpaceNode {
 				bool available = false;
 				void *base = INVALID_ADDRESS;
 				size_t pageCount = 0;
@@ -133,18 +133,18 @@ namespace Kernel {
 			extern AddressSpaceList kernelAddressSpaceList;
 
 			void displayCrawlPageTablesResult(void *virtualAddress);
-			bool freePages(void *virtualAddress, size_t count, uint8_t flags);
-			bool initialize(
+			[[nodiscard]] bool freePages(void *virtualAddress, size_t count, uint32_t flags);
+			[[nodiscard]] bool initialize(
 				void *usableKernelSpaceStart,
 				size_t kernelLowerHalfSize,
 				size_t phyMemBuddyPagesCount,
 				GlobalConstructor (&globalCtors)[]
 			);
-			bool isCanonical(void *address);
-			bool mapPages(void *virtualAddress, void *physicalAddress, size_t count, uint32_t flags);
-			PageRequestResult requestPages(size_t count, uint32_t flags);
+			[[nodiscard]] bool isCanonical(void *address);
+			[[nodiscard]] bool mapPages(void *virtualAddress, void *physicalAddress, size_t count, uint32_t flags);
+			[[nodiscard]] PageRequestResult requestPages(size_t count, uint32_t flags);
 			void showAddressSpaceList(bool kernelList = true);
-			bool unmapPages(void *virtualAddress, size_t count, bool freePhysicalPage);
+			[[nodiscard]] bool unmapPages(void *virtualAddress, size_t count, bool freePhysicalPage);
 		}
 
 		namespace Heap {
@@ -173,10 +173,10 @@ namespace Kernel {
 				struct Header *previous;
 			};
 
-			extern bool create(void *newHeapAddress, void **entryTable);
-			extern void free(void *address);
-			extern void listRegions(bool forwardDirection = true);
-			extern void* allocate(size_t count);
+			[[nodiscard]] bool create(void *newHeapAddress, void **entryTable);
+			void free(void *address);
+			void listRegions(bool forwardDirection = true);
+			void* allocate(size_t count);
 		}
 	}
 }
