@@ -54,14 +54,11 @@ namespace Async {
 			}
 
 			void return_value(T &&value) noexcept {
-				terminalPrintString("[rvm]", 5);
 				this->result = std::move(value);
 				this->done = true;
-				terminalPrintString("[/rvm]", 6);
 			}
 
 			T& getResult() noexcept {
-				terminalPrintString("gr& ", 4);
 				if (!this->done) {
 					terminalPrintString("\nAttempted to get result of unfinished coroutine\n", 49);
 					Kernel::panic();
@@ -125,7 +122,6 @@ namespace Async {
 			explicit Thenable(std::coroutine_handle<ThenablePromise<T>> coroutineHandle) noexcept : coroutineHandle(coroutineHandle) {}
 
 			Thenable(Thenable &&other) noexcept : coroutineHandle(other.coroutineHandle) {
-				terminalPrintString("[tmv]", 5);
 				other.coroutineHandle = nullptr;
 			}
 
@@ -147,12 +143,10 @@ namespace Async {
 			}
 
 			T& await_resume() const & noexcept {
-				terminalPrintString("ar& ", 4);
 				return this->coroutineHandle.promise().getResult();
 			}
 
 			T&& await_resume() const && noexcept {
-				terminalPrintString("ar&& ", 4);
 				return std::move(this->coroutineHandle.promise().getResult());
 			}
 

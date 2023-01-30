@@ -143,7 +143,6 @@ static Async::Thenable<void> bootApus() {
 	}
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
-	Kernel::Memory::Virtual::displayCrawlPageTablesResult((void*)0xffffffff80aca000UL);
 
 	for (const auto &cpu : APIC::cpuEntries) {
 		if (cpu.cpuId != APIC::bootCpuId) {

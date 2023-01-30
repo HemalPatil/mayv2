@@ -13,7 +13,6 @@ Async::Thenable<Storage::Buffer> FS::ISO9660::isIso9660(std::shared_ptr<Storage:
 	// Get sectors starting from sector 16 until Primary Volume Descriptor is found
 	// Try until sector 32
 	// TODO: do better error handling and get rid of arbitrary sector 32 check
-	terminalPrintString("<is>", 4);
 	for (size_t i = 16; i < 32; ++i) {
 		Storage::Buffer buffer = std::move(co_await device->read(i, 1));
 		if (buffer) {
@@ -22,7 +21,6 @@ Async::Thenable<Storage::Buffer> FS::ISO9660::isIso9660(std::shared_ptr<Storage:
 				VolumeDescriptorType::Primary == descriptor->header.type &&
 				0 == strncmp(descriptor->header.signature, FS::ISO9660::cdSignature.c_str(), FS::ISO9660::cdSignature.length())
 			) {
-	terminalPrintString("</is>", 5);
 				co_return std::move(buffer);
 			}
 		}
@@ -33,7 +31,6 @@ Async::Thenable<Storage::Buffer> FS::ISO9660::isIso9660(std::shared_ptr<Storage:
 FS::ISO9660::ISO9660(std::shared_ptr<Storage::BlockDevice> device, const Storage::Buffer &primarySectorBuffer) : BaseFS(device) {
 	PrimaryVolumeDescriptor *primarySector = (PrimaryVolumeDescriptor*) primarySectorBuffer.getData();
 
-	terminalPrintString("<cr>", 4);
 	this->lbaSize = primarySector->lbaSize;
 
 	// TODO: Assumes device block size and ISO's LBA size are same i.e. 2048
@@ -46,17 +43,14 @@ FS::ISO9660::ISO9660(std::shared_ptr<Storage::BlockDevice> device, const Storage
 
 	this->rootDirectoryLba = primarySector->rootDirectory.extentLba;
 	this->rootDirectoryExtentSize = primarySector->rootDirectory.extentSize;
-	terminalPrintString("</cr>", 5);
 }
 
 Async::Thenable<bool> FS::ISO9660::initialize() {
-	terminalPrintString("<init>", 6);
 	Storage::Buffer buffer = std::move(co_await this->device->read(this->rootDirectoryLba, this->rootDirectoryExtentSize / this->lbaSize));
 	if (!buffer) {
 		co_return false;
 	}
 	this->rootDirectoryEntries = FS::ISO9660::extentToEntries((DirectoryRecord*)buffer.getData(), this->rootDirectoryExtentSize);
-	terminalPrintString("</init>", 6);
 	co_return true;
 }
 
@@ -97,7 +91,6 @@ Async::Thenable<std::vector<FS::DirectoryEntry>> FS::ISO9660::readDirectory(cons
 	std::vector<FS::DirectoryEntry> dirEntries;
 	dirEntries.push_back(DirectoryEntry("hello", true, false, false));
 	dirEntries.push_back(DirectoryEntry("world", true, false, false));
-	terminalPrintString("[rd]", 4);
 	Storage::Buffer buffer = std::move(co_await device->read(16, 1));
 	terminalPrintString((char*)buffer.getData(), 6);
 	co_return std::move(dirEntries);

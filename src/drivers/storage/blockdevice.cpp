@@ -2,6 +2,7 @@
 #include <string.h>
 
 static const char* const bufAllocErrorStr = "Storage::Buffer::Buffer could not allocate buffer or wrong alignment";
+static const char* const freeFailStr = "Storage::Buffer::operator= failed to free buffer pages";
 
 Storage::Buffer::Buffer(std::nullptr_t) : data(nullptr), pageCount(SIZE_MAX), physicalAddress(UINT64_MAX) {}
 
@@ -50,13 +51,13 @@ Storage::Buffer::~Buffer() {
 Storage::Buffer& Storage::Buffer::operator=(std::nullptr_t) {
 	using namespace Kernel::Memory;
 
-	if (this->data && this->pageCount != SIZE_MAX) {
-		if (!Virtual::freePages(this->data, this->pageCount, RequestType::Kernel | RequestType::AllocatePhysical)) {
-			terminalPrintString("freebuff", 8);
-			Kernel::panic();
-		}
-		terminalPrintString("free eeee", 9);
-		terminalPrintHex(&this->data, 4);
+	if (
+		this->data &&
+		this->pageCount != SIZE_MAX &&
+		!Virtual::freePages(this->data, this->pageCount, RequestType::Kernel | RequestType::AllocatePhysical)
+	) {
+		terminalPrintString(freeFailStr, strlen(freeFailStr));
+		Kernel::panic();
 	}
 	this->data = nullptr;
 	this->pageCount = SIZE_MAX;
