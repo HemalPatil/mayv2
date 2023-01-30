@@ -34,7 +34,7 @@ namespace Async {
 			}
 
 			std::suspend_never final_suspend() noexcept {
-				for (auto awaitingCoroutine : this->awaitingCoroutines) {
+				for (const auto &awaitingCoroutine : this->awaitingCoroutines) {
 					if (awaitingCoroutine && !awaitingCoroutine.done()) {
 						awaitingCoroutine.resume();
 					} else {
@@ -53,12 +53,15 @@ namespace Async {
 				return this->done;
 			}
 
-			void return_value(const T &value) noexcept {
-				this->result = value;
+			void return_value(T &&value) noexcept {
+				terminalPrintString("[rvm]", 5);
+				this->result = std::move(value);
 				this->done = true;
+				terminalPrintString("[/rvm]", 6);
 			}
 
 			T& getResult() noexcept {
+				terminalPrintString("gr& ", 4);
 				if (!this->done) {
 					terminalPrintString("\nAttempted to get result of unfinished coroutine\n", 49);
 					Kernel::panic();
@@ -85,7 +88,7 @@ namespace Async {
 			}
 
 			std::suspend_never final_suspend() noexcept {
-				for (auto awaitingCoroutine : this->awaitingCoroutines) {
+				for (const auto &awaitingCoroutine : this->awaitingCoroutines) {
 					if (awaitingCoroutine && !awaitingCoroutine.done()) {
 						awaitingCoroutine.resume();
 					} else {
@@ -122,6 +125,7 @@ namespace Async {
 			explicit Thenable(std::coroutine_handle<ThenablePromise<T>> coroutineHandle) noexcept : coroutineHandle(coroutineHandle) {}
 
 			Thenable(Thenable &&other) noexcept : coroutineHandle(other.coroutineHandle) {
+				terminalPrintString("[tmv]", 5);
 				other.coroutineHandle = nullptr;
 			}
 
@@ -142,8 +146,14 @@ namespace Async {
 				this->coroutineHandle.promise().addAwaitingCoroutine(awaitingCoroutine);
 			}
 
-			T await_resume() const noexcept {
+			T& await_resume() const & noexcept {
+				terminalPrintString("ar& ", 4);
 				return this->coroutineHandle.promise().getResult();
+			}
+
+			T&& await_resume() const && noexcept {
+				terminalPrintString("ar&& ", 4);
+				return std::move(this->coroutineHandle.promise().getResult());
 			}
 
 			template<typename ThenT>

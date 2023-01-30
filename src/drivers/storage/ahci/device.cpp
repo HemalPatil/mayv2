@@ -13,7 +13,7 @@ static const char* const tfeUnsolicitedStr = "AHCI unsolicited task file error "
 static const char* const d2hUnsolicitedStr = "AHCI unsolicited register D2H FIS ";
 static const char* const atDeviceStr = "at device";
 
-std::shared_ptr<Storage::Buffer> AHCI::Device::setupRead(size_t blockCount, size_t &freeSlot) {
+Storage::Buffer AHCI::Device::setupRead(size_t blockCount, size_t &freeSlot) {
 	if (blockCount == 0) {
 		return nullptr;
 	}
@@ -47,10 +47,10 @@ std::shared_ptr<Storage::Buffer> AHCI::Device::setupRead(size_t blockCount, size
 	// Setup PRDT entries
 	// First (prdsRequired - 1) will all have byteCount set to (mib4 - 1) and will not interrupt.
 	// The last PRDT entry will have remaining byteCount and must interrupt to signal command completion.
-	std::shared_ptr<Storage::Buffer> buffer = std::make_shared<Storage::Buffer>(totalBytes, AHCI_BUFFER_ALIGN_AT);
+	Storage::Buffer buffer = Storage::Buffer(totalBytes, AHCI_BUFFER_ALIGN_AT);
 	uint64_t bufferSegmentPhyAddr;
 	for (size_t i = 0; i < prdsRequired - 1; ++i) {
-		bufferSegmentPhyAddr = buffer->getPhysicalAddress() + i * mib4;
+		bufferSegmentPhyAddr = buffer.getPhysicalAddress() + i * mib4;
 		this->commandTables[freeSlot]->prdtEntries[i].dataBase = (uint32_t)(bufferSegmentPhyAddr);
 		if (controller->hba->hostCapabilities.bit64Addressing) {
 			this->commandTables[freeSlot]->prdtEntries[i].dataBaseUpper = (uint32_t)(bufferSegmentPhyAddr >> 32);
@@ -58,7 +58,7 @@ std::shared_ptr<Storage::Buffer> AHCI::Device::setupRead(size_t blockCount, size
 		this->commandTables[freeSlot]->prdtEntries[i].byteCount = mib4 - 1;
 		this->commandTables[freeSlot]->prdtEntries[i].interruptOnCompletion = 0;
 	}
-	bufferSegmentPhyAddr = buffer->getPhysicalAddress() + (prdsRequired - 1) * mib4;
+	bufferSegmentPhyAddr = buffer.getPhysicalAddress() + (prdsRequired - 1) * mib4;
 	this->commandTables[freeSlot]->prdtEntries[prdsRequired - 1].dataBase = (uint32_t)bufferSegmentPhyAddr;
 	if (controller->hba->hostCapabilities.bit64Addressing) {
 		this->commandTables[freeSlot]->prdtEntries[prdsRequired - 1].dataBaseUpper = (uint32_t)(bufferSegmentPhyAddr >> 32);

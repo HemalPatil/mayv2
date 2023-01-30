@@ -54,9 +54,8 @@ namespace Kernel {
 
 		extern TimerType timerUsed;
 
-		bool initialize();
 		void queueEvent(std::coroutine_handle<> event);
-		[[noreturn]] void start();
+		bool start();
 		void timerLoop();
 	}
 

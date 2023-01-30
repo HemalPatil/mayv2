@@ -6,7 +6,7 @@
 #include <kernel.h>
 #include <terminal.h>
 
-uint8_t APIC::bootCpu = 0xff;
+uint8_t APIC::bootCpuId = 0xff;
 std::vector<APIC::CPUEntry> APIC::cpuEntries;
 std::vector<APIC::InterruptSourceOverrideEntry> APIC::interruptOverrideEntries;
 std::vector<APIC::IOEntry> APIC::ioEntries;
@@ -30,7 +30,7 @@ static const char* const entryHeaderStr = "Type Flags        CpuID APICID IOapic
 static const char* const mappingApicStr = "Mapping local APIC to kernel address space";
 static const char* const mappingIoApicStr = "Mapping IOAPIC to kernel address space";
 static const char* const enablingApicStr = "Enabling APIC";
-static const char* const bootCpuStr = "Boot CpuID [";
+static const char* const bootCpuStr = "Boot CPU [";
 
 bool APIC::initialize() {
 	using namespace Kernel::Memory;
@@ -90,7 +90,7 @@ bool APIC::initialize() {
 		terminalGetCursorPosition(&x, &y);
 		if (entry->type == APIC_TYPE_CPU) {
 			CPUEntry *cpuEntry = (CPUEntry*)entry;
-			cpuEntries.push_back(CPUEntry(*cpuEntry));
+			cpuEntries.push_back(*cpuEntry);
 			flags = cpuEntry->flags;
 			terminalPrintHex(&flags, sizeof(flags));
 			terminalPrintChar(' ');
@@ -105,7 +105,7 @@ bool APIC::initialize() {
 			terminalPrintChar('-');
 		} else if (entry->type == APIC_TYPE_INTERRUPT_SOURCE_OVERRIDE) {
 			InterruptSourceOverrideEntry *overrideEntry = (InterruptSourceOverrideEntry*)entry;
-			interruptOverrideEntries.push_back(InterruptSourceOverrideEntry(*overrideEntry));
+			interruptOverrideEntries.push_back(*overrideEntry);
 			flags = overrideEntry->flags;
 			terminalPrintHex(&flags, sizeof(flags));
 			terminalPrintChar(' ');
@@ -120,7 +120,7 @@ bool APIC::initialize() {
 			terminalPrintHex(&overrideEntry->globalSystemInterrupt, sizeof(overrideEntry->globalSystemInterrupt));
 		} else if (entry->type == APIC_TYPE_IO) {
 			IOEntry *ioEntry = (IOEntry*)entry;
-			ioEntries.push_back(IOEntry(*ioEntry));
+			ioEntries.push_back(*ioEntry);
 			terminalPrintChar('-');
 			terminalSetCursorPosition(30, y);
 			terminalPrintChar('-');
@@ -172,13 +172,13 @@ bool APIC::initialize() {
 		return false;
 	}
 	localApic = (LocalAPIC*)requestResult.address;
-	bootCpu = (localApic->apicId >> 24) & 0xff;
+	bootCpuId = (localApic->apicId >> 24) & 0xff;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
 	terminalPrintSpaces4();
 	terminalPrintString(bootCpuStr, strlen(bootCpuStr));
-	terminalPrintDecimal(bootCpu);
+	terminalPrintDecimal(bootCpuId);
 	terminalPrintChar(']');
 	terminalPrintChar('\n');
 

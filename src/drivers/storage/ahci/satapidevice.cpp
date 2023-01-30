@@ -9,8 +9,8 @@ AHCI::SatapiDevice::SatapiDevice(
 	this->type = Type::Satapi;
 }
 
-Async::Thenable<std::shared_ptr<Storage::Buffer>> AHCI::SatapiDevice::read(size_t startBlock, size_t blockCount) {
-	std::shared_ptr<Storage::Buffer> buffer;
+Async::Thenable<Storage::Buffer> AHCI::SatapiDevice::read(size_t startBlock, size_t blockCount) {
+	Storage::Buffer buffer;
 	size_t freeSlot = SIZE_MAX;
 	if (!(buffer = this->setupRead(blockCount, freeSlot))) {
 		co_return nullptr;
@@ -51,5 +51,5 @@ Async::Thenable<std::shared_ptr<Storage::Buffer>> AHCI::SatapiDevice::read(size_
 	if (!co_await Command(this, freeSlot)) {
 		co_return nullptr;
 	}
-	co_return buffer;
+	co_return std::move(buffer);
 }

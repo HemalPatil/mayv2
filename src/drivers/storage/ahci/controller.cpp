@@ -13,7 +13,7 @@ static const char* const probingPortsStr = "Enumerating and configuring ports";
 static const char* const configuredStr = "Ports configured";
 static const char* const portStr = "Port ";
 
-Async::Thenable<bool> AHCI::Controller::initialize(PCIe::Function &pcieFunction) {
+Async::Thenable<bool> AHCI::Controller::initialize(const PCIe::Function &pcieFunction) {
 	using namespace Kernel::Memory;
 
 	// Map the HBA control registers to kernel address space

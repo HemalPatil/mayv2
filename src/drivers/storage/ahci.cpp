@@ -17,7 +17,7 @@ static size_t msiInterrupt = SIZE_MAX;
 std::vector<AHCI::Controller> AHCI::controllers;
 
 void ahciMsiHandler() {
-	for (auto &controller : AHCI::controllers) {
+	for (const auto &controller : AHCI::controllers) {
 		uint32_t interruptStatus = controller.hba->interruptStatus;
 		if (interruptStatus) {
 			// If any port needs servicing write its value back to hba->interruptStatus
@@ -36,7 +36,7 @@ void ahciMsiHandler() {
 	APIC::acknowledgeLocalInterrupt();
 }
 
-Async::Thenable<bool> AHCI::initialize(PCIe::Function &pcieFunction) {
+Async::Thenable<bool> AHCI::initialize(const PCIe::Function &pcieFunction) {
 	terminalPrintString(initAhciStr, strlen(initAhciStr));
 	terminalPrintDecimal(AHCI::controllers.size());
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -84,5 +84,5 @@ Async::Thenable<bool> AHCI::initialize(PCIe::Function &pcieFunction) {
 	if (result) {
 		terminalPrintString(initAhciCompleteStr, strlen(initAhciCompleteStr));
 	}
-	co_return result;
+	co_return std::move(result);
 }

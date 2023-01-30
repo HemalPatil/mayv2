@@ -1,7 +1,6 @@
 #pragma once
 
 #include <drivers/filesystems.h>
-#include <tuple>
 
 namespace FS {
 	class ISO9660 : public BaseFS {
@@ -69,13 +68,17 @@ namespace FS {
 		private:
 			size_t lbaSize;
 			std::vector<DirectoryEntry> rootDirectoryEntries;
+			size_t rootDirectoryLba;
+			size_t rootDirectoryExtentSize;
 
-			std::vector<DirectoryEntry> extentToEntries(const DirectoryRecord* const extent, size_t extentSize);
+			static std::vector<DirectoryEntry> extentToEntries(const DirectoryRecord* const extent, size_t extentSize);
 
 		public:
-			ISO9660(std::shared_ptr<Storage::BlockDevice> device, std::shared_ptr<Storage::Buffer> primarySectorBuffer);
-			std::vector<DirectoryEntry> readDirectory(const std::string &name) override;
+			ISO9660(std::shared_ptr<Storage::BlockDevice> device, const Storage::Buffer &primarySectorBuffer);
 
-			static Async::Thenable<std::shared_ptr<Storage::Buffer>> isIso9660(std::shared_ptr<Storage::BlockDevice> device);
+			Async::Thenable<bool> initialize();
+			Async::Thenable<std::vector<DirectoryEntry>> readDirectory(const std::string &name) override;
+
+			static Async::Thenable<Storage::Buffer> isIso9660(std::shared_ptr<Storage::BlockDevice> device);
 	};
 }

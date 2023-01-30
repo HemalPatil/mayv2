@@ -21,7 +21,7 @@ bool initializePs2Keyboard() {
 	keyEntry.pinPolarity = 0;
 	keyEntry.triggerMode = 0;
 	keyEntry.mask = 0;
-	keyEntry.destination = APIC::bootCpu;
+	keyEntry.destination = APIC::bootCpuId;
 	writeIoRedirectionEntry(Kernel::IRQ::Keyboard, keyEntry);
 	++availableInterrupt;
 

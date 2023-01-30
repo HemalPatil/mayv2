@@ -3,6 +3,8 @@
 
 static const char* const bufAllocErrorStr = "Storage::Buffer::Buffer could not allocate buffer or wrong alignment";
 
+Storage::Buffer::Buffer(std::nullptr_t) : data(nullptr), pageCount(SIZE_MAX), physicalAddress(UINT64_MAX) {}
+
 Storage::Buffer::Buffer(size_t size, size_t alignAt) {
 	using namespace Kernel::Memory;
 
@@ -35,14 +37,42 @@ Storage::Buffer::Buffer(size_t size, size_t alignAt) {
 	this->physicalAddress = (uint64_t)crawlResult.physicalTables[0] + crawlResult.indexes[0];
 }
 
+Storage::Buffer::Buffer(Buffer &&other) : data(other.data), pageCount(other.pageCount), physicalAddress(other.physicalAddress) {
+	other.data = nullptr;
+	other.pageCount = SIZE_MAX;
+	other.physicalAddress = UINT64_MAX;
+}
+
 Storage::Buffer::~Buffer() {
+	*this = nullptr;
+}
+
+Storage::Buffer& Storage::Buffer::operator=(std::nullptr_t) {
 	using namespace Kernel::Memory;
 
 	if (this->data && this->pageCount != SIZE_MAX) {
-		Virtual::freePages(this->data, this->pageCount, RequestType::Kernel | RequestType::AllocatePhysical);
-		this->data = nullptr;
-		this->pageCount = SIZE_MAX;
+		if (!Virtual::freePages(this->data, this->pageCount, RequestType::Kernel | RequestType::AllocatePhysical)) {
+			terminalPrintString("freebuff", 8);
+			Kernel::panic();
+		}
+		terminalPrintString("free eeee", 9);
+		terminalPrintHex(&this->data, 4);
 	}
+	this->data = nullptr;
+	this->pageCount = SIZE_MAX;
+	this->physicalAddress = UINT64_MAX;
+	return *this;
+}
+
+Storage::Buffer& Storage::Buffer::operator=(Buffer &&other) {
+	*this = nullptr;
+	this->data = other.data;
+	this->pageCount = other.pageCount;
+	this->physicalAddress = other.physicalAddress;
+	other.data = nullptr;
+	other.pageCount = SIZE_MAX;
+	other.physicalAddress = UINT64_MAX;
+	return *this;
 }
 
 void* Storage::Buffer::getData() const {

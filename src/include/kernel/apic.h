@@ -87,7 +87,7 @@ namespace APIC {
 		} __attribute__((packed));
 	};
 
-	extern uint8_t bootCpu;
+	extern uint8_t bootCpuId;
 	extern std::vector<CPUEntry> cpuEntries;
 	extern std::vector<InterruptSourceOverrideEntry> interruptOverrideEntries;
 	extern std::vector<IOEntry> ioEntries;

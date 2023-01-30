@@ -574,7 +574,7 @@ namespace AHCI {
 
 	extern std::vector<Controller> controllers;
 
-	extern Async::Thenable<bool> initialize(PCIe::Function &pcieFunction);
+	extern Async::Thenable<bool> initialize(const PCIe::Function &pcieFunction);
 }
 
 extern "C" void ahciMsiHandler();

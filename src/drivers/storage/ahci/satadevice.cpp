@@ -8,8 +8,8 @@ AHCI::SataDevice::SataDevice(
 	this->type = Type::Sata;
 }
 
-Async::Thenable<std::shared_ptr<Storage::Buffer>> AHCI::SataDevice::read(size_t startBlock, size_t blockCount) {
-	std::shared_ptr<Storage::Buffer> buffer;
+Async::Thenable<Storage::Buffer> AHCI::SataDevice::read(size_t startBlock, size_t blockCount) {
+	Storage::Buffer buffer;
 	size_t freeSlot = SIZE_MAX;
 	if (!(buffer = this->setupRead(blockCount, freeSlot))) {
 		co_return nullptr;
@@ -33,5 +33,5 @@ Async::Thenable<std::shared_ptr<Storage::Buffer>> AHCI::SataDevice::read(size_t 
 	if (!co_await Command(this, freeSlot)) {
 		co_return nullptr;
 	}
-	co_return buffer;
+	co_return std::move(buffer);
 }

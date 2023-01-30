@@ -21,12 +21,6 @@ static void enableHpet();
 
 Kernel::Scheduler::TimerType Kernel::Scheduler::timerUsed = Kernel::Scheduler::TimerType::None;
 
-void Kernel::Scheduler::start() {
-	while (true) {
-		haltSystem();
-	}
-}
-
 void Kernel::Scheduler::timerLoop() {
 	// Dispatch events synchronously until the queue has dispatchable events and < SCHEDULER_EVENT_DISPATCH_LIMIT in 1 loop
 	size_t dispatchedEventsCount = 0;
@@ -46,7 +40,7 @@ void Kernel::Scheduler::queueEvent(std::coroutine_handle<> event) {
 	eventQueue.push(event);
 }
 
-bool Kernel::Scheduler::initialize() {
+bool Kernel::Scheduler::start() {
 	terminalPrintString(initSchedulerStr, strlen(initSchedulerStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
@@ -108,7 +102,7 @@ static void enableHpet() {
 	timerEntry.pinPolarity = 0;
 	timerEntry.triggerMode = 0;
 	timerEntry.mask = 0;
-	timerEntry.destination = APIC::bootCpu;
+	timerEntry.destination = APIC::bootCpuId;
 	APIC::writeIoRedirectionEntry(Kernel::IRQ::Timer, timerEntry);
 	++availableInterrupt;
 	// HPET registers must be written at 8-byte boundaries hence setting the bit fields directly is not possible

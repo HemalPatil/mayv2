@@ -51,7 +51,7 @@ class AHCI::Device : public Storage::BlockDevice {
 		Controller *controller;
 		Type type;
 
-		std::shared_ptr<Storage::Buffer> setupRead(size_t blockCount, size_t &freeSlot);
+		Storage::Buffer setupRead(size_t blockCount, size_t &freeSlot);
 
 	public:
 		Device(Controller *controller, size_t portNumber);

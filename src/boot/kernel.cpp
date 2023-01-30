@@ -18,73 +18,23 @@
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
 static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
 static const char* const creatingFsStr = "Creating file systems";
-static const char* const creatingFsDoneStr = "File systems created (";
+static const char* const creatingFsDoneStr = "File systems created [";
 static const char* const checkingAhciStr = "Checking AHCI controllers";
 static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
 static const char* const isoFoundStr = "ISO filesystem found at ";
 static const char* const globalCtorStr = "Running global constructors";
 static const char* const enabledInterruptsStr = "Enabled interrupts\n\n";
+static const char* const apuBootStr = "Loading auxiliary CPU bootstrap binary";
+static const char* const initApusStr = "Initializing CPUs";
+static const char* const cpuStr = "CPU ";
+static const char* const noFsStr = "Expected to find at least 1 filesystem\n";
+
+static Async::Thenable<void> startPcieDrivers();
+static Async::Thenable<void> createFileSystems();
+static Async::Thenable<void> bootApus();
 
 bool Kernel::debug = false;
 InfoTable *Kernel::infoTable;
-
-Async::Thenable<void> startPcieDrivers() {
-	for (auto &function : PCIe::functions) {
-		Async::Thenable<bool> (*initializer)(PCIe::Function &pcieFunction) = nullptr;
-		if (
-			function.configurationSpace->mainClass == PCIe::Class::Storage &&
-			function.configurationSpace->subClass == PCIe::Subclass::Sata &&
-			function.configurationSpace->progIf == PCIe::ProgramType::Ahci
-		) {
-			initializer = &AHCI::initialize;
-		}
-		if (initializer && !(co_await (*initializer)(function))) {
-			Kernel::panic();
-		}
-	}
-	co_return;
-}
-
-Async::Thenable<void> createFileSystems() {
-	terminalPrintString(creatingFsStr, strlen(creatingFsStr));
-	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	terminalPrintChar('\n');
-
-	// Create filesystems from AHCI devices
-	terminalPrintSpaces4();
-	terminalPrintString(checkingAhciStr, strlen(checkingAhciStr));
-	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	terminalPrintChar('\n');
-	for (size_t controllerCount = 0; auto &controller : AHCI::controllers) {
-		for (const auto &device : controller.getDevices()) {
-			// Try with ISO9660 for SATAPI devices first because that is the most likely FS
-			if (AHCI::Device::Type::Satapi == device->getType()) {
-				auto primaryDescriptor = co_await FS::ISO9660::isIso9660(device);
-				if (primaryDescriptor) {
-					FS::filesystems.push_back(std::make_shared<FS::ISO9660>(device, primaryDescriptor));
-					terminalPrintSpaces4();
-					terminalPrintSpaces4();
-					terminalPrintString(isoFoundStr, strlen(isoFoundStr));
-					terminalPrintDecimal(controllerCount);
-					terminalPrintChar(':');
-					terminalPrintDecimal(device->getPortNumber());
-					terminalPrintChar('\n');
-				}
-			}
-		}
-		++controllerCount;
-	}
-	terminalPrintSpaces4();
-	terminalPrintString(checkingAhciDoneStr, strlen(checkingAhciDoneStr));
-
-	// Create filesystems from other device types here when appropriate drivers are added
-
-	terminalPrintString(creatingFsDoneStr, strlen(creatingFsDoneStr));
-	terminalPrintDecimal(FS::filesystems.size());
-	terminalPrintChar(')');
-	terminalPrintChar('\n');
-	co_return;
-}
 
 extern "C" [[noreturn]] void kernelMain(
 	InfoTable *infoTableAddress,
@@ -149,7 +99,7 @@ extern "C" [[noreturn]] void kernelMain(
 
 	initializePs2Keyboard();
 
-	if (!Kernel::Scheduler::initialize()) {
+	if (!Kernel::Scheduler::start()) {
 		Kernel::panic();
 	}
 
@@ -162,10 +112,116 @@ extern "C" [[noreturn]] void kernelMain(
 	}
 
 	// Start drivers for PCIe devices
-	auto initResults = startPcieDrivers().then(&createFileSystems);
+	auto initResults = startPcieDrivers().then(createFileSystems).then(bootApus);
 
 	// Wait perpetually and let the scheduler and interrupts do their thing
-	Kernel::Scheduler::start();
+	while (true) {
+		Kernel::haltSystem();
+	}
+}
+
+static Async::Thenable<void> bootApus() {
+	if (APIC::cpuEntries.size() == 1) {
+		co_return;
+	}
+
+	// Search for APU stage1 boot binary in all the created filesystems
+	terminalPrintString(initApusStr, strlen(initApusStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
+	terminalPrintSpaces4();
+	terminalPrintString(apuBootStr, strlen(apuBootStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	for (const auto &fs : FS::filesystems) {
+		// const auto dirs = co_await fs->readDirectory("/");
+		// for (const auto &dir : dirs) {
+		for (const auto &dir : co_await fs->readDirectory("/")) {
+			terminalPrintString(dir.name.c_str(), dir.name.length());
+			terminalPrintChar('\n');
+		}
+	}
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+	Kernel::Memory::Virtual::displayCrawlPageTablesResult((void*)0xffffffff80aca000UL);
+
+	for (const auto &cpu : APIC::cpuEntries) {
+		if (cpu.cpuId != APIC::bootCpuId) {
+			terminalPrintSpaces4();
+			terminalPrintString(cpuStr, strlen(cpuStr));
+			terminalPrintDecimal(cpu.cpuId);
+			terminalPrintChar(':');
+			terminalPrintChar('\n');
+		}
+	}
+
+	co_return;
+}
+
+static Async::Thenable<void> startPcieDrivers() {
+	for (const auto &function : PCIe::functions) {
+		Async::Thenable<bool> (*initializer)(const PCIe::Function &pcieFunction) = nullptr;
+		if (
+			function.configurationSpace->mainClass == PCIe::Class::Storage &&
+			function.configurationSpace->subClass == PCIe::Subclass::Sata &&
+			function.configurationSpace->progIf == PCIe::ProgramType::Ahci
+		) {
+			initializer = &AHCI::initialize;
+		}
+		if (initializer && !(co_await (*initializer)(function))) {
+			Kernel::panic();
+		}
+	}
+	co_return;
+}
+
+static Async::Thenable<void> createFileSystems() {
+	terminalPrintString(creatingFsStr, strlen(creatingFsStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
+
+	// Create filesystems from AHCI devices
+	terminalPrintSpaces4();
+	terminalPrintString(checkingAhciStr, strlen(checkingAhciStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	terminalPrintChar('\n');
+	for (size_t controllerCount = 0; const auto &controller : AHCI::controllers) {
+		for (const auto &device : controller.getDevices()) {
+			// Try with ISO9660 for SATAPI devices first because that is the most likely FS
+			if (AHCI::Device::Type::Satapi == device->getType()) {
+				auto primaryDescriptor = std::move(co_await FS::ISO9660::isIso9660(device));
+				if (primaryDescriptor) {
+					std::shared_ptr<FS::ISO9660> iso = std::make_shared<FS::ISO9660>(device, primaryDescriptor);
+					if (co_await iso->initialize()) {
+						FS::filesystems.push_back(iso);
+						terminalPrintSpaces4();
+						terminalPrintSpaces4();
+						terminalPrintString(isoFoundStr, strlen(isoFoundStr));
+						terminalPrintDecimal(controllerCount);
+						terminalPrintChar(':');
+						terminalPrintDecimal(device->getPortNumber());
+						terminalPrintChar('\n');
+					}
+				}
+			}
+		}
+		++controllerCount;
+	}
+	terminalPrintSpaces4();
+	terminalPrintString(checkingAhciDoneStr, strlen(checkingAhciDoneStr));
+
+	// Create filesystems from other device types here when appropriate drivers are added
+
+	if (0 == FS::filesystems.size()) {
+		terminalPrintString(noFsStr, strlen(noFsStr));
+		Kernel::panic();
+	}
+
+	terminalPrintString(creatingFsDoneStr, strlen(creatingFsDoneStr));
+	terminalPrintDecimal(FS::filesystems.size());
+	terminalPrintChar(']');
+	terminalPrintChar('\n');
+	terminalPrintChar('\n');
+	co_return;
 }
 
 void Kernel::panic() {
