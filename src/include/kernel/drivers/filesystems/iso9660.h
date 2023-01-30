@@ -1,6 +1,7 @@
 #pragma once
 
 #include <drivers/filesystems.h>
+#include <map>
 
 namespace FS {
 	class ISO9660 : public BaseFS {
@@ -67,9 +68,9 @@ namespace FS {
 
 		private:
 			size_t lbaSize;
-			std::vector<DirectoryEntry> rootDirEntries;
 			size_t rootDirLba;
 			size_t rootDirExtentSize;
+			std::map<std::string, std::vector<DirectoryEntry>> cachedDirectories;
 
 			static std::vector<DirectoryEntry> extentToEntries(
 				const DirectoryRecord* const extent,

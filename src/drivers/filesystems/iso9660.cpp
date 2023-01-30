@@ -52,13 +52,16 @@ Async::Thenable<bool> FS::ISO9660::initialize() {
 	if (!buffer) {
 		co_return false;
 	}
-	this->rootDirEntries = FS::ISO9660::extentToEntries(
-		(DirectoryRecord*)buffer.getData(),
-		this->rootDirLba,
-		this->rootDirExtentSize,
-		this->rootDirLba,
-		this->rootDirExtentSize
-	);
+	this->cachedDirectories.insert({
+		"/",
+		FS::ISO9660::extentToEntries(
+			(DirectoryRecord*)buffer.getData(),
+			this->rootDirLba,
+			this->rootDirExtentSize,
+			this->rootDirLba,
+			this->rootDirExtentSize
+		)
+	});
 	co_return true;
 }
 
@@ -96,8 +99,8 @@ std::vector<FS::DirectoryEntry> FS::ISO9660::extentToEntries(
 }
 
 Async::Thenable<std::vector<FS::DirectoryEntry>> FS::ISO9660::readDirectory(const std::string &absolutePath) {
-	if (absolutePath == "/") {
-		co_return std::vector<DirectoryEntry>(this->rootDirEntries);
+	if (this->cachedDirectories.count("/") == 1) {
+		co_return std::vector<FS::DirectoryEntry>(this->cachedDirectories.at("/"));
 	}
 	Kernel::panic();
 	std::vector<FS::DirectoryEntry> dirEntries;

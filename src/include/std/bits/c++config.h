@@ -36,7 +36,7 @@
 #define _GLIBCXX_RELEASE 11
 
 // The datestamp of the C++ library in compressed ISO date format.
-#define __GLIBCXX__ 20220324
+#define __GLIBCXX__ 20220421
 
 // Macros for various attributes.
 //   _GLIBCXX_PURE
@@ -1496,7 +1496,7 @@ namespace std
 
 /* Define to the sub-directory in which libtool stores uninstalled libraries.
    */
-#define LT_OBJDIR ".libs/"
+#define _GLIBCXX_LT_OBJDIR ".libs/"
 
 /* Name of package */
 /* #undef _GLIBCXX_PACKAGE */
@@ -1535,7 +1535,7 @@ namespace std
 /* #undef SIZEOF_VOID_P */
 
 /* Define to 1 if you have the ANSI C header files. */
-#define STDC_HEADERS 1
+#define _GLIBCXX_STDC_HEADERS 1
 
 /* Version number of package */
 /* #undef _GLIBCXX_VERSION */
@@ -1604,7 +1604,7 @@ namespace std
 // #define _GLIBCXX_HAS_GTHREADS 1
 
 /* Define to 1 if a full hosted library is built, or 0 if freestanding. */
-// #define _GLIBCXX_HOSTED 1
+#define _GLIBCXX_HOSTED 0
 
 /* Define if compatibility should be provided for alternative 128-bit long
    double formats. */
