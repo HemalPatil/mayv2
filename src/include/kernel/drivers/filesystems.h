@@ -22,7 +22,7 @@ namespace FS {
 		public:
 			BaseFS(std::shared_ptr<Storage::BlockDevice> blockDevice) : device(blockDevice) {}
 
-			// Reads directory at given absolute path
+			// Reads directory at given absolute path ending in '/'
 			// Returns empty vector if given path cannot be resolved to a valid directory
 			virtual Async::Thenable<std::vector<DirectoryEntry>> readDirectory(const std::string &absolutePath) = 0;
 	};

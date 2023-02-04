@@ -135,7 +135,7 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	for (const auto &fs : FS::filesystems) {
 		terminalPrintChar('\n');
-		for (const auto &dir : co_await fs->readDirectory("/")) {
+		for (const auto &dir : co_await fs->readDirectory("/BOOT.CAT/")) {
 			terminalPrintString(dir.name.c_str(), dir.name.length());
 			terminalPrintChar(' ');
 			terminalPrintDecimal(dir.isFile);

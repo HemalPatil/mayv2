@@ -101,10 +101,11 @@ std::vector<FS::DirectoryEntry> FS::ISO9660::extentToEntries(
 
 Async::Thenable<std::vector<FS::DirectoryEntry>> FS::ISO9660::readDirectory(const std::string &absolutePath) {
 	if (1 == this->cachedDirectoryEntries.count(absolutePath)) {
-		co_return std::vector<FS::DirectoryEntry>(this->cachedDirectoryEntries.at(absolutePath));
+		co_return std::vector<DirectoryEntry>(this->cachedDirectoryEntries.at(absolutePath));
 	}
 	std::vector<std::string> pathParts = splitAbsolutePath(absolutePath, true);
 	std::string pathSoFar = "/";
+	std::vector<DirectoryEntry> empty;
 	for (const auto &pathPart : pathParts) {
 		// Check if pathPart exists in the cached entries for pathSoFar
 		const std::vector<DirectoryEntry> &parentEntries = this->cachedDirectoryEntries.at(pathSoFar);
@@ -134,13 +135,13 @@ Async::Thenable<std::vector<FS::DirectoryEntry>> FS::ISO9660::readDirectory(cons
 						)
 					});
 				} else {
-					co_return std::vector<DirectoryEntry>();
+					co_return std::move(empty);
 				}
 			}
 			pathSoFar += pathPart + '/';
 		} else {
-			co_return std::vector<DirectoryEntry>();
+			co_return std::move(empty);
 		}
 	}
-	co_return std::vector<FS::DirectoryEntry>(this->cachedDirectoryEntries.at(absolutePath));
+	co_return std::vector<DirectoryEntry>(this->cachedDirectoryEntries.at(absolutePath));
 }
