@@ -70,7 +70,7 @@ namespace FS {
 			size_t lbaSize;
 			size_t rootDirLba;
 			size_t rootDirExtentSize;
-			std::map<std::string, std::vector<DirectoryEntry>> cachedDirectories;
+			std::map<std::string, std::vector<DirectoryEntry>> cachedDirectoryEntries;
 
 			static std::vector<DirectoryEntry> extentToEntries(
 				const DirectoryRecord* const extent,

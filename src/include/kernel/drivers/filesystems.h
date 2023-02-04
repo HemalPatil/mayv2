@@ -29,5 +29,5 @@ namespace FS {
 
 	extern std::vector<std::shared_ptr<BaseFS>> filesystems;
 
-	std::vector<std::string> splitAbsolutePath(const std::string &absolutePath);
+	std::vector<std::string> splitAbsolutePath(const std::string &absolutePath, bool isDir = false);
 }

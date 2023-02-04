@@ -12,9 +12,10 @@ const std::string FS::ISO9660::cdSignature = "CD001";
 Async::Thenable<Storage::Buffer> FS::ISO9660::isIso9660(std::shared_ptr<Storage::BlockDevice> device) {
 	// Get sectors starting from sector 16 until Primary Volume Descriptor is found
 	// Try until sector 32
-	// TODO: do better error handling and get rid of arbitrary sector 32 check
+	// TODO: get rid of arbitrary sector 32 check
 	for (size_t i = 16; i < 32; ++i) {
 		Storage::Buffer buffer = std::move(co_await device->read(i, 1));
+		// TODO: do better error handling
 		if (buffer) {
 			PrimaryVolumeDescriptor *descriptor = (PrimaryVolumeDescriptor*) buffer.getData();
 			if (
@@ -52,7 +53,7 @@ Async::Thenable<bool> FS::ISO9660::initialize() {
 	if (!buffer) {
 		co_return false;
 	}
-	this->cachedDirectories.insert({
+	this->cachedDirectoryEntries.insert({
 		"/",
 		FS::ISO9660::extentToEntries(
 			(DirectoryRecord*)buffer.getData(),
@@ -99,10 +100,47 @@ std::vector<FS::DirectoryEntry> FS::ISO9660::extentToEntries(
 }
 
 Async::Thenable<std::vector<FS::DirectoryEntry>> FS::ISO9660::readDirectory(const std::string &absolutePath) {
-	if (this->cachedDirectories.count("/") == 1) {
-		co_return std::vector<FS::DirectoryEntry>(this->cachedDirectories.at("/"));
+	if (1 == this->cachedDirectoryEntries.count(absolutePath)) {
+		co_return std::vector<FS::DirectoryEntry>(this->cachedDirectoryEntries.at(absolutePath));
 	}
-	Kernel::panic();
-	std::vector<FS::DirectoryEntry> dirEntries;
-	co_return std::move(dirEntries);
+	std::vector<std::string> pathParts = splitAbsolutePath(absolutePath, true);
+	std::string pathSoFar = "/";
+	for (const auto &pathPart : pathParts) {
+		// Check if pathPart exists in the cached entries for pathSoFar
+		const std::vector<DirectoryEntry> &parentEntries = this->cachedDirectoryEntries.at(pathSoFar);
+		const DirectoryEntry &parentEntry = parentEntries.at(0);
+		const DirectoryEntry* entry = nullptr;
+		for (const auto &dirEntry : parentEntries) {
+			if (dirEntry.isDir && dirEntry.name == pathPart) {
+				entry = &dirEntry;
+				break;
+			}
+		}
+
+		if (entry) {
+			if (1 != this->cachedDirectoryEntries.count(pathSoFar + pathPart + '/')) {
+				// Get the entries for pathSoFar
+				Storage::Buffer buffer = std::move(co_await this->device->read(entry->lba, entry->size / this->lbaSize));
+				// TODO: do better error handling
+				if (buffer) {
+					this->cachedDirectoryEntries.insert({
+						pathSoFar + pathPart + '/',
+						FS::ISO9660::extentToEntries(
+							(DirectoryRecord*)buffer.getData(),
+							entry->lba,
+							entry->size,
+							parentEntry.lba,
+							parentEntry.size
+						)
+					});
+				} else {
+					co_return std::vector<DirectoryEntry>();
+				}
+			}
+			pathSoFar += pathPart + '/';
+		} else {
+			co_return std::vector<DirectoryEntry>();
+		}
+	}
+	co_return std::vector<FS::DirectoryEntry>(this->cachedDirectoryEntries.at(absolutePath));
 }
