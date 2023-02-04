@@ -66,8 +66,6 @@
 #ifndef _STL_RELOPS_H
 #define _STL_RELOPS_H 1
 
-#include <bits/c++config.h>
-
 namespace std _GLIBCXX_VISIBILITY(default)
 {
 _GLIBCXX_BEGIN_NAMESPACE_VERSION
