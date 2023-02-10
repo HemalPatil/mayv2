@@ -113,7 +113,10 @@ extern "C" [[noreturn]] void kernelMain(
 	}
 
 	// Start drivers for PCIe devices
-	auto initResults = startPcieDrivers().then(createFileSystems).then(bootApus);
+	auto initResults =
+		startPcieDrivers()
+			.then(createFileSystems)
+			.then(bootApus);
 
 	// Wait perpetually and let the scheduler and interrupts do their thing
 	while (true) {
