@@ -8,6 +8,7 @@ floatSaveRegion:
 section .text
 	global enableSse4
 enableSse4:
+	push rbx	; Preserve rbx to stay compatible with System V ABI
 	mov eax, 1
 	cpuid
 	; Check CLFLUSH
@@ -56,6 +57,7 @@ enableSse4:
 	mov rax, cr4
 	or ax, 3 << 9		; set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
 	mov cr4, rax
+	pop rbx
 	mov rax, 1
 	ret
 noSse4:

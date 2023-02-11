@@ -88,7 +88,6 @@ extern "C" [[noreturn]] void kernelMain(
 	)) {
 		Kernel::panic();
 	}
-	Kernel::hangSystem();
 
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();
@@ -97,6 +96,7 @@ extern "C" [[noreturn]] void kernelMain(
 	if (!ACPI::parse()) {
 		Kernel::panic();
 	}
+	Kernel::hangSystem();
 
 	// Disable PIC and setup APIC
 	if (!APIC::initialize()) {
