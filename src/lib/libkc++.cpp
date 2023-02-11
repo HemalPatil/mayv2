@@ -49,9 +49,9 @@ int strncmp(const char *str1, const char *str2, size_t count) {
 	return 0;
 }
 
-int memcmp (const void *str1, const void *str2, size_t count) {
-	const unsigned char *s1 = (const unsigned char*)str1;
-	const unsigned char *s2 = (const unsigned char*)str2;
+int memcmp (const void *addr1, const void *addr2, size_t count) {
+	const unsigned char *s1 = (const unsigned char*)addr1;
+	const unsigned char *s2 = (const unsigned char*)addr2;
 
 	while (count-- > 0) {
 		if (*s1++ != *s2++) {
@@ -61,68 +61,40 @@ int memcmp (const void *str1, const void *str2, size_t count) {
 	return 0;
 }
 
-void* memcpy(void *dest, const void *src, size_t n) {
+void* memcpy(void *dest, const void *src, size_t count) {
 	// Copies from front to back
-	// Copy in blocks of 8 because it's most efficient in 64-bit mode
-	// Copy the rest in bytes
 	// Need not worry about overlapping regions
-	// TODO: probably can be improved by accessing at 8 byte boundaries first
-	// but it becomes really messy really fast
-	if (dest == src) {
-		return dest;
-	}
-	uint64_t *d8 = (uint64_t*)dest;
-	uint64_t *s8 = (uint64_t*)src;
-	size_t iters = n / sizeof(uint64_t);
-	size_t remaining = n - iters * sizeof(uint64_t);
-	for (size_t i = 0; i < iters; ++i, ++d8, ++s8) {
-		*d8 = *s8;
-	}
-	uint8_t *d = (uint8_t *)d8;
-	uint8_t *s = (uint8_t *)s8;
-	for (size_t i = 0; i < remaining; ++i, ++d, ++s) {
-		*d = *s;
+	char *d = (char*)dest;
+	const char *s = (char*)src;
+	while (count--) {
+		*d++ = *s++;
 	}
 	return dest;
 }
 
-void* memmove(void* dest, const void* src, size_t count) {
-	if (
-		(uintptr_t)src < (uintptr_t)dest &&
-		(uintptr_t)src + count > (uintptr_t)dest
-	) {
-		// Copy from back to front
-		uint8_t *dest8 = (uint8_t*) dest;
-		uint8_t *src8 = (uint8_t*) src;
-		for (int64_t i = count - 1; i >= 0; --i) {
-			dest8[i] = src8[i];
+void* memmove(void *dest, const void *src, size_t count) {
+	char *d = (char*)dest;
+	const char *s = (char*)src;
+	if (d < s) {
+		// Copy from front to back
+		while (count--) {
+			*d++ = *s++;
 		}
 	} else {
-		// Copy from front to back
-		memcpy(dest, src, count);
+		// Copy from back to front
+		const char *lasts = s + (count - 1);
+		char *lastd = d + (count - 1);
+		while (count--) {
+			*lastd-- = *lasts--;
+		}
 	}
 	return dest;
 }
 
-void* memset(void *address, int data, size_t length) {
-	// Set in blocks of 8 bytes first because it's most efficient in 64-bit mode
-	// Set the rest in bytes
-	// TODO: probably can be improved by copying at 8 byte boundaries first
-	uint64_t *a8 = (uint64_t*)address;
-	uint64_t d8 = 0;
-	uint8_t d = data & 0xff;
-	for (size_t i = 0; i < 8; ++i) {
-		d8 <<= 8;
-		d8 |= d;
-	}
-	size_t iters = length / sizeof(uint64_t);
-	size_t remaining = length - iters * sizeof(uint64_t);
-	for (size_t i = 0; i < iters; ++i, ++a8) {
-		*a8 = d8;
-	}
-	uint8_t *a = (uint8_t *)a8;
-	for (size_t i = 0; i < remaining; ++i, ++a) {
-		*a = d;
+void* memset(void *address, int value, size_t count) {
+	unsigned char *ptr = (unsigned char*)address;
+	while (count-- > 0) {
+		*ptr++ = value;
 	}
 	return address;
 }
