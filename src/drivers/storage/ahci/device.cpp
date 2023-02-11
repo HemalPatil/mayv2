@@ -5,7 +5,9 @@
 #include <kernel.h>
 #include <terminal.h>
 
-static const char* const multiSetStr = "\nTried setting AHCI::Device::Command result multiple times\n";
+static const char* const commandNamespaceStr = "AHCI::Device::Command";
+static const char* const multiSetStr = " tried setting result multiple times\n";
+static const char* const noResultStr = " result not available\n";
 static const char* const initStr = "Initializing";
 static const char* const identStr = "Identifying";
 static const char* const tfeStr = "AHCI task file error caused by commands ";
@@ -341,14 +343,17 @@ void AHCI::Device::Command::await_suspend(std::coroutine_handle<> awaitingCorout
 }
 
 bool AHCI::Device::Command::await_resume() const noexcept {
-	if (this->result) {
-		return *this->result;
+	if (!this->result) {
+		terminalPrintString(commandNamespaceStr, strlen(commandNamespaceStr));
+		terminalPrintString(noResultStr, strlen(noResultStr));
+		Kernel::panic();
 	}
-	return false;
+	return *this->result;
 }
 
 void AHCI::Device::Command::setResult(bool result) noexcept {
 	if (this->result) {
+		terminalPrintString(commandNamespaceStr, strlen(commandNamespaceStr));
 		terminalPrintString(multiSetStr, strlen(multiSetStr));
 		Kernel::panic();
 	}

@@ -113,10 +113,15 @@ extern "C" [[noreturn]] void kernelMain(
 	}
 
 	// Start drivers for PCIe devices
+	// Ignore the compiler warning since it is required to keep the variable in scope
+	// and let all the async tasks finish
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
 	auto initResults =
 		startPcieDrivers()
 			.then(createFileSystems)
 			.then(bootApus);
+	#pragma GCC diagnostic pop
 
 	// Wait perpetually and let the scheduler and interrupts do their thing
 	while (true) {
