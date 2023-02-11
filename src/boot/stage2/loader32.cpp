@@ -43,7 +43,12 @@ extern "C" void printHex(const void *const, const size_t);
 extern "C" void swap(void *const a, void *const b, const size_t);
 extern "C" void memset(void *const dest, const uint8_t, const size_t);
 extern "C" void memcpy(const void *const src, void const *dest, const size_t count);
-extern "C" void setup16BitSegments(const InfoTable* const table, const void *const loadModule, const DAP* const dap, const uint16_t);
+extern "C" void setup16BitSegments(
+	const InfoTable* const table,
+	const void *const loadModule,
+	const DAP* const dap,
+	const uint16_t
+);
 extern "C" void loadKernel64ElfSectors();
 extern "C" void jumpToKernel64(
 	const PML4E* const pml4t,
@@ -214,7 +219,12 @@ void allocatePagingEntry(PML4E *entry, uint32_t address) {
 	entry->physicalAddress = address >> pageSizeShift;
 }
 
-extern "C" int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTableAddress, DAP *const dapKernel64, const void *const loadModuleAddress) {
+extern "C" int loader32Main(
+	uint32_t loader32VirtualMemSize,
+	InfoTable *infoTableAddress,
+	DAP *const dapKernel64,
+	const void *const loadModuleAddress
+) {
 	infoTable = infoTableAddress;
 	clearScreen();
 	printString("Loader32 virtual memory size = 0x");
@@ -265,7 +275,8 @@ extern "C" int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTabl
 		printString("\nKernel executable corrupted (header entry size mismatch)! Cannot boot!");
 		return 1;
 	}
-	ELF64ProgramHeader *programHeader = (ELF64ProgramHeader *)((uint32_t)elfHeader + (uint32_t)elfHeader->headerTablePosition);
+	ELF64ProgramHeader *programHeader =
+		(ELF64ProgramHeader *)((uint32_t)elfHeader + (uint32_t)elfHeader->headerTablePosition);
 	for (uint16_t i = 0; i < elfHeader->headerEntryCount; ++i) {
 		if (programHeader[i].segmentType != ELF_SEGMENT_TYPE_LOAD) {
 			continue;
@@ -325,13 +336,21 @@ extern "C" int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTabl
 	for (uint16_t i = 1; i < iters; ++i) {
 		memset((void*)L32K64_SCRATCH_BASE, 0, L32K64_SCRATCH_LENGTH);
 		loadKernel64ElfSectors();
-		memcpy((void*)L32K64_SCRATCH_BASE, (void *)(kernelElfBase + i * L32K64_SCRATCH_LENGTH), L32K64_SCRATCH_LENGTH);
+		memcpy(
+			(void*)L32K64_SCRATCH_BASE,
+			(void *)(kernelElfBase + i * L32K64_SCRATCH_LENGTH),
+			L32K64_SCRATCH_LENGTH
+		);
 		dapKernel64->firstSector += sectors32;
 	}
 	// Load remaining sectors
 	dapKernel64->sectorCount = kernelSectorCount % sectors32;
 	loadKernel64ElfSectors();
-	memcpy((void *)L32K64_SCRATCH_BASE, (void *)(kernelElfBase + iters * L32K64_SCRATCH_LENGTH), dapKernel64->sectorCount * ISO_SECTOR_SIZE);
+	memcpy(
+		(void *)L32K64_SCRATCH_BASE,
+		(void *)(kernelElfBase + iters * L32K64_SCRATCH_LENGTH),
+		dapKernel64->sectorCount * ISO_SECTOR_SIZE
+	);
 
 	printString("Kernel executable loaded.\n");
 
@@ -365,7 +384,11 @@ extern "C" int loader32Main(uint32_t loader32VirtualMemSize, InfoTable *infoTabl
 		printString("\n");
 
 		memset((void *)memorySeekp, 0, sizeInMemory);
-		memcpy((void *)(kernelElfBase + (uint32_t)programHeader[i].fileOffset), (void *)memorySeekp, (uint32_t)programHeader[i].segmentSizeInFile);
+		memcpy(
+			(void *)(kernelElfBase + (uint32_t)programHeader[i].fileOffset),
+			(void *)memorySeekp,
+			(uint32_t)programHeader[i].segmentSizeInFile
+		);
 
 		// Kernel is linked at higher half addresses.
 		// Right now it is last 2GiB of 64-bit address space, may change if linker script is changed

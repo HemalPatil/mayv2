@@ -28,6 +28,7 @@ static const char* const apuBootStr = "Loading auxiliary CPU bootstrap binary";
 static const char* const initApusStr = "Initializing CPUs";
 static const char* const cpuStr = "CPU ";
 static const char* const noFsStr = "Expected to find at least 1 filesystem\n";
+static const char* const sse4Str = "SSE4 enabled\n\n";
 
 static Async::Thenable<void> startPcieDrivers();
 static Async::Thenable<void> createFileSystems();
@@ -45,6 +46,14 @@ extern "C" [[noreturn]] void kernelMain(
 	// Be careful of nullptr references until the IVTs in
 	// identity mapped page 0 of virtual address space
 	// are moved somewhere else during interrupt initialization
+
+	// Enable SSE4 first so the rest of the kernel optimizations
+	// can make use of it, otherwise system crashes
+	if (!enableSse4()) {
+		Kernel::panic();
+	}
+	terminalPrintString(sse4Str, strlen(sse4Str));
+
 	Kernel::infoTable = infoTableAddress;
 	Kernel::GlobalConstructor globalCtors[Kernel::infoTable->globalCtorsCount];
 	memcpy(
@@ -58,11 +67,6 @@ extern "C" [[noreturn]] void kernelMain(
 	terminalClearScreen();
 	terminalSetCursorPosition(0, 0);
 	terminalPrintString(kernelLoadedStr, strlen(kernelLoadedStr));
-
-	if (!enableSse4()) {
-		Kernel::panic();
-	}
-	terminalPrintChar('\n');
 
 	// Initialize physical memory
 	size_t phyMemBuddyPagesCount;
@@ -84,6 +88,7 @@ extern "C" [[noreturn]] void kernelMain(
 	)) {
 		Kernel::panic();
 	}
+	Kernel::hangSystem();
 
 	// Initialize TSS first because ISTs in IDT require TSS
 	setupTss64();

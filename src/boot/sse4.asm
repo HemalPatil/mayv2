@@ -1,27 +1,13 @@
 [bits 64]
 
-section .rodata:
-	enableSse4Str db 'Enabling SSE4', 0
-
 section .data
 align 16
 floatSaveRegion:
 	times 512 db 0
 
 section .text
-	extern doneStr
-	extern ellipsisStr
-	extern failedStr
-	extern terminalPrintChar
-	extern terminalPrintString
 	global enableSse4
 enableSse4:
-	mov rdi, enableSse4Str
-	mov rsi, 12
-	call terminalPrintString
-	mov rdi, [ellipsisStr]
-	mov rsi, 3
-	call terminalPrintString
 	mov eax, 1
 	cpuid
 	; Check CLFLUSH
@@ -70,18 +56,10 @@ enableSse4:
 	mov rax, cr4
 	or ax, 3 << 9		; set CR4.OSFXSR and CR4.OSXMMEXCPT at the same time
 	mov cr4, rax
-	mov rdi, [doneStr]
-	mov rsi, 4
-	call terminalPrintString
-	mov rdi, 10
-	call terminalPrintChar
 	mov rax, 1
 	ret
 noSse4:
-	mov rdi, [failedStr]
-	mov rsi, 6
-	call terminalPrintString
-	mov rdi, 10
-	call terminalPrintChar
-	mov rax, 0
-	ret
+	; TODO: show some error message. Cannot use terminal functions
+	; since they rely on optimizations
+	cli
+	hlt
