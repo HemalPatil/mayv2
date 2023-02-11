@@ -35,7 +35,7 @@ static Async::Thenable<void> createFileSystems();
 static Async::Thenable<void> bootApus();
 
 bool Kernel::debug = false;
-InfoTable *Kernel::infoTable;
+InfoTable *Kernel::infoTable = nullptr;
 
 extern "C" [[noreturn]] void kernelMain(
 	InfoTable *infoTableAddress,
@@ -96,7 +96,6 @@ extern "C" [[noreturn]] void kernelMain(
 	if (!ACPI::parse()) {
 		Kernel::panic();
 	}
-	Kernel::hangSystem();
 
 	// Disable PIC and setup APIC
 	if (!APIC::initialize()) {
