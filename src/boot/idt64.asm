@@ -23,12 +23,6 @@ section .IDT64
 	global IDT_END
 
 IDT_START:
-	times 96 - ($-$$) db 0		; Skip first 6 interrupts/exception
-
-invalidOpcodeDescriptor:
-	dq 0
-	dq 0
-
 	times 128 - ($-$$) db 0		; Skip first 8 interrupts/exception
 
 doubleFaultDescriptor:
@@ -54,11 +48,12 @@ idtDescriptor:
 	breakpointStr db 'Breakpoint exception at ', 0
 	overflowStr db 'Overflow exception at ', 0
 	boundRangeStr db 'Bound range exceeded at ', 0
+	invalidOpcodeStr db 'Invalid opcode at ', 0
+	noSseStr db 'Attempted to access SSE at ', 0
 	defaultInterruptStr db 'Default interrupt handler!', 10, 0
 	doubleFaultStr db 'Double Fault!', 10, 0
 	idtLoadingStr db 'Loading IDT', 0
 	pageFaultStr db 'Page Fault! Tried to access ', 0
-	invalidOpcodeStr db 'Invalid opcode', 0
 	invalidInterruptStr db 'Invalid interrupt number [', 0
 
 section .data
@@ -115,14 +110,17 @@ setupIdt64DescriptorLoop:
 	mov rax, boundRangeHandler
 	call fillOffsets
 	add rdx, 16
+	mov rax, invalidOpcodeHandler
+	call fillOffsets
+	add rdx, 16
+	mov rax, noSseHandler
+	call fillOffsets
+	add rdx, 16
 	mov rdx, pageFaultDescriptor
 	mov rax, pageFaultHandler
 	call fillOffsets
 	mov rdx, doubleFaultDescriptor
 	mov rax, doubleFaultHandler
-	call fillOffsets
-	mov rdx, invalidOpcodeDescriptor
-	mov rax, invalidOpcodeHandler
 	call fillOffsets
 	mov rax, idtDescriptor
 	lidt [rax]	; load the IDT
@@ -248,6 +246,34 @@ boundRangeHandler:
 	hlt
 	iretq
 
+invalidOpcodeHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, invalidOpcodeStr
+	mov rsi, 18
+	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	; TODO: better recovery from invalid opcode
+	cli
+	hlt
+	iretq
+
+noSseHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, noSseStr
+	mov rsi, 27
+	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	; TODO: better recovery from invalid opcode
+	cli
+	hlt
+	iretq
+
 doubleFaultHandler:
 	mov rdi, doubleFaultStr
 	mov rsi, 14
@@ -280,14 +306,4 @@ defaultInterruptHandler:
 	call terminalPrintString
 	cli
 	hlt
-	iretq
-
-invalidOpcodeHandler:
-	mov rdi, invalidOpcodeStr
-	mov rsi, 14
-	call terminalPrintString
-	; TODO: better recovery from invalid opcode
-	cli
-	hlt
-	pop r8	; Pop the 64 bit error code in thrashable register
 	iretq
