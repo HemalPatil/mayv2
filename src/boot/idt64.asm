@@ -23,12 +23,6 @@ section .IDT64
 	global IDT_END
 
 IDT_START:
-	times 128 - ($-$$) db 0		; Skip first 8 interrupts/exception
-
-doubleFaultDescriptor:
-	dq 0
-	dq 0
-
 	times 224 - ($-$$) db 0		; Skip first 14 interrupts/exception
 
 pageFaultDescriptor:
@@ -51,7 +45,7 @@ idtDescriptor:
 	invalidOpcodeStr db 'Invalid opcode at ', 0
 	noSseStr db 'Attempted to access SSE at ', 0
 	defaultInterruptStr db 'Default interrupt handler!', 10, 0
-	doubleFaultStr db 'Double Fault!', 10, 0
+	doubleFaultStr db 10, 'Double Fault', 0
 	idtLoadingStr db 'Loading IDT', 0
 	pageFaultStr db 'Page Fault! Tried to access ', 0
 	invalidInterruptStr db 'Invalid interrupt number [', 0
@@ -116,11 +110,13 @@ setupIdt64DescriptorLoop:
 	mov rax, noSseHandler
 	call fillOffsets
 	add rdx, 16
+	mov rax, doubleFaultHandler
+	call fillOffsets
+	add rdx, 16
+	; Skip the deprecated INT #9
+	add rdx, 16
 	mov rdx, pageFaultDescriptor
 	mov rax, pageFaultHandler
-	call fillOffsets
-	mov rdx, doubleFaultDescriptor
-	mov rax, doubleFaultHandler
 	call fillOffsets
 	mov rax, idtDescriptor
 	lidt [rax]	; load the IDT
@@ -255,7 +251,6 @@ invalidOpcodeHandler:
 	mov rdi, rsp
 	mov rsi, 8
 	call terminalPrintHex
-	; TODO: better recovery from invalid opcode
 	cli
 	hlt
 	iretq
@@ -269,16 +264,19 @@ noSseHandler:
 	mov rdi, rsp
 	mov rsi, 8
 	call terminalPrintHex
-	; TODO: better recovery from invalid opcode
 	cli
 	hlt
 	iretq
 
 doubleFaultHandler:
+	mov rdi, 10
+	call terminalPrintChar
 	mov rdi, doubleFaultStr
-	mov rsi, 14
+	mov rsi, 13
 	call terminalPrintString
 	pop r8	; Pop the 64 bit error code in thrashable register
+	cli
+	hlt
 	iretq
 
 pageFaultHandler:
