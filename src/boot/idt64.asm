@@ -44,8 +44,8 @@ idtDescriptor:
 	boundRangeStr db 'Bound range exceeded at ', 0
 	invalidOpcodeStr db 'Invalid opcode at ', 0
 	noSseStr db 'Attempted to access SSE at ', 0
-	defaultInterruptStr db 'Default interrupt handler!', 10, 0
 	doubleFaultStr db 10, 'Double Fault', 0
+	defaultInterruptStr db 'Default interrupt handler!', 10, 0
 	idtLoadingStr db 'Loading IDT', 0
 	pageFaultStr db 'Page Fault! Tried to access ', 0
 	invalidInterruptStr db 'Invalid interrupt number [', 0
@@ -168,6 +168,7 @@ enableInterrupts:
 	ret
 
 divisionByZeroHandler:
+	push rdi	; Align stack to 16-byte boundary
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, divisionByZeroStr
@@ -175,12 +176,15 @@ divisionByZeroHandler:
 	call terminalPrintString
 	mov rdi, rsp
 	mov rsi, 8
+	add rdi, rsi
 	call terminalPrintHex
+	pop rdi
 	cli
 	hlt
 	iretq
 
 debugHandler:
+	push rdi	; Align stack to 16-byte boundary
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, debugStr
@@ -188,22 +192,27 @@ debugHandler:
 	call terminalPrintString
 	mov rdi, rsp
 	mov rsi, 8
+	add rdi, rsi
 	call terminalPrintHex
+	pop rdi
 	cli
 	hlt
 	iretq
 
 nmiHandler:
+	push rdi	; Align stack to 16-byte boundary
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, nmiHandlerStr
 	mov rsi, 11
 	call terminalPrintString
+	pop rdi
 	cli
 	hlt
 	iretq
 
 breakpointHandler:
+	push rdi	; Align stack to 16-byte boundary
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, breakpointStr
@@ -211,12 +220,15 @@ breakpointHandler:
 	call terminalPrintString
 	mov rdi, rsp
 	mov rsi, 8
+	add rdi, rsi
 	call terminalPrintHex
+	pop rdi
 	cli
 	hlt
 	iretq
 
 overflowHandler:
+	push rdi	; Align stack to 16-byte boundary
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, overflowStr
@@ -224,12 +236,15 @@ overflowHandler:
 	call terminalPrintString
 	mov rdi, rsp
 	mov rsi, 8
+	add rdi, rsi
 	call terminalPrintHex
+	pop rdi
 	cli
 	hlt
 	iretq
 
 boundRangeHandler:
+	push rdi	; Align stack to 16-byte boundary
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, boundRangeStr
@@ -237,12 +252,15 @@ boundRangeHandler:
 	call terminalPrintString
 	mov rdi, rsp
 	mov rsi, 8
+	add rdi, rsi
 	call terminalPrintHex
+	pop rdi
 	cli
 	hlt
 	iretq
 
 invalidOpcodeHandler:
+	push rdi	; Align stack to 16-byte boundary
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, invalidOpcodeStr
@@ -250,12 +268,15 @@ invalidOpcodeHandler:
 	call terminalPrintString
 	mov rdi, rsp
 	mov rsi, 8
+	add rdi, rsi
 	call terminalPrintHex
+	pop rdi
 	cli
 	hlt
 	iretq
 
 noSseHandler:
+	push rdi	; Align stack to 16-byte boundary
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, noSseStr
@@ -263,7 +284,9 @@ noSseHandler:
 	call terminalPrintString
 	mov rdi, rsp
 	mov rsi, 8
+	add rdi, rsi
 	call terminalPrintHex
+	pop rdi
 	cli
 	hlt
 	iretq
