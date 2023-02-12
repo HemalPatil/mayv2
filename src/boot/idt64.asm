@@ -49,6 +49,10 @@ idtDescriptor:
 	idt64Limit dw 4095
 	idt64Base dq IDT_START
 	divisionByZeroStr db 'Division by zero at ', 0
+	debugStr db 'Debug exception at ', 0
+	nmiHandlerStr db 'NMI handler', 0
+	breakpointStr db 'Breakpoint exception at ', 0
+	overflowStr db 'Overflow exception at ', 0
 	defaultInterruptStr db 'Default interrupt handler!', 10, 0
 	doubleFaultStr db 'Double Fault!', 10, 0
 	idtLoadingStr db 'Loading IDT', 0
@@ -94,6 +98,19 @@ setupIdt64DescriptorLoop:
 	mov rdx, IDT_START
 	mov rax, divisionByZeroHandler
 	call fillOffsets
+	add rdx, 16
+	mov rax, debugHandler
+	call fillOffsets
+	add rdx, 16
+	mov rax, nmiHandler
+	call fillOffsets
+	add rdx, 16
+	mov rax, breakpointHandler
+	call fillOffsets
+	add rdx, 16
+	mov rax, overflowHandler
+	call fillOffsets
+	add rdx, 16
 	mov rdx, pageFaultDescriptor
 	mov rax, pageFaultHandler
 	call fillOffsets
@@ -157,6 +174,55 @@ divisionByZeroHandler:
 	call terminalPrintChar
 	mov rdi, divisionByZeroStr
 	mov rsi, 20
+	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	cli
+	hlt
+	iretq
+
+debugHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, debugStr
+	mov rsi, 19
+	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	cli
+	hlt
+	iretq
+
+nmiHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, nmiHandlerStr
+	mov rsi, 11
+	call terminalPrintString
+	cli
+	hlt
+	iretq
+
+breakpointHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, breakpointStr
+	mov rsi, 24
+	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	cli
+	hlt
+	iretq
+
+overflowHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, overflowStr
+	mov rsi, 24
 	call terminalPrintString
 	mov rdi, rsp
 	mov rsi, 8
