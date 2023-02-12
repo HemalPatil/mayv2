@@ -320,6 +320,11 @@ AHCI::Device::Device(Controller *controller, size_t portNumber) {
 	this->runningCommandsBitmap = 0;
 	this->info = nullptr;
 	this->controller = controller;
+	terminalPrintString("inits", 5);
+	auto y = this;
+	terminalPrintHex(&y, 8);
+	terminalPrintDecimal(portNumber);
+	terminalPrintString("initd", 5);
 }
 
 AHCI::Device::Command::Command(Device *device, size_t freeSlot) : device(device), freeSlot(freeSlot), awaitingCoroutine(nullptr), result(nullptr) {}

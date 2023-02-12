@@ -4,6 +4,12 @@ section .text
 	extern ahciMsiHandler
 	global ahciMsiHandlerWrapper
 ahciMsiHandlerWrapper:
-	cld
+	; pushfq
+	; push rbp
+	; cld
 	call ahciMsiHandler
+	; pop rbp
+	; popfq
+	; cli
+	; hlt
 	iretq

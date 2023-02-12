@@ -70,18 +70,25 @@ Async::Thenable<bool> AHCI::Controller::initialize(const PCIe::Function &pcieFun
 			this->hba->ports[portNumber].sataStatus.deviceDetection == AHCI_PORT_DEVICE_PRESENT &&
 			this->hba->ports[portNumber].sataStatus.powerMgmt == AHCI_PORT_ACTIVE
 		) {
+			terminalPrintString("here1", 5);
 			std::shared_ptr<Device> ahciDevice = nullptr;
-			switch (this->hba->ports[portNumber].signature) {
+			auto sig = this->hba->ports[portNumber].signature;
+			terminalPrintString("sig", 3);
+			switch (sig) {
 				case PortSignature::SATA:
 					ahciDevice = std::make_shared<SataDevice>(this, portNumber);
+					terminalPrintString("sata", 4);
 					break;
 				case PortSignature::SATAPI:
 					ahciDevice = std::make_shared<SatapiDevice>(this, portNumber);
+					terminalPrintString("satapi", 6);
 					break;
 				default:
 					break;
 			}
+			terminalPrintString("here2", 5);
 			if (ahciDevice) {
+				terminalPrintString("here3", 5);
 				this->devices.push_back(ahciDevice);
 				terminalPrintSpaces4();
 				terminalPrintSpaces4();
@@ -95,6 +102,7 @@ Async::Thenable<bool> AHCI::Controller::initialize(const PCIe::Function &pcieFun
 					co_return false;
 				}
 			}
+			terminalPrintString("here4", 5);
 		}
 		portsImplemented >>= 1;
 	}
