@@ -48,6 +48,7 @@ section .rodata:
 idtDescriptor:
 	idt64Limit dw 4095
 	idt64Base dq IDT_START
+	divisionByZeroStr db 'Division by zero at ', 0
 	defaultInterruptStr db 'Default interrupt handler!', 10, 0
 	doubleFaultStr db 'Double Fault!', 10, 0
 	idtLoadingStr db 'Loading IDT', 0
@@ -90,6 +91,9 @@ setupIdt64DescriptorLoop:
 	add rdx, 16
 	cmp rdx, IDT_END
 	jl setupIdt64DescriptorLoop
+	mov rdx, IDT_START
+	mov rax, divisionByZeroHandler
+	call fillOffsets
 	mov rdx, pageFaultDescriptor
 	mov rax, pageFaultHandler
 	call fillOffsets
@@ -147,6 +151,19 @@ disableInterrupts:
 enableInterrupts:
 	sti
 	ret
+
+divisionByZeroHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, divisionByZeroStr
+	mov rsi, 20
+	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	cli
+	hlt
+	iretq
 
 doubleFaultHandler:
 	mov rdi, doubleFaultStr
