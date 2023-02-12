@@ -53,6 +53,7 @@ idtDescriptor:
 	nmiHandlerStr db 'NMI handler', 0
 	breakpointStr db 'Breakpoint exception at ', 0
 	overflowStr db 'Overflow exception at ', 0
+	boundRangeStr db 'Bound range exceeded at ', 0
 	defaultInterruptStr db 'Default interrupt handler!', 10, 0
 	doubleFaultStr db 'Double Fault!', 10, 0
 	idtLoadingStr db 'Loading IDT', 0
@@ -109,6 +110,9 @@ setupIdt64DescriptorLoop:
 	call fillOffsets
 	add rdx, 16
 	mov rax, overflowHandler
+	call fillOffsets
+	add rdx, 16
+	mov rax, boundRangeHandler
 	call fillOffsets
 	add rdx, 16
 	mov rdx, pageFaultDescriptor
@@ -222,6 +226,19 @@ overflowHandler:
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, overflowStr
+	mov rsi, 22
+	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	cli
+	hlt
+	iretq
+
+boundRangeHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, boundRangeStr
 	mov rsi, 24
 	call terminalPrintString
 	mov rdi, rsp
