@@ -44,10 +44,12 @@ idtDescriptor:
 	boundRangeStr db 'Bound range exceeded at ', 0
 	invalidOpcodeStr db 'Invalid opcode at ', 0
 	noSseStr db 'Attempted to access SSE at ', 0
-	doubleFaultStr db 10, 'Double Fault', 0
-	defaultInterruptStr db 'Default interrupt handler!', 10, 0
+	doubleFaultStr db 'Double fault', 0
+	gpFaultStr db 'General protection fault at ', 0
+	pageFaultStr1 db 'Page fault at ', 0
+	pageFaultStr2 db ' tried to access ', 0
+	withErrorStr db ' with error ', 0
 	idtLoadingStr db 'Loading IDT', 0
-	pageFaultStr db 'Page Fault! Tried to access ', 0
 	invalidInterruptStr db 'Invalid interrupt number [', 0
 
 section .data
@@ -74,14 +76,12 @@ setupIdt64:
 	mov rdi, [ellipsisStr]
 	mov rsi, 3
 	call terminalPrintString
-; Fill all 256 interrupt handlers with defaultInterruptHandler
+; FIXME: fills all 256 interrupt handlers with present flags
 ; Set rdx to base address of IDT and loop through all 256
 	mov r9, 0x00008e0200080000	; 64-bit code selector, descriptor type, and IST_2 index
 	mov rdx, IDT_START
 setupIdt64DescriptorLoop:
 	mov [rdx], r9
-	mov rax, defaultInterruptHandler
-	call fillOffsets
 	add rdx, 16
 	cmp rdx, IDT_END
 	jl setupIdt64DescriptorLoop
@@ -112,11 +112,11 @@ setupIdt64DescriptorLoop:
 	add rdx, 16
 	mov rax, doubleFaultHandler
 	call fillOffsets
+	mov rdx, IDT_START + 13 * 16
+	mov rax, gpFaultHandler
+	call fillOffsets
 	add rdx, 16
-	; Skip the deprecated INT #9
-	add rdx, 16
-	mov rdx, pageFaultDescriptor
-	mov rax, pageFaultHandler
+	mov rax, gpFaultHandler
 	call fillOffsets
 	mov rax, idtDescriptor
 	lidt [rax]	; load the IDT
@@ -295,21 +295,48 @@ doubleFaultHandler:
 	mov rdi, 10
 	call terminalPrintChar
 	mov rdi, doubleFaultStr
-	mov rsi, 13
+	mov rsi, 12
 	call terminalPrintString
 	pop r8	; Pop the 64 bit error code in thrashable register
 	cli
 	hlt
 	iretq
 
-pageFaultHandler:
-	mov rdi, pageFaultStr
+gpFaultHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, gpFaultStr
 	mov rsi, 28
 	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	add rdi, rsi
+	call terminalPrintHex
+	mov rdi, withErrorStr
+	mov rsi, 12
+	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	pop r8	; Pop the 64 bit error code in thrashable register
+	cli
+	hlt
+	iretq
 
-	; Pop the 8-byte aligned 32-bit error code in thrashable register
-	pop r8
-
+pageFaultHandler:
+	mov rdi, 10
+	call terminalPrintChar
+	mov rdi, pageFaultStr1
+	mov rsi, 14
+	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	add rdi, rsi
+	call terminalPrintHex
+	mov rdi, pageFaultStr2
+	mov rsi, 17
+	call terminalPrintString
+	push rdi	; Align stack to 16-byte boundary
 	; Get the virtual address that caused this fault and display it
 	mov rax, cr2
 	push rax
@@ -317,14 +344,14 @@ pageFaultHandler:
 	mov rsi, 8
 	call terminalPrintHex
 	pop rax
-	mov rdi, 10
-	call terminalPrintChar
-	iretq
-
-defaultInterruptHandler:
-	mov rdi, defaultInterruptStr
-	mov rsi, 27
+	pop rdi
+	mov rdi, withErrorStr
+	mov rsi, 12
 	call terminalPrintString
+	mov rdi, rsp
+	mov rsi, 8
+	call terminalPrintHex
+	pop r8	; Pop the 64 bit error code in thrashable register
 	cli
 	hlt
 	iretq
