@@ -4,12 +4,8 @@ section .text
 	extern ahciMsiHandler
 	global ahciMsiHandlerWrapper
 ahciMsiHandlerWrapper:
-	; pushfq
-	; push rbp
-	; cld
+	pushfq	; Save flags and align stack to 16-byte boundary
+	cld
 	call ahciMsiHandler
-	; pop rbp
-	; popfq
-	; cli
-	; hlt
+	popfq
 	iretq

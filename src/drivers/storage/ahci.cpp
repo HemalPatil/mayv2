@@ -28,10 +28,6 @@ void ahciMsiHandler() {
 					interruptStatus & ((uint32_t)1 << i) &&
 					controller.devices[i]
 				) {
-					terminalPrintChar('|');
-					auto y = controller.devices[i].get();
-					terminalPrintHex(&y, 8);
-					terminalPrintChar('|');
 					controller.devices[i]->msiHandler();
 				}
 			}
@@ -54,7 +50,6 @@ Async::Thenable<bool> AHCI::initialize(const PCIe::Function &pcieFunction) {
 		msiInterrupt = availableInterrupt;
 		installIdt64Entry(msiInterrupt, &ahciMsiHandlerWrapper);
 		++availableInterrupt;
-		terminalPrintDecimal(msiInterrupt);
 		terminalPrintString(doneStr, strlen(doneStr));
 		terminalPrintChar('\n');
 	}
