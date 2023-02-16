@@ -90,4 +90,4 @@ $(ISO_NAME): $(DIR_BOOT) $(UTILITIES_BUILD_DIR)/format_iso
 	./$(UTILITIES_BUILD_DIR)/format_iso $@
 
 $(UTILITIES_BUILD_DIR)/format_iso: $(UTILITIES_DIR)/format_iso.cpp
-	$(CXX) $^ -o $@ $(C_WARNINGS)
+	$(CXX) --std=c++23 $^ -o $@ $(C_WARNINGS)

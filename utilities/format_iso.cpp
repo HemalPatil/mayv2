@@ -3,6 +3,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <string>
 
 #define BOOTLOADER_PADDING 32
 #define DAP_SIZE 16
@@ -17,7 +18,7 @@
 
 const int moduleCount = 9; // Number of modules that are required by the kernel to bootstrap
 
-bool findRecord(const char *directory, const int dirSize, const char *recordName, int &recordSector, int &recordSize) {
+bool findRecord(const char *directory, const int dirSize, const std::u16string &recordName, int &recordSector, int &recordSize) {
 	bool recordFound = false;
 	// Skip first 0x44 bytes, they are directory records for current and parent directory
 	int dirSeekg = 0x44;
@@ -25,10 +26,16 @@ bool findRecord(const char *directory, const int dirSize, const char *recordName
 	while ((dirSeekg < dirSize) && (*((char *)(directory + dirSeekg)) > 0)) {
 		int dirRecordSize = *((char *)(directory + dirSeekg)); // Get the size of the record in the directory extent
 		int fileNameSize = *((char *)(directory + dirSeekg + FILE_NAME_SIZE_OFFSET)); // Get length of the file name
-		char *fileName = new char[fileNameSize + 1];
+		char *fileName = new char[fileNameSize];
 		memcpy(fileName, directory + dirSeekg + FILE_NAME_OFFSET, fileNameSize);
-		fileName[fileNameSize] = 0;
-		if (strcmp(fileName, recordName) == 0) {
+		// Flip bytes of UTF16BE record name
+		for (int i = 0; i < fileNameSize; i += 2) {
+			char temp = fileName[i];
+			fileName[i] = fileName[i + 1];
+			fileName[i + 1] = temp;
+		}
+		std::u16string u16FileName = std::u16string((char16_t*)fileName, (char16_t*)(fileName + fileNameSize));
+		if (u16FileName == recordName) {
 			// Return parameters like file size and sector
 			recordSector = *((int *)(directory + dirSeekg + SECTOR_LOCATION_OFFSET));
 			recordSize = *((int *)(directory + dirSeekg + RECORD_SIZE_OFFSET));
@@ -58,29 +65,29 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Skip first 32KiB (i.e. 16 sectors of ISO always empty according to ISO-9660)
-	int volumeDescriptorAddress = 16 * ISO_SECTOR_SIZE;
+	size_t svdAddress = 16 * ISO_SECTOR_SIZE;
 	char *sector = new char[ISO_SECTOR_SIZE];
 	memset(sector, 0, ISO_SECTOR_SIZE);
-	char primaryVolumeDescriptor[] = { 0x01, 'C', 'D', '0', '0', '1', 0x01, 0x00 };
-	bool volumeDescriptorFound = false;
+	char svdSignature[] = { 0x02, 'C', 'D', '0', '0', '1', 0x01, 0x00 };
+	bool svdFound = false;
 	int rootDirectorySize = 0, rootDirectorySector = 0;
 
-	// Find primary volume descriptor whose first 8 bytes match the signature in primaryVolumeDescriptor
-	while (!volumeDescriptorFound && !isoFile.eof()) {
-		isoFile.seekg(volumeDescriptorAddress, std::ios::beg);
+	// Find supplementary volume descriptor
+	while (!svdFound && !isoFile.eof()) {
+		isoFile.seekg(svdAddress, std::ios::beg);
 		isoFile.read(sector, ISO_SECTOR_SIZE);
-		if (std::equal(primaryVolumeDescriptor, primaryVolumeDescriptor + 7, sector)) {
+		if (std::equal(svdSignature, svdSignature + 7, sector)) {
 			// Get root directory extent sector and size
 			rootDirectorySector = *((int *)(sector + ROOT_DIRECTORY_OFFSET + SECTOR_LOCATION_OFFSET));
 			rootDirectorySize = *((int *)(sector + ROOT_DIRECTORY_OFFSET + RECORD_SIZE_OFFSET));
-			volumeDescriptorFound = true;
+			svdFound = true;
 		} else {
-			volumeDescriptorAddress += ISO_SECTOR_SIZE; // If not found, move on to next sector in the ISO file
+			svdAddress += ISO_SECTOR_SIZE; // If not found, move on to next sector in the ISO file
 		}
 	}
 	delete[] sector;
-	if (!volumeDescriptorFound) {
-		std::cerr << "Not a valid ISO file" << std::endl;
+	if (!svdFound) {
+		std::cerr << "Not a valid Joliet ISO file" << std::endl;
 		isoFile.close();
 		return 1;
 	}
@@ -89,10 +96,10 @@ int main(int argc, char *argv[]) {
 	isoFile.seekg(rootDirectorySector * ISO_SECTOR_SIZE, std::ios::beg);
 	isoFile.read(rootDirectory, rootDirectorySize);
 	int bootDirSector, bootDirSize;
-	if (!findRecord(rootDirectory, rootDirectorySize, "BOOT", bootDirSector, bootDirSize)) {
+	if (!findRecord(rootDirectory, rootDirectorySize, u"boot", bootDirSector, bootDirSize)) {
 		delete[] rootDirectory;
 		isoFile.close();
-		std::cerr << "BOOT directory not found!" << std::endl;
+		std::cerr << "[boot] directory not found!" << std::endl;
 		return 1;
 	}
 	delete[] rootDirectory;
@@ -101,22 +108,22 @@ int main(int argc, char *argv[]) {
 	isoFile.seekg(bootDirSector * ISO_SECTOR_SIZE, std::ios::beg);
 	isoFile.read(bootDir, bootDirSize);
 	int stage1DirSector, stage1DirSize, stage2DirSector, stage2DirSize, kernel64Sector, kernel64Size;
-	if (!findRecord(bootDir, bootDirSize, "STAGE1", stage1DirSector, stage1DirSize)) {
+	if (!findRecord(bootDir, bootDirSize, u"stage1", stage1DirSector, stage1DirSize)) {
 		delete[] bootDir;
 		isoFile.close();
-		std::cerr << "STAGE1 directory not found!" << std::endl;
+		std::cerr << "[stage1] directory not found!" << std::endl;
 		return 1;
 	}
-	if (!findRecord(bootDir, bootDirSize, "STAGE2", stage2DirSector, stage2DirSize)) {
+	if (!findRecord(bootDir, bootDirSize, u"stage2", stage2DirSector, stage2DirSize)) {
 		delete[] bootDir;
 		isoFile.close();
-		std::cerr << "STAGE2 directory not found!" << std::endl;
+		std::cerr << "[stage2] directory not found!" << std::endl;
 		return 1;
 	}
-	if (!findRecord(bootDir, bootDirSize, "KERNEL.;1", kernel64Sector, kernel64Size)) {
+	if (!findRecord(bootDir, bootDirSize, u"kernel", kernel64Sector, kernel64Size)) {
 		delete[] bootDir;
 		isoFile.close();
-		std::cerr << "KERNEL not found!" << std::endl;
+		std::cerr << "[kernel] not found!" << std::endl;
 		return 1;
 	}
 	delete[] bootDir;
@@ -125,32 +132,32 @@ int main(int argc, char *argv[]) {
 	isoFile.seekg(stage1DirSector * ISO_SECTOR_SIZE, std::ios::beg);
 	isoFile.read(stage1Dir, stage1DirSize);
 	int bootBinSector, bootBinSize;
-	if (!findRecord(stage1Dir, stage1DirSize, "BOOTLOAD.BIN;1", bootBinSector, bootBinSize)) {
+	if (!findRecord(stage1Dir, stage1DirSize, u"bootload.bin", bootBinSector, bootBinSize)) {
 		delete[] stage1Dir;
 		isoFile.close();
-		std::cerr << "BOOTLOAD.BIN not found!" << std::endl;
+		std::cerr << "[bootload.bin] not found!" << std::endl;
 		return 1;
 	}
 	char *stage2Dir = new char[stage2DirSize];
 	isoFile.seekg(stage2DirSector * ISO_SECTOR_SIZE, std::ios::beg);
 	isoFile.read(stage2Dir, stage2DirSize);
-	char coreFiles[][15] = {
-		"X64.BIN;1",
-		"MMAP.BIN;1",
-		"VIDMODES.BIN;1",
-		"A20.BIN;1",
-		"GDT.BIN;1",
-		"K64LOAD.BIN;1",
-		"ELFPARSE.BIN;1",
-		"LOADER32.;1",
-		"KERNEL.;1"
+	std::u16string coreFiles[] = {
+		u"x64.bin",
+		u"mmap.bin",
+		u"videoModes.bin",
+		u"a20.bin",
+		u"gdt.bin",
+		u"k64load.bin",
+		u"elfParse.bin",
+		u"loader32",
+		u"kernel"
 	};
 	int coreFileSectors[moduleCount], coreFileSizes[moduleCount], coreFileSegments[moduleCount];
 	for (int i = 0; i < 5; ++i) {
 		if (!findRecord(stage1Dir, stage1DirSize, coreFiles[i], coreFileSectors[i], coreFileSizes[i])) {
 			delete[] stage1Dir;
 			isoFile.close();
-			std::cerr << coreFiles[i] << " not found!" << std::endl;
+			std::cerr << "coreFiles[" << i << "] not found!" << std::endl;
 			return 1;
 		}
 	}
@@ -158,7 +165,7 @@ int main(int argc, char *argv[]) {
 		if (!findRecord(stage2Dir, stage2DirSize, coreFiles[i], coreFileSectors[i], coreFileSizes[i])) {
 			delete[] stage2Dir;
 			isoFile.close();
-			std::cerr << coreFiles[i] << " not found!" << std::endl;
+			std::cerr << "coreFiles[" << i << "] not found!" << std::endl;
 			return 1;
 		}
 	}
@@ -178,11 +185,13 @@ int main(int argc, char *argv[]) {
 		isoFile.write((char *)&sectorCount, 2);
 		uint16_t dapOffset = 0x0000; // Offset at which data is loaded is always 0x00
 		isoFile.write((char *)&dapOffset, 2);
-		if (strcmp(coreFiles[i], "ELFPARSE.BIN;1") == 0) {
+		if (6 == i) {
+			// elfParse.bin
 			// FIXME: assumes memory from ELFPARSE_ORIGIN will be to load ELFPARSE.BIN
 			uint16_t elfParseSegment = ELFPARSE_ORIGIN >> 4;
 			isoFile.write((char *)&elfParseSegment, 2);
-		} else if (strcmp(coreFiles[i], "LOADER32.;1") == 0 || strcmp(coreFiles[i], "KERNEL.;1") == 0) {
+		} else if (7 == i || 8 == i) {
+			// loader32 or kernel
 			// Memory from L32K64_SCRATCH_BASE to L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH is assumed to be free
 			// mmap.asm will assert this during boot
 			uint16_t loader32ElfSegment = L32K64_SCRATCH_BASE >> 4;
