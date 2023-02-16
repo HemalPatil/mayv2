@@ -9,12 +9,12 @@ include $(dir)/Rules.mk
 dir := $(d)/stage2
 include $(dir)/Rules.mk
 
-DIR_BOOT := $(BOOT_STAGE1_OUTPUT) $(BOOT_STAGE2_OUTPUT) $(ISO_DIR)/BOOT/KERNEL
+DIR_BOOT := $(BOOT_STAGE1_OUTPUT) $(BOOT_STAGE2_OUTPUT) $(ISO_DIR)/boot/kernel
 
 BOOT_ASMOBJFILES := $(patsubst $(SRC_DIR)/boot/%.asm,$(BUILD_DIR)/boot/%.o,$(shell find $(SRC_DIR)/boot -maxdepth 1 -type f -name "*.asm"))
 BOOT_CPPOBJFILES := $(patsubst $(SRC_DIR)/boot/%.cpp,$(BUILD_DIR)/boot/%.o,$(shell find $(SRC_DIR)/boot -maxdepth 1 -type f -name "*.cpp"))
 
-$(ISO_DIR)/BOOT/KERNEL: $(BOOT_ASMOBJFILES) $(BOOT_CPPOBJFILES) $(DRIVERS_OBJFILES) $(HEADER_FILES) $(SRC_DIR)/boot/link.ld $(BUILD_DIR)/lib/libkc++.lib
+$(ISO_DIR)/boot/kernel: $(BOOT_ASMOBJFILES) $(BOOT_CPPOBJFILES) $(DRIVERS_OBJFILES) $(HEADER_FILES) $(SRC_DIR)/boot/link.ld $(BUILD_DIR)/lib/libkc++.lib
 	$(CC64) $(CC64_FLAGS) -o $@ $(BOOT_ASMOBJFILES) $(BOOT_CPPOBJFILES) $(DRIVERS_OBJFILES) $(BUILD_DIR)/lib/libkc++.lib -T $(SRC_DIR)/boot/link.ld -z max-page-size=0x1000
 
 $(BUILD_DIR)/boot/%.o: $(SRC_DIR)/boot/%.asm

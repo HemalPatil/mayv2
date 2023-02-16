@@ -3,11 +3,6 @@ sp := $(sp).x
 dirstack_$(sp) := $(d)
 d := $(dir)
 
-DIR_LIB := $(patsubst $(SRC_DIR)/lib/%.cpp,$(ISO_DIR)/LIB/%.lib,$(shell find $(SRC_DIR)/lib -maxdepth 1 -type f -name "*.cpp"))
-
-$(ISO_DIR)/LIB/%.lib: $(BUILD_DIR)/lib/%.lib
-	cp $< $@
-
 $(BUILD_DIR)/lib/%.lib: $(SRC_DIR)/lib/%.cpp $(HEADER_FILES)
 	$(CC64) -o $@ -c $< $(C_WARNINGS) $(CC64_FLAGS)
 

@@ -17,7 +17,7 @@ NASM32 := nasm -f elf32 -o
 NASM64 := nasm -f elf64 -o
 
 # Utility to create the ISO image
-ISO_MAKER := genisoimage
+ISO_MAKER := mkisofs
 
 # Necessary flags and compiler and linker names required for generating binaries for x86
 CC32 := i686-elf-g++
@@ -30,7 +30,7 @@ CC64_FLAGS := --std=c++23 -O3 -ffreestanding -fno-exceptions -fno-rtti -mcmodel=
 
 # The directory structure in the above root directories
 SRC_DIRECTORIES := $(shell find $(SRC_DIR) -type d -printf "%d\t%P\n" | sort -nk1 | cut -f2-)
-ISO_DIRECTORIES := $(addprefix $(ISO_DIR)/,$(shell echo "$(SRC_DIRECTORIES)" | tr a-z A-Z))
+ISO_DIRECTORIES := $(ISO_DIR)/boot $(ISO_DIR)/boot/stage1 $(ISO_DIR)/boot/stage2
 BUILD_DIRECTORIES := $(addprefix $(BUILD_DIR)/,$(SRC_DIRECTORIES))
 
 # Source files
@@ -47,8 +47,6 @@ ISO_NAME := mayv2.iso
 
 # Include the rules from subdirectories recursively using stack-like structure
 # (See implementing non-recursive make article https://accu.org/journals/overload/14/71/miller_2004/)
-dir := $(SRC_DIR)/include
-include $(dir)/Rules.mk
 dir := $(SRC_DIR)/lib
 include $(dir)/Rules.mk
 dir := $(SRC_DIR)/drivers
@@ -87,8 +85,8 @@ all: configure $(ISO_NAME)
 
 # Boot load size is set to 4 because BOOTLOAD.BIN is 2048 bytes
 # and El-Torito standard must load 4 512 byte sectors
-$(ISO_NAME): $(DIR_INCLUDE) $(DIR_LIB) $(DIR_BOOT) $(UTILITIES_BUILD_DIR)/format_iso
-	$(ISO_MAKER) -quiet -no-emul-boot -boot-load-size 4 -b BOOT/STAGE1/BOOTLOAD.BIN -o $@ ./$(ISO_DIR)/
+$(ISO_NAME): $(DIR_BOOT) $(UTILITIES_BUILD_DIR)/format_iso
+	$(ISO_MAKER) -J -quiet -no-emul-boot -boot-load-size 4 -b boot/stage1/bootload.bin -o $@ ./$(ISO_DIR)/
 	./$(UTILITIES_BUILD_DIR)/format_iso $@
 
 $(UTILITIES_BUILD_DIR)/format_iso: $(UTILITIES_DIR)/format_iso.cpp

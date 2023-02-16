@@ -1,20 +1,21 @@
 BOOT_STAGE1_INPUT := $(shell find $(SRC_DIR)/boot/stage1 -type f -name "*.asm")
-BOOT_STAGE1_OUTPUT := $(addprefix $(ISO_DIR)/BOOT/STAGE1/,$(shell echo "$(patsubst %.asm,%.bin,$(notdir $(BOOT_STAGE1_INPUT)))" | tr a-z A-Z))
+BOOT_STAGE1_OUTPUT := $(addprefix $(ISO_DIR)/boot/stage1/,$(shell echo "$(patsubst %.asm,%.bin,$(notdir $(BOOT_STAGE1_INPUT)))"))
+$(info ${BOOT_STAGE1_OUTPUT})
 
-$(ISO_DIR)/BOOT/STAGE1/MMAP.BIN: $(SRC_DIR)/boot/stage1/mmap.asm
+$(ISO_DIR)/boot/stage1/mmap.bin: $(SRC_DIR)/boot/stage1/mmap.asm
 	$(NASM_BIN) $@ $^
 
-$(ISO_DIR)/BOOT/STAGE1/A20.BIN: $(SRC_DIR)/boot/stage1/a20.asm
+$(ISO_DIR)/boot/stage1/a20.bin: $(SRC_DIR)/boot/stage1/a20.asm
 	$(NASM_BIN) $@ $^
 
-$(ISO_DIR)/BOOT/STAGE1/VIDMODES.BIN: $(SRC_DIR)/boot/stage1/vidmodes.asm
+$(ISO_DIR)/boot/stage1/videoModes.bin: $(SRC_DIR)/boot/stage1/videoModes.asm
 	$(NASM_BIN) $@ $^
 
-$(ISO_DIR)/BOOT/STAGE1/GDT.BIN: $(SRC_DIR)/boot/stage1/gdt.asm
+$(ISO_DIR)/boot/stage1/gdt.bin: $(SRC_DIR)/boot/stage1/gdt.asm
 	$(NASM_BIN) $@ $^
 
-$(ISO_DIR)/BOOT/STAGE1/X64.BIN: $(SRC_DIR)/boot/stage1/x64.asm
+$(ISO_DIR)/boot/stage1/x64.bin: $(SRC_DIR)/boot/stage1/x64.asm
 	$(NASM_BIN) $@ $^
 
-$(ISO_DIR)/BOOT/STAGE1/BOOTLOAD.BIN: $(SRC_DIR)/boot/stage1/bootload.asm
+$(ISO_DIR)/boot/stage1/bootload.bin: $(SRC_DIR)/boot/stage1/bootload.asm
 	$(NASM_BIN) $@ $^
