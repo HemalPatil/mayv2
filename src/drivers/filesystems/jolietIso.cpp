@@ -1,26 +1,27 @@
 #include <cstring>
-#include <drivers/filesystems/iso9660.h>
+#include <drivers/filesystems/jolietIso.h>
 #include <terminal.h>
+#include <unicode.h>
 
-static const char* const isoNamespaceStr = "FS::ISO9660::";
-static const char* const lbaSizeErrorStr = "ISO9660 device block size and LBA size don't match\n";
+static const char* const isoNamespaceStr = "FS::JolietISO::";
+static const char* const lbaSizeErrorStr = "JolietISO device block size and LBA size don't match\n";
 
-const std::string FS::ISO9660::cdSignature = "CD001";
+const std::string FS::JolietISO::cdSignature = "CD001";
 
 // Returns Storage::Buffer to PrimaryVolumeDescriptor of an ISO filesystem if found on device
 // Returns nullptr otherwise
-Async::Thenable<Storage::Buffer> FS::ISO9660::isIso9660(std::shared_ptr<Storage::BlockDevice> device) {
-	// Get sectors starting from sector 16 until Primary Volume Descriptor is found
+Async::Thenable<Storage::Buffer> FS::JolietISO::isJolietIso(std::shared_ptr<Storage::BlockDevice> device) {
+	// Get sectors starting from sector 16 until Supplementary Volume Descriptor is found
 	// Try until sector 32
 	// TODO: get rid of arbitrary sector 32 check
 	for (size_t i = 16; i < 32; ++i) {
 		Storage::Buffer buffer = std::move(co_await device->read(i, 1));
 		// TODO: do better error handling
 		if (buffer) {
-			PrimaryVolumeDescriptor *descriptor = (PrimaryVolumeDescriptor*) buffer.getData();
+			SupplementaryVolumeDescriptor *descriptor = (SupplementaryVolumeDescriptor*) buffer.getData();
 			if (
-				VolumeDescriptorType::Primary == descriptor->header.type &&
-				0 == strncmp(descriptor->header.signature, FS::ISO9660::cdSignature.c_str(), FS::ISO9660::cdSignature.length())
+				VolumeDescriptorType::Supplementary == descriptor->header.type &&
+				0 == strncmp(descriptor->header.signature, FS::JolietISO::cdSignature.c_str(), FS::JolietISO::cdSignature.length())
 			) {
 				co_return std::move(buffer);
 			}
@@ -29,10 +30,10 @@ Async::Thenable<Storage::Buffer> FS::ISO9660::isIso9660(std::shared_ptr<Storage:
 	co_return nullptr;
 }
 
-FS::ISO9660::ISO9660(std::shared_ptr<Storage::BlockDevice> device, const Storage::Buffer &primarySectorBuffer) : BaseFS(device) {
-	PrimaryVolumeDescriptor *primarySector = (PrimaryVolumeDescriptor*) primarySectorBuffer.getData();
+FS::JolietISO::JolietISO(std::shared_ptr<Storage::BlockDevice> device, const Storage::Buffer &svdSectorBuffer) : BaseFS(device) {
+	SupplementaryVolumeDescriptor *svdSector = (SupplementaryVolumeDescriptor*) svdSectorBuffer.getData();
 
-	this->lbaSize = primarySector->lbaSize;
+	this->lbaSize = svdSector->lbaSize;
 
 	// TODO: Assumes device block size and ISO's LBA size are same i.e. 2048
 	// Panic and fix the implementation if necessary although it's very rare
@@ -42,11 +43,11 @@ FS::ISO9660::ISO9660(std::shared_ptr<Storage::BlockDevice> device, const Storage
 		Kernel::panic();
 	}
 
-	this->rootDirLba = primarySector->rootDirectory.extentLba;
-	this->rootDirExtentSize = primarySector->rootDirectory.extentSize;
+	this->rootDirLba = svdSector->rootDirectory.extentLba;
+	this->rootDirExtentSize = svdSector->rootDirectory.extentSize;
 }
 
-Async::Thenable<bool> FS::ISO9660::initialize() {
+Async::Thenable<bool> FS::JolietISO::initialize() {
 	Storage::Buffer buffer = std::move(
 		co_await this->device->read(this->rootDirLba, this->rootDirExtentSize / this->lbaSize)
 	);
@@ -55,7 +56,7 @@ Async::Thenable<bool> FS::ISO9660::initialize() {
 	}
 	this->cachedDirectoryEntries.insert({
 		"/",
-		FS::ISO9660::extentToEntries(
+		FS::JolietISO::extentToEntries(
 			(DirectoryRecord*)buffer.getData(),
 			this->rootDirLba,
 			this->rootDirExtentSize,
@@ -66,7 +67,7 @@ Async::Thenable<bool> FS::ISO9660::initialize() {
 	co_return true;
 }
 
-std::vector<FS::DirectoryEntry> FS::ISO9660::extentToEntries(
+std::vector<FS::DirectoryEntry> FS::JolietISO::extentToEntries(
 	const DirectoryRecord* const extent,
 	size_t lba,
 	size_t size,
@@ -81,12 +82,15 @@ std::vector<FS::DirectoryEntry> FS::ISO9660::extentToEntries(
 	DirectoryRecord *entry = (DirectoryRecord*)((uint64_t)extent + seekg);	// Skip current, parent directory entries
 	// Traverse all the remaining records in this extent
 	while (seekg < size && entry->length > 0) {
+		// Convert to UTF16LE by flipping bytes of UTF16BE record name
+		for (size_t i = 0; i < entry->fileNameLength; i += 2) {
+			char temp = entry->fileName[i];
+			entry->fileName[i] = entry->fileName[i + 1];
+			entry->fileName[i + 1] = temp;
+		}
+		std::u16string u16FileName = std::u16string((char16_t*)entry->fileName, (char16_t*)(entry->fileName + entry->fileNameLength));
 		entries.push_back({
-			.name = std::string(
-				entry->fileName,
-				// Skip ";1" terminator for file names
-				entry->fileName + entry->fileNameLength - ((entry->flags & directoryFlag) ? 0 : 2)
-			),
+			.name = Unicode::toUtf8(u16FileName),
 			.isFile = !(entry->flags & directoryFlag),
 			.isDir = bool(entry->flags & directoryFlag),
 			.isSymLink = false,
@@ -99,7 +103,7 @@ std::vector<FS::DirectoryEntry> FS::ISO9660::extentToEntries(
 	return entries;
 }
 
-Async::Thenable<std::vector<FS::DirectoryEntry>> FS::ISO9660::readDirectory(const std::string &absolutePath) {
+Async::Thenable<std::vector<FS::DirectoryEntry>> FS::JolietISO::readDirectory(const std::string &absolutePath) {
 	if (1 != this->cachedDirectoryEntries.count(absolutePath)) {
 		std::vector<std::string> pathParts = splitAbsolutePath(absolutePath, true);
 		std::string pathSoFar = "/";
@@ -124,7 +128,7 @@ Async::Thenable<std::vector<FS::DirectoryEntry>> FS::ISO9660::readDirectory(cons
 					if (buffer) {
 						this->cachedDirectoryEntries.insert({
 							pathSoFar + pathPart + '/',
-							FS::ISO9660::extentToEntries(
+							FS::JolietISO::extentToEntries(
 								(DirectoryRecord*)buffer.getData(),
 								entry->lba,
 								entry->size,

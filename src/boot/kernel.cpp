@@ -2,7 +2,7 @@
 #include <apic.h>
 #include <commonstrings.h>
 #include <cstring>
-#include <drivers/filesystems/iso9660.h>
+#include <drivers/filesystems/jolietIso.h>
 #include <drivers/ps2/keyboard.h>
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/ahci/controller.h>
@@ -21,7 +21,7 @@ static const char* const creatingFsStr = "Creating file systems";
 static const char* const creatingFsDoneStr = "File systems created [";
 static const char* const checkingAhciStr = "Checking AHCI controllers";
 static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
-static const char* const isoFoundStr = "ISO filesystem found at ";
+static const char* const isoFoundStr = "JolietISO filesystem found at ";
 static const char* const globalCtorStr = "Running global constructors";
 static const char* const enabledInterruptsStr = "Enabled interrupts\n\n";
 static const char* const apuBootStr = "Loading auxiliary CPU bootstrap binary";
@@ -147,7 +147,7 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	for (const auto &fs : FS::filesystems) {
 		terminalPrintChar('\n');
-		for (const auto &dir : co_await fs->readDirectory("/BOOT.CAT/")) {
+		for (const auto &dir : co_await fs->readDirectory("/boot/stage1/")) {
 			terminalPrintString(dir.name.c_str(), dir.name.length());
 			terminalPrintChar(' ');
 			terminalPrintDecimal(dir.isFile);
@@ -207,11 +207,11 @@ static Async::Thenable<void> createFileSystems() {
 	terminalPrintChar('\n');
 	for (size_t controllerCount = 0; const auto &controller : AHCI::controllers) {
 		for (const auto &device : controller.getDevices()) {
-			// Try with ISO9660 for SATAPI devices first because that is the most likely FS
+			// Try with JolietISO for SATAPI devices first because that is the most likely FS
 			if (AHCI::Device::Type::Satapi == device->getType()) {
-				auto primaryDescriptor = std::move(co_await FS::ISO9660::isIso9660(device));
-				if (primaryDescriptor) {
-					std::shared_ptr<FS::ISO9660> iso = std::make_shared<FS::ISO9660>(device, primaryDescriptor);
+				auto svd = std::move(co_await FS::JolietISO::isJolietIso(device));
+				if (svd) {
+					std::shared_ptr<FS::JolietISO> iso = std::make_shared<FS::JolietISO>(device, svd);
 					if (co_await iso->initialize()) {
 						FS::filesystems.push_back(iso);
 						terminalPrintSpaces4();

@@ -1,6 +1,5 @@
 BOOT_STAGE1_INPUT := $(shell find $(SRC_DIR)/boot/stage1 -type f -name "*.asm")
 BOOT_STAGE1_OUTPUT := $(addprefix $(ISO_DIR)/boot/stage1/,$(shell echo "$(patsubst %.asm,%.bin,$(notdir $(BOOT_STAGE1_INPUT)))"))
-$(info ${BOOT_STAGE1_OUTPUT})
 
 $(ISO_DIR)/boot/stage1/mmap.bin: $(SRC_DIR)/boot/stage1/mmap.asm
 	$(NASM_BIN) $@ $^

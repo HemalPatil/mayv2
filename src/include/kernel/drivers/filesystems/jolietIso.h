@@ -4,7 +4,7 @@
 #include <map>
 
 namespace FS {
-	class ISO9660 : public BaseFS {
+	class JolietISO : public BaseFS {
 		public:
 			static const std::string cdSignature;
 			static const uint8_t directoryFlag = 2;
@@ -12,6 +12,7 @@ namespace FS {
 			enum VolumeDescriptorType : uint8_t {
 				Boot = 0,
 				Primary,
+				Supplementary,
 				Terminator = 0xff
 			};
 
@@ -38,7 +39,7 @@ namespace FS {
 				uint8_t version;
 			} __attribute__((packed));
 
-			struct PrimaryVolumeDescriptor {
+			struct SupplementaryVolumeDescriptor {
 				VolumeDescriptorHeader header;
 				uint8_t reserved0;
 				char systemId[32];
@@ -81,7 +82,7 @@ namespace FS {
 			);
 
 		public:
-			ISO9660(std::shared_ptr<Storage::BlockDevice> device, const Storage::Buffer &primarySectorBuffer);
+			JolietISO(std::shared_ptr<Storage::BlockDevice> device, const Storage::Buffer &svdSectorBuffer);
 
 			Async::Thenable<bool> initialize();
 
@@ -89,6 +90,6 @@ namespace FS {
 			// Returns empty vector if given path cannot be resolved to a valid directory
 			Async::Thenable<std::vector<DirectoryEntry>> readDirectory(const std::string &absolutePath) override;
 
-			static Async::Thenable<Storage::Buffer> isIso9660(std::shared_ptr<Storage::BlockDevice> device);
+			static Async::Thenable<Storage::Buffer> isJolietIso(std::shared_ptr<Storage::BlockDevice> device);
 	};
 }
