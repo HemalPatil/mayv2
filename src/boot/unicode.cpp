@@ -96,17 +96,16 @@ std::string Unicode::toUtf8(uint32_t codePoint) {
 }
 
 std::string Unicode::toUtf8(const std::u16string &str) {
-	auto codeUnits = str.c_str();
 	std::string utf8Str = "";
 	for (size_t i = 0; i < str.length();) {
-		if (0xd800 >= codeUnits[i] || 0xe000 <= codeUnits[i]) {
-			utf8Str += toUtf8(toCodePoint(codeUnits[i]));
+		if (0xd800 >= str[i] || 0xe000 <= str[i]) {
+			utf8Str += toUtf8(toCodePoint(str[i]));
 			++i;
 		} else if (
-			(0xd800 <= codeUnits[i] && 0xdbff >= codeUnits[i]) &&
-			(0xdc00 <= codeUnits[i + 1] && 0xdfff >= codeUnits[i + 1])
+			(0xd800 <= str[i] && 0xdbff >= str[i]) &&
+			(0xdc00 <= str[i + 1] && 0xdfff >= str[i + 1])
 		) {
-			utf8Str += toUtf8(toCodePoint(codeUnits[i], codeUnits[i + 1]));
+			utf8Str += toUtf8(toCodePoint(str[i], str[i + 1]));
 			i += 2;
 		} else {
 			terminalPrintString(invalidStr, strlen(invalidStr));
