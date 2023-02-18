@@ -9,7 +9,7 @@
 #include <terminal.h>
 
 #define SCHEDULER_EVENT_DISPATCH_LIMIT 100
-#define SCHEDULER_FREQUENCY 100
+#define SCHEDULER_FREQUENCY 1000
 
 static const char* const initSchedulerStr = "Initializing scheduler";
 static const char* const initSchedulerCompleteStr = "Scheduler initialized\n\n";

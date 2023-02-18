@@ -1,6 +1,7 @@
 [bits 64]
 
 section .data
+	global floatSaveRegion
 align 16
 floatSaveRegion:
 	times 512 db 0
