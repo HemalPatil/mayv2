@@ -147,19 +147,25 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	for (const auto &fs : FS::filesystems) {
 		terminalPrintChar('\n');
-		for (const auto &dir : co_await fs->readDirectory("/boot/stage1/")) {
-			terminalPrintString(dir.name.c_str(), dir.name.length());
-			terminalPrintChar(' ');
-			terminalPrintDecimal(dir.isFile);
-			terminalPrintChar(' ');
-			terminalPrintDecimal(dir.isDir);
-			terminalPrintChar(' ');
-			terminalPrintDecimal(dir.isSymLink);
-			terminalPrintChar(' ');
-			terminalPrintDecimal(dir.lba);
-			terminalPrintChar(' ');
-			terminalPrintDecimal(dir.size);
-			terminalPrintChar('\n');
+		const auto x = co_await fs->readDirectory("/boot/stage1/");
+		if (FS::Status::Ok == x.status) {
+			for (const auto &dir : x.entries) {
+				terminalPrintString(dir.name.c_str(), dir.name.length());
+				terminalPrintChar(' ');
+				terminalPrintDecimal(dir.isFile);
+				terminalPrintChar(' ');
+				terminalPrintDecimal(dir.isDir);
+				terminalPrintChar(' ');
+				terminalPrintDecimal(dir.isSymLink);
+				terminalPrintChar(' ');
+				terminalPrintDecimal(dir.lba);
+				terminalPrintChar(' ');
+				terminalPrintDecimal(dir.size);
+				terminalPrintChar('\n');
+			}
+		} else {
+			terminalPrintString("failedReadDir", 13);
+			terminalPrintDecimal(x.status);
 		}
 	}
 	terminalPrintString(doneStr, strlen(doneStr));

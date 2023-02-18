@@ -1,8 +1,11 @@
 #include <cstring>
 #include <drivers/storage/blockdevice.h>
 
-static const char* const bufAllocErrorStr = "Storage::Buffer::Buffer could not allocate buffer or wrong alignment";
-static const char* const freeFailStr = "Storage::Buffer::operator= failed to free buffer pages";
+static const char* const bufferNamespaceStr = "Storage::Buffer::";
+static const char* const bufStr = "Buffer ";
+static const char* const bufAllocErrorStr = "could not allocate buffer";
+static const char* const wrongAlignStr = "wrong alignment";
+static const char* const freeFailStr = "operator=(nullptr) failed to free buffer pages";
 
 Storage::Buffer::Buffer(std::nullptr_t) : data(nullptr), pageCount(0), physicalAddress((uint64_t)INVALID_ADDRESS), size(0) {}
 
@@ -25,6 +28,8 @@ Storage::Buffer::Buffer(size_t size, size_t alignAt) {
 		)
 	);
 	if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != this->pageCount) {
+		terminalPrintString(bufferNamespaceStr, strlen(bufferNamespaceStr));
+		terminalPrintString(bufStr, strlen(bufStr));
 		terminalPrintString(bufAllocErrorStr, strlen(bufAllocErrorStr));
 		Kernel::panic();
 	}
@@ -32,11 +37,17 @@ Storage::Buffer::Buffer(size_t size, size_t alignAt) {
 
 	// Make sure buffer's physical address is aligned at correct boundary
 	Kernel::Memory::Virtual::CrawlResult crawlResult(this->data);
-	if (crawlResult.physicalTables[0] == INVALID_ADDRESS || crawlResult.indexes[0] % alignAt != 0) {
-		terminalPrintString(bufAllocErrorStr, strlen(bufAllocErrorStr));
+	uint64_t physicalAddress = (uint64_t)crawlResult.physicalTables[0] + crawlResult.indexes[0];
+	if (
+		crawlResult.physicalTables[0] == INVALID_ADDRESS ||
+		physicalAddress % alignAt != 0
+	) {
+		terminalPrintString(bufferNamespaceStr, strlen(bufferNamespaceStr));
+		terminalPrintString(bufStr, strlen(bufStr));
+		terminalPrintString(wrongAlignStr, strlen(wrongAlignStr));
 		Kernel::panic();
 	}
-	this->physicalAddress = (uint64_t)crawlResult.physicalTables[0] + crawlResult.indexes[0];
+	this->physicalAddress = physicalAddress;
 }
 
 Storage::Buffer::Buffer(Buffer &&other) : data(other.data), pageCount(other.pageCount), physicalAddress(other.physicalAddress), size(other.size) {
@@ -57,6 +68,7 @@ Storage::Buffer& Storage::Buffer::operator=(std::nullptr_t) {
 		this->pageCount != 0 &&
 		!Virtual::freePages(this->data, this->pageCount, RequestType::Kernel | RequestType::AllocatePhysical)
 	) {
+		terminalPrintString(bufferNamespaceStr, strlen(bufferNamespaceStr));
 		terminalPrintString(freeFailStr, strlen(freeFailStr));
 		Kernel::panic();
 	}

@@ -79,16 +79,18 @@ std::vector<FS::DirectoryEntry> FS::JolietISO::extentToEntries(
 	entries.push_back({.name = ".", .isFile = false, .isDir = true, .isSymLink = false, .lba = lba, .size = size});
 	entries.push_back({.name = "..", .isFile = false, .isDir = true, .isSymLink = false, .lba = parentLba, .size = parentSize});
 	size_t seekg = 0x44;
-	DirectoryRecord *entry = (DirectoryRecord*)((uint64_t)extent + seekg);	// Skip current, parent directory entries
+	const DirectoryRecord *entry = (DirectoryRecord*)((uint64_t)extent + seekg);	// Skip current, parent directory entries
 	// Traverse all the remaining records in this extent
 	while (seekg < size && entry->length > 0) {
+		char *fileName = new char[entry->fileNameLength];
+		memcpy(fileName, entry->fileName, entry->fileNameLength);
 		// Convert to UTF16LE by flipping bytes of UTF16BE record name
 		for (size_t i = 0; i < entry->fileNameLength; i += 2) {
-			char temp = entry->fileName[i];
-			entry->fileName[i] = entry->fileName[i + 1];
-			entry->fileName[i + 1] = temp;
+			char temp = fileName[i];
+			fileName[i] = fileName[i + 1];
+			fileName[i + 1] = temp;
 		}
-		std::u16string u16FileName = std::u16string((char16_t*)entry->fileName, (char16_t*)(entry->fileName + entry->fileNameLength));
+		std::u16string u16FileName = std::u16string((char16_t*)fileName, (char16_t*)(fileName + entry->fileNameLength));
 		entries.push_back({
 			.name = Unicode::toUtf8(u16FileName),
 			.isFile = !(entry->flags & directoryFlag),
@@ -99,24 +101,30 @@ std::vector<FS::DirectoryEntry> FS::JolietISO::extentToEntries(
 		});
 		seekg += entry->length;
 		entry = (DirectoryRecord*)((uint64_t)extent + seekg);
+		delete[] fileName;
 	}
 	return entries;
 }
 
-Async::Thenable<std::vector<FS::DirectoryEntry>> FS::JolietISO::readDirectory(const std::string &absolutePath) {
+Async::Thenable<FS::ReadDirectoryResult> FS::JolietISO::readDirectory(const std::string &absolutePath) {
 	if (1 != this->cachedDirectoryEntries.count(absolutePath)) {
 		std::vector<std::string> pathParts = splitAbsolutePath(absolutePath, true);
 		std::string pathSoFar = "/";
-		std::vector<DirectoryEntry> empty;
+		ReadDirectoryResult errorResult;
 		for (const auto &pathPart : pathParts) {
 			// Check if pathPart exists in the cached entries for pathSoFar
 			const std::vector<DirectoryEntry> &parentEntries = this->cachedDirectoryEntries.at(pathSoFar);
 			const DirectoryEntry &parentEntry = parentEntries.at(0);
 			const DirectoryEntry* entry = nullptr;
 			for (const auto &dirEntry : parentEntries) {
-				if (dirEntry.isDir && dirEntry.name == pathPart) {
-					entry = &dirEntry;
-					break;
+				if (dirEntry.name == pathPart) {
+					if (dirEntry.isDir) {
+						entry = &dirEntry;
+						break;
+					} else {
+						errorResult.status = Status::NotDirectory;
+						co_return std::move(errorResult);
+					}
 				}
 			}
 
@@ -137,14 +145,19 @@ Async::Thenable<std::vector<FS::DirectoryEntry>> FS::JolietISO::readDirectory(co
 							)
 						});
 					} else {
-						co_return std::move(empty);
+						errorResult.status = Status::IOError;
+						co_return std::move(errorResult);
 					}
 				}
 				pathSoFar += pathPart + '/';
 			} else {
-				co_return std::move(empty);
+				errorResult.status = Status::NoSuchDirectoryOrFile;
+				co_return std::move(errorResult);
 			}
 		}
 	}
-	co_return std::vector<DirectoryEntry>(this->cachedDirectoryEntries.at(absolutePath));
+	co_return {
+		.status = Status::Ok,
+		.entries = this->cachedDirectoryEntries.at(absolutePath)
+	};
 }
