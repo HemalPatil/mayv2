@@ -9,6 +9,7 @@
 #include <terminal.h>
 
 #define SCHEDULER_EVENT_DISPATCH_LIMIT 100
+#define SCHEDULER_FREQUENCY 100
 
 static const char* const initSchedulerStr = "Initializing scheduler";
 static const char* const initSchedulerCompleteStr = "Scheduler initialized\n\n";
@@ -110,8 +111,8 @@ static void enableHpet() {
 	#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 	uint64_t *configure = (uint64_t*)(void*)periodicTimer;
 	*configure |= ((Kernel::IRQ::Timer << 9) | TimerParamters::Enable | TimerParamters::Periodic | TimerParamters::PeriodicInterval);
-	// FIXME: change timer interval to some smaller value (possibly configurable), currently 1sec
-	periodicTimer->comparatorValue = 1000000000000000UL / registers->period;
+	const size_t second1 = 1000000000000000UL / registers->period;
+	periodicTimer->comparatorValue = second1 / SCHEDULER_FREQUENCY;
 	configure = (uint64_t*)(void*)registers;
 	configure[2] |= 1;
 	#pragma GCC diagnostic pop

@@ -26,7 +26,7 @@ sed -i "s/ISO_SECTOR_SIZE equ $SED_HEX_OR_NUMBER_REGEX/ISO_SECTOR_SIZE equ $ISO_
 
 # Configure VBE modes info location
 VBE_MODES_INFO_LOCATION=0x30000
-sed -i "s/VBE_MODES_INFO_LOCATION equ $SED_HEX_OR_NUMBER_REGEX/VBE_MODES_INFO_LOCATION equ $VBE_MODES_INFO_LOCATION/" src/boot/stage1/vidmodes.asm
+sed -i "s/VBE_MODES_INFO_LOCATION equ $SED_HEX_OR_NUMBER_REGEX/VBE_MODES_INFO_LOCATION equ $VBE_MODES_INFO_LOCATION/" src/boot/stage1/videoModes.asm
 
 # Configure ELF parser origin
 ELFPARSE_ORIGIN=0x00020000
@@ -76,3 +76,7 @@ sed -i "s/\#define KERNEL_HIGHERHALF_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define KE
 # Configure scheduler event loop dispatch limit
 SCHEDULER_EVENT_DISPATCH_LIMIT=100
 sed -i "s/\#define SCHEDULER_EVENT_DISPATCH_LIMIT $SED_HEX_OR_NUMBER_REGEX/\#define SCHEDULER_EVENT_DISPATCH_LIMIT $SCHEDULER_EVENT_DISPATCH_LIMIT/" src/boot/scheduler.cpp
+
+# Configure scheduler event loop frequency
+SCHEDULER_FREQUENCY=100
+sed -i "s/\#define SCHEDULER_FREQUENCY $SED_HEX_OR_NUMBER_REGEX/\#define SCHEDULER_FREQUENCY $SCHEDULER_FREQUENCY/" src/boot/scheduler.cpp
