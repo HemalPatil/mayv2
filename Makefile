@@ -43,7 +43,7 @@ ALL_SRC_FILES := $(C_FILES) $(CPP_FILES) $(HEADER_FILES) $(ASM_FILES)
 # Final ISO name
 ISO_NAME := mayv2.iso
 
-.PHONY: all clean directories todolist
+.PHONY: all clean directories disassemble fixme todo
 
 # Include the rules from subdirectories recursively using stack-like structure
 # (See implementing non-recursive make article https://accu.org/journals/overload/14/71/miller_2004/)
@@ -55,6 +55,10 @@ dir := $(SRC_DIR)/boot
 include $(dir)/Rules.mk
 
 GREP := grep --color='auto' -rni $(SRC_DIR) $(UTILITIES_DIR) -e
+
+# Disassemble kernel
+disassemble:
+	x86_64-elf-objdump -S --disassemble -M intel -M intel-mnemonic ISO/boot/kernel > k.asm
 
 # Show all TODOs in all source files
 todo:

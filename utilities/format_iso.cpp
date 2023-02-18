@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
 		isoFile.write((char *)&dapOffset, 2);
 		if (6 == i) {
 			// elfParse.bin
-			// FIXME: assumes memory from ELFPARSE_ORIGIN will be to load ELFPARSE.BIN
+			// FIXME: assumes memory from ELFPARSE_ORIGIN will be free to load elfParse.bin
 			uint16_t elfParseSegment = ELFPARSE_ORIGIN >> 4;
 			isoFile.write((char *)&elfParseSegment, 2);
 		} else if (7 == i || 8 == i) {
