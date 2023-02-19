@@ -30,6 +30,11 @@ namespace FS {
 		std::vector<DirectoryEntry> entries;
 	};
 
+	struct ReadFileResult {
+		Status status = Status::Ok;
+		Storage::Buffer data;
+	};
+
 	class BaseFS {
 		protected:
 			std::shared_ptr<Storage::BlockDevice> device;
@@ -39,6 +44,9 @@ namespace FS {
 
 			// Reads directory at given absolute path ending in '/'
 			virtual Async::Thenable<ReadDirectoryResult> readDirectory(const std::string &absolutePath) = 0;
+
+			// TODO: may have to remove it depending on openFile
+			virtual Async::Thenable<ReadFileResult> readFile(const std::string &absolutePath) = 0;
 	};
 
 	extern std::vector<std::shared_ptr<BaseFS>> filesystems;

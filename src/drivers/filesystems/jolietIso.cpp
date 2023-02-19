@@ -106,6 +106,13 @@ std::vector<FS::DirectoryEntry> FS::JolietISO::extentToEntries(
 	return entries;
 }
 
+Async::Thenable<FS::ReadFileResult> FS::JolietISO::readFile(const std::string &absolutePath) {
+	co_return {
+		.status = Status::Ok,
+		.data = Storage::Buffer()
+	};
+}
+
 Async::Thenable<FS::ReadDirectoryResult> FS::JolietISO::readDirectory(const std::string &absolutePath) {
 	if (1 != this->cachedDirectoryEntries.count(absolutePath)) {
 		std::vector<std::string> pathParts = splitAbsolutePath(absolutePath, true);

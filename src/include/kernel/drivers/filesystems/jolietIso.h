@@ -89,6 +89,8 @@ namespace FS {
 			// Reads directory at given absolute path ending in '/'
 			Async::Thenable<ReadDirectoryResult> readDirectory(const std::string &absolutePath) override;
 
+			Async::Thenable<ReadFileResult> readFile(const std::string &absolutePath) override;
+
 			static Async::Thenable<Storage::Buffer> isJolietIso(std::shared_ptr<Storage::BlockDevice> device);
 	};
 }

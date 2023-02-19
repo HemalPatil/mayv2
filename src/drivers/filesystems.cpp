@@ -23,7 +23,7 @@ std::vector<std::string> FS::splitAbsolutePath(const std::string &absolutePath, 
 	for (; currentPos < absolutePath.length(); ++currentPos) {
 		if ('/' == absolutePath.at(currentPos)) {
 			if (currentPos == pos) {
-				// TODO: should probably treat consecutive / as harmless like Linux
+				// TODO: should probably treat consecutive '/' as harmless like Linux
 				malformedAbsolutePath(absolutePath);
 			}
 			pathParts.push_back(absolutePath.substr(pos, currentPos - pos));
