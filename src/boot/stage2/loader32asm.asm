@@ -301,7 +301,7 @@ jumpToKernel64:
 	mov cr4, eax
 	mov ecx, 0xc0000080	; Copy contents of EFER MSR in eax
 	rdmsr
-	or eax, 1 << 8		; Set LM (long mode) bit
+	or eax, 1 << 8 | 1 << 11	; Set LM (long mode) bit and NX (execute disable) bit
 	wrmsr				; Write back to EFER MSR
 	mov eax, cr0			; Enable paging
 	or eax, 1 << 31
