@@ -69,6 +69,7 @@ namespace Kernel {
 			CacheDisable = 4,
 			PhysicalContiguous = 8,
 			VirtualContiguous = 16,
+			Executable = 32,
 		};
 
 		enum MarkPageType {

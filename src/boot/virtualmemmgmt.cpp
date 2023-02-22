@@ -511,10 +511,11 @@ bool Kernel::Memory::Virtual::mapPages(void* virtualAddress, void* physicalAddre
 		}
 		if (crawlResult.physicalTables[0] == INVALID_ADDRESS) {
 			crawlResult.tables[1][crawlResult.indexes[1]].present = 1;
-			// FIXME: should add only appropriate permissions when mapping pages
+			// FIXME: should add only appropriate write permissions when mapping pages
 			crawlResult.tables[1][crawlResult.indexes[1]].readWrite = 1;
 			crawlResult.tables[1][crawlResult.indexes[1]].physicalAddress = phyAddr >> pageSizeShift;
 			crawlResult.tables[1][crawlResult.indexes[1]].cacheDisable = (flags & RequestType::CacheDisable) ? 1 : 0;
+			crawlResult.tables[1][crawlResult.indexes[1]].executeDisable = (flags & RequestType::Executable) ? 0 : 1;
 		}
 	}
 	return true;
