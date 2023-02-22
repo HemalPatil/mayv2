@@ -213,9 +213,14 @@ void identityMapMemory(uint64_t* pagePtr) {
 	}
 }
 
-void allocatePagingEntry(PML4E *entry, uint32_t address) {
+void allocatePagingEntry(PML4E *entry, uint32_t address, bool writable, bool executable) {
 	entry->present = 1;
-	entry->readWrite = 1;
+	if (writable) {
+		entry->readWrite = 1;
+	}
+	if (!executable) {
+		entry->executeDisable = 1;
+	}
 	entry->physicalAddress = address >> pageSizeShift;
 }
 
@@ -378,10 +383,10 @@ extern "C" int loader32Main(
 		if (programHeader[i].segmentType != ELF_SEGMENT_TYPE_LOAD) {
 			continue;
 		}
-		uint32_t sizeInMemory = (uint32_t)programHeader[i].segmentSizeInMemory;
-		printString("  SizeInMemory = 0x");
+		const uint32_t sizeInMemory = (uint32_t)programHeader[i].segmentSizeInMemory;
+		const uint32_t flags = programHeader[i].segmentFlags;
+		printString("- SizeInMemory = 0x");
 		printHex(&sizeInMemory, sizeof(sizeInMemory));
-		printString("\n");
 
 		memset((void *)memorySeekp, 0, sizeInMemory);
 		memcpy(
@@ -407,6 +412,8 @@ extern "C" int loader32Main(
 		printString("\n");
 		printString("  VirtualAddress = 0x");
 		printHex(&programHeader[i].virtualAddress, sizeof(programHeader[i].virtualAddress));
+		printString("  Flags = 0x");
+		printHex(&flags, sizeof(flags));
 		printString("\n");
 		for (size_t j = 0; j < pageCount; ++j, memorySeekp += pageSize) {
 			uint64_t virtualAddress = programHeader[i].virtualAddress + j * pageSize;
@@ -425,34 +432,34 @@ extern "C" int loader32Main(
 					if (pd[pdIndex].present) {
 						PTE *pt = (PTE *)((uint32_t)pd[pdIndex].physicalAddress << pageSizeShift);
 						if (!pt[ptIndex].present) {
-							allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
+							allocatePagingEntry(&(pt[ptIndex]), memorySeekp, flags & ELF_SEGMENT_FLAG_WRITABLE, flags & ELF_SEGMENT_FLAG_EXECUTABLE);
 						}
 					} else {
-						allocatePagingEntry(&(pd[pdIndex]), newPageStart);
+						allocatePagingEntry(&(pd[pdIndex]), newPageStart, true, true);
 						PTE *pt = (PTE *)newPageStart;
 						newPageStart += pageSize;
-						allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
+						allocatePagingEntry(&(pt[ptIndex]), memorySeekp, flags & ELF_SEGMENT_FLAG_WRITABLE, flags & ELF_SEGMENT_FLAG_EXECUTABLE);
 					}
 				} else {
-					allocatePagingEntry(&(pdpt[pdptIndex]), newPageStart);
+					allocatePagingEntry(&(pdpt[pdptIndex]), newPageStart, true, true);
 					PDE *pd = (PDE *)newPageStart;
 					newPageStart += pageSize;
-					allocatePagingEntry(&(pd[pdIndex]), newPageStart);
+					allocatePagingEntry(&(pd[pdIndex]), newPageStart, true, true);
 					PTE *pt = (PTE *)newPageStart;
 					newPageStart += pageSize;
-					allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
+					allocatePagingEntry(&(pt[ptIndex]), memorySeekp, flags & ELF_SEGMENT_FLAG_WRITABLE, flags & ELF_SEGMENT_FLAG_EXECUTABLE);
 				}
 			} else {
-				allocatePagingEntry(&(pml4t[pml4tIndex]), newPageStart);
+				allocatePagingEntry(&(pml4t[pml4tIndex]), newPageStart, true, true);
 				PDPTE *pdpt = (PDPTE *)newPageStart;
 				newPageStart += pageSize;
-				allocatePagingEntry(&(pdpt[pdptIndex]), newPageStart);
+				allocatePagingEntry(&(pdpt[pdptIndex]), newPageStart, true, true);
 				PDE *pd = (PDE *)newPageStart;
 				newPageStart += pageSize;
-				allocatePagingEntry(&(pd[pdIndex]), newPageStart);
+				allocatePagingEntry(&(pd[pdIndex]), newPageStart, true, true);
 				PTE *pt = (PTE *)newPageStart;
 				newPageStart += pageSize;
-				allocatePagingEntry(&(pt[ptIndex]), memorySeekp);
+				allocatePagingEntry(&(pt[ptIndex]), memorySeekp, flags & ELF_SEGMENT_FLAG_WRITABLE, flags & ELF_SEGMENT_FLAG_EXECUTABLE);
 			}
 		}
 	}
