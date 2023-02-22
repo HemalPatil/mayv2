@@ -6,8 +6,7 @@ section .text
 	extern terminalPrintString
 	global ps2KeyboardHandlerWrapper
 ps2KeyboardHandlerWrapper:
-	pushfq	; Save all general registers, SSE registers, and flags
-	push rax
+	push rax	; Save all general registers, SSE registers, and align stack to 16-byte boundary
 	push rbx
 	push rcx
 	push rdx
@@ -22,12 +21,10 @@ ps2KeyboardHandlerWrapper:
 	push r14
 	push r15
 	push rbp
-	push rbp	; Required to align stack to 16-byte boundary
 	fxsave64 [floatSaveRegion]
 	in al, 0x60
 	call ps2KeyboardHandler
 	fxrstor64 [floatSaveRegion]
-	pop rbp
 	pop rbp
 	pop r15
 	pop r14
@@ -43,5 +40,4 @@ ps2KeyboardHandlerWrapper:
 	pop rcx
 	pop rbx
 	pop rax
-	popfq
 	iretq

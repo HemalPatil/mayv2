@@ -6,8 +6,7 @@ section .text
 	extern terminalPrintString
 	global hpetHandlerWrapper
 hpetHandlerWrapper:
-	pushfq	; Save all general registers, SSE registers, and flags
-	push rax
+	push rax	; Save all general registers, SSE registers, and align stack to 16-byte boundary
 	push rbx
 	push rcx
 	push rdx
@@ -22,12 +21,10 @@ hpetHandlerWrapper:
 	push r14
 	push r15
 	push rbp
-	push rbp	; Required to align stack to 16-byte boundary
 	fxsave64 [floatSaveRegion]
 	cld
 	call hpetHandler
 	fxrstor64 [floatSaveRegion]
-	pop rbp
 	pop rbp
 	pop r15
 	pop r14
@@ -43,5 +40,4 @@ hpetHandlerWrapper:
 	pop rcx
 	pop rbx
 	pop rax
-	popfq
 	iretq

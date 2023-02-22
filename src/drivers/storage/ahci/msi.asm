@@ -5,8 +5,7 @@ section .text
 	extern floatSaveRegion
 	global ahciMsiHandlerWrapper
 ahciMsiHandlerWrapper:
-	pushfq	; Save all general registers, SSE registers, and flags
-	push rax
+	push rax	; Save all general registers, SSE registers, and align stack to 16-byte boundary
 	push rbx
 	push rcx
 	push rdx
@@ -21,12 +20,10 @@ ahciMsiHandlerWrapper:
 	push r14
 	push r15
 	push rbp
-	push rbp	; Required to align stack to 16-byte boundary
 	fxsave64 [floatSaveRegion]
 	cld
 	call ahciMsiHandler
 	fxrstor64 [floatSaveRegion]
-	pop rbp
 	pop rbp
 	pop r15
 	pop r14
@@ -42,5 +39,4 @@ ahciMsiHandlerWrapper:
 	pop rcx
 	pop rbx
 	pop rax
-	popfq
 	iretq
