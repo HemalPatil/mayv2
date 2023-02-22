@@ -6,9 +6,9 @@ times 8 - ($-$$) db 0
 
 magicBytes db 'x64', 0
 cpuidNotAvailable db 'CPUID not available.', 13, 10, 0
-noX64 db 'Processor does not support 64-bit mode.', 13, 10, 0
+noX64 db 'Processor does not support either 64-bit mode or NX bit.', 13, 10, 0
 cannotBootMsg db 'Cannot boot!', 13, 10, 0
-longMode db '64-bit long mode available', 13, 10, 13, 10, 0
+longMode db '64-bit long mode and NX bit available', 13, 10, 13, 10, 0
 
 start:
 	pusha
@@ -36,10 +36,12 @@ checkExtensions:
 	cmp eax, 0x80000001
 	jb noLongMode
 
-checkX64:
+checkX64AndNXBit:
 	mov eax, 0x80000001
 	cpuid
 	test edx, 1 << 29
+	jz noLongMode
+	test edx, 1 << 20
 	jz noLongMode
 
 	mov si, longMode
