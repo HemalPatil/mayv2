@@ -121,7 +121,7 @@ bool Kernel::Memory::Virtual::initialize(
 	terminalPrintString(recursiveStr, strlen(recursiveStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PML4E *root = (PML4E*)infoTable->pml4tPhysicalAddress;
-	root[pml4tRecursiveEntry].present = root[pml4tRecursiveEntry].readWrite = 1;
+	root[pml4tRecursiveEntry].present = root[pml4tRecursiveEntry].writable = 1;
 	root[pml4tRecursiveEntry].physicalAddress = infoTable->pml4tPhysicalAddress >> pageSizeShift;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
@@ -504,17 +504,16 @@ bool Kernel::Memory::Virtual::mapPages(void* virtualAddress, void* physicalAddre
 					panic();
 				}
 				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].present = 1;
-				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].readWrite = 1;
+				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].writable = 1;
 				crawlResult.tables[j + 1][crawlResult.indexes[j + 1]].physicalAddress = (uint64_t)requestResult.address >> pageSizeShift;
 				memset(crawlResult.tables[j], 0, pageSize);
 			}
 		}
 		if (crawlResult.physicalTables[0] == INVALID_ADDRESS) {
 			crawlResult.tables[1][crawlResult.indexes[1]].present = 1;
-			// FIXME: should add only appropriate write permissions when mapping pages
-			crawlResult.tables[1][crawlResult.indexes[1]].readWrite = 1;
 			crawlResult.tables[1][crawlResult.indexes[1]].physicalAddress = phyAddr >> pageSizeShift;
 			crawlResult.tables[1][crawlResult.indexes[1]].cacheDisable = (flags & RequestType::CacheDisable) ? 1 : 0;
+			crawlResult.tables[1][crawlResult.indexes[1]].writable = (flags & RequestType::Writable) ? 1 : 0;
 			crawlResult.tables[1][crawlResult.indexes[1]].executeDisable = (flags & RequestType::Executable) ? 0 : 1;
 		}
 	}

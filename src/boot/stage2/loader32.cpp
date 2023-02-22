@@ -216,7 +216,7 @@ void identityMapMemory(uint64_t* pagePtr) {
 void allocatePagingEntry(PML4E *entry, uint32_t address, bool writable, bool executable) {
 	entry->present = 1;
 	if (writable) {
-		entry->readWrite = 1;
+		entry->writable = 1;
 	}
 	if (!executable) {
 		entry->executeDisable = 1;

@@ -7,7 +7,7 @@
 
 struct PML4E {
 	uint8_t present : 1;
-	uint8_t readWrite : 1;
+	uint8_t writable : 1;
 	uint8_t userAccess : 1;
 	uint8_t pageWriteThrough : 1;
 	uint8_t cacheDisable : 1;
