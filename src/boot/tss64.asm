@@ -2,7 +2,7 @@
 
 ; TSS for 64 bit mode
 
-section .TSS64
+section .data
 	extern IST1_STACK_END
 	extern IST2_STACK_END
 TSS_START:

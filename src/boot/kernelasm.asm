@@ -3,11 +3,11 @@
 KERNEL_STACK_SIZE equ 65536 ; 64 KiB stack
 
 ;Reserve space for stack
-section .KERNELSTACK
+section .bss
 kernelStack:
-	times KERNEL_STACK_SIZE db 0
+	resb KERNEL_STACK_SIZE
 
-section .lowerhalf
+section .lowerhalf progbits alloc exec nowrite align=4096
 	extern gdtDescriptor
 	global kernelCompatibilityModeStart
 

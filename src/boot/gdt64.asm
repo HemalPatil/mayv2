@@ -15,7 +15,7 @@ GRAN_4K       equ 1 << 7	; 4KiB granularity
 SZ_32         equ 1 << 6
 LONG_MODE     equ 1 << 5
 
-section .GDT64
+section .data
 	global GDT_START
 	global GDT_END
 	global gdtDescriptor
@@ -54,7 +54,7 @@ GDT_START:
 
 GDT_END:
 
-section .rodata:
+section .rodata
 gdtDescriptor:
 	gdt64Limit dw 65535
 	gdt64Base dq GDT_START

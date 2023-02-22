@@ -8,31 +8,23 @@ IST2_STACK_SIZE equ 4096	; 4 KiB stack
 ; IST stack 1 - custom interrupt handlers
 ; IST stack 2 - processor exception handlers
 ; Reserve space for IST stacks
-section .ISTs
+section .bss
 	global IST1_STACK_END
 	global IST2_STACK_END
-IST1_STACK:
-	times IST1_STACK_SIZE db 0
-IST1_STACK_END:
-IST2_STACK:
-	times IST2_STACK_SIZE db 0
-IST2_STACK_END:
-
-section .IDT64
 	global IDT_START
 	global IDT_END
+IST1_STACK:
+	resb IST1_STACK_SIZE
+IST1_STACK_END:
+IST2_STACK:
+	resb IST2_STACK_SIZE
+IST2_STACK_END:
 
 IDT_START:
-	times 224 - ($-$$) db 0		; Skip first 14 interrupts/exception
-
-pageFaultDescriptor:
-	dq 0
-	dq 0
-
-	times 4096 - ($-$$) db 0	; Make the 64-bit IDT 4 KiB long
+	resb 4096	; Make the 64-bit IDT 4 KiB long
 IDT_END:
 
-section .rodata:
+section .rodata
 idtDescriptor:
 	idt64Limit dw 4095
 	idt64Base dq IDT_START
