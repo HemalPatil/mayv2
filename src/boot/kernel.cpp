@@ -10,6 +10,7 @@
 #include <idt64.h>
 #include <kernel.h>
 #include <pcie.h>
+#include <random.h>
 #include <sse4.h>
 #include <terminal.h>
 #include <tss64.h>
@@ -28,7 +29,8 @@ static const char* const apuBootStr = "Loading auxiliary CPU bootstrap binary";
 static const char* const initApusStr = "Initializing CPUs";
 static const char* const cpuStr = "CPU ";
 static const char* const noFsStr = "Expected to find at least 1 filesystem\n";
-static const char* const sse4Str = "SSE4 enabled\n\n";
+static const char* const sse4Str = "SSE4.2 enabled\n\n";
+static const char* const checkRandStr = "Checking RDRAND presence";
 
 static Async::Thenable<void> startPcieDrivers();
 static Async::Thenable<void> createFileSystems();
@@ -52,7 +54,6 @@ extern "C" [[noreturn]] void kernelMain(
 	if (!enableSse4()) {
 		Kernel::panic();
 	}
-	terminalPrintString(sse4Str, strlen(sse4Str));
 
 	Kernel::infoTable = infoTableAddress;
 	Kernel::GlobalConstructor globalCtors[Kernel::infoTable->globalCtorsCount];
@@ -67,6 +68,20 @@ extern "C" [[noreturn]] void kernelMain(
 	terminalClearScreen();
 	terminalSetCursorPosition(0, 0);
 	terminalPrintString(kernelLoadedStr, strlen(kernelLoadedStr));
+	terminalPrintString(sse4Str, strlen(sse4Str));
+
+	terminalPrintString(checkRandStr, strlen(checkRandStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (!Random::isRandomAvailable()) {
+		terminalPrintString(notStr, strlen(notStr));
+		terminalPrintChar(' ');
+		terminalPrintString(okStr, strlen(okStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
+	terminalPrintString(okStr, strlen(okStr));
+	terminalPrintChar('\n');
+	terminalPrintChar('\n');
 
 	// Initialize physical memory
 	size_t phyMemBuddyPagesCount;
