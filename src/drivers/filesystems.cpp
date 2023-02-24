@@ -36,6 +36,12 @@ std::vector<std::string> FS::splitAbsolutePath(const std::string &absolutePath, 
 	return pathParts;
 }
 
+FS::BaseFS::BaseFS(std::shared_ptr<Storage::BlockDevice> blockDevice) : device(blockDevice), guid() {}
+
+const Random::GUIDv4& FS::BaseFS::getGuid() const {
+	return this->guid;
+}
+
 static void malformedAbsolutePath(const std::string &absolutePath) {
 	terminalPrintString(malformedStr, strlen(malformedStr));
 	terminalPrintString(absolutePath.c_str(), absolutePath.length());

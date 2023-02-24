@@ -13,7 +13,17 @@ Random::GUIDv4::GUIDv4() {
 	this->clockSequenceAndVariant |= 0x8000;
 }
 
-void Random::GUIDv4::print() {
+bool Random::GUIDv4::operator==(const GUIDv4 &other) const {
+	return (
+		this->timeLow == other.timeLow &&
+		this->timeMid == other.timeMid &&
+		this->timeHighAndVersion == other.timeHighAndVersion &&
+		this->clockSequenceAndVariant == other.clockSequenceAndVariant &&
+		(this->node & 0xffffffffffffUL) == (other.node & 0xffffffffffffUL)
+	);
+}
+
+void Random::GUIDv4::print() const {
 	terminalPrintChar('{');
 	terminalPrintHex(&this->timeLow, 4);
 	terminalPrintChar('-');

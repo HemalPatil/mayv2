@@ -2,6 +2,7 @@
 
 #include <drivers/storage/blockdevice.h>
 #include <memory>
+#include <random.h>
 #include <string>
 #include <vector>
 
@@ -38,9 +39,11 @@ namespace FS {
 	class BaseFS {
 		protected:
 			std::shared_ptr<Storage::BlockDevice> device;
+			Random::GUIDv4 guid;
 
 		public:
-			BaseFS(std::shared_ptr<Storage::BlockDevice> blockDevice) : device(blockDevice) {}
+			BaseFS(std::shared_ptr<Storage::BlockDevice> blockDevice);
+			const Random::GUIDv4& getGuid() const;
 
 			// Reads directory at given absolute path ending in '/'
 			virtual Async::Thenable<ReadDirectoryResult> readDirectory(const std::string &absolutePath) = 0;

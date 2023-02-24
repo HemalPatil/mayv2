@@ -151,7 +151,7 @@ extern "C" [[noreturn]] void kernelMain(
 }
 
 static Async::Thenable<void> bootApus() {
-	if (APIC::cpuEntries.size() == 1) {
+	if (1 == APIC::cpuEntries.size()) {
 		co_return;
 	}
 
@@ -205,9 +205,9 @@ static Async::Thenable<void> startPcieDrivers() {
 	for (const auto &function : PCIe::functions) {
 		Async::Thenable<bool> (*initializer)(const PCIe::Function &pcieFunction) = nullptr;
 		if (
-			function.configurationSpace->mainClass == PCIe::Class::Storage &&
-			function.configurationSpace->subClass == PCIe::Subclass::Sata &&
-			function.configurationSpace->progIf == PCIe::ProgramType::Ahci
+			PCIe::Class::Storage == function.configurationSpace->mainClass &&
+			PCIe::Subclass::Sata == function.configurationSpace->subClass &&
+			PCIe::ProgramType::Ahci == function.configurationSpace->progIf
 		) {
 			initializer = &AHCI::initialize;
 		}

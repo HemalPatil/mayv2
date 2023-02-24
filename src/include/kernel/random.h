@@ -13,7 +13,8 @@ namespace Random {
 
 		public:
 			GUIDv4();
-			void print();
+			bool operator==(const GUIDv4 &other) const;
+			void print() const;
 	};
 
 	extern "C" uint64_t getRandom64();
