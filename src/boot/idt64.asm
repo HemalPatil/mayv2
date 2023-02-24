@@ -13,6 +13,7 @@ section .bss
 	global IST2_STACK_END
 	global IDT_START
 	global IDT_END
+align 16
 IST1_STACK:
 	resb IST1_STACK_SIZE
 IST1_STACK_END:
@@ -115,6 +116,8 @@ setupIdt64DescriptorLoop:
 	mov rdi, [doneStr]
 	mov rsi, 4
 	call terminalPrintString
+	mov rdi, 10
+	call terminalPrintChar
 	mov rdi, 10
 	call terminalPrintChar
 	ret

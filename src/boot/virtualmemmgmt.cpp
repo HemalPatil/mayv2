@@ -25,7 +25,8 @@ static const char* const maxVirAddrMismatch = "Max virtual address bits mismatch
 static const char* const gotStr = "] got [";
 static const char* const entryCreationFailed = "Failed to create PML4 entry at level ";
 static const char* const forAddress = " for address ";
-static const char* const removingId = "Removing PML4 identity mapping of first ";
+static const char* const removingIdStr = "Removing PML4 identity mapping of first ";
+static const char* const nullUnmapStr = "Unmapping first page";
 static const char* const reservingHeapStr = "Reserving memory for dynamic memory manager";
 static const char* const pageTablesStr = "Page tables of ";
 static const char* const isCanonicalStr = "isCanonical = ";
@@ -65,7 +66,7 @@ bool Kernel::Memory::Virtual::initialize(
 	terminalPrintSpaces4();
 	terminalPrintString(checkingMaxBitsStr, strlen(checkingMaxBitsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (infoTable->maxLinearAddress != maxVirtualAddressBits) {
+	if (infoTable.maxLinearAddress != maxVirtualAddressBits) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(okStr, strlen(okStr));
@@ -74,7 +75,7 @@ bool Kernel::Memory::Virtual::initialize(
 		terminalPrintString(maxVirAddrMismatch, strlen(maxVirAddrMismatch));
 		terminalPrintDecimal(maxVirtualAddressBits);
 		terminalPrintString(gotStr, strlen(gotStr));
-		terminalPrintDecimal(infoTable->maxLinearAddress);
+		terminalPrintDecimal(infoTable.maxLinearAddress);
 		terminalPrintChar(']');
 		terminalPrintChar('.');
 		terminalPrintChar('\n');
@@ -87,7 +88,7 @@ bool Kernel::Memory::Virtual::initialize(
 	terminalPrintSpaces4();
 	terminalPrintString(markingPml4Str, strlen(markingPml4Str));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	PML4E *pml4tId = (PML4E*) infoTable->pml4tPhysicalAddress;
+	PML4E *pml4tId = (PML4E*) infoTable.pml4tPhysicalAddress;
 	Physical::markPages(pml4tId, 1, MarkPageType::Used);
 	for (size_t i = 0; i < PML4_ENTRY_COUNT; ++i) {
 		if (pml4tId[i].present) {
@@ -120,9 +121,9 @@ bool Kernel::Memory::Virtual::initialize(
 	terminalPrintSpaces4();
 	terminalPrintString(recursiveStr, strlen(recursiveStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	PML4E *root = (PML4E*)infoTable->pml4tPhysicalAddress;
+	PML4E *root = (PML4E*)infoTable.pml4tPhysicalAddress;
 	root[pml4tRecursiveEntry].present = root[pml4tRecursiveEntry].writable = 1;
-	root[pml4tRecursiveEntry].physicalAddress = infoTable->pml4tPhysicalAddress >> pageSizeShift;
+	root[pml4tRecursiveEntry].physicalAddress = infoTable.pml4tPhysicalAddress >> pageSizeShift;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -153,7 +154,7 @@ bool Kernel::Memory::Virtual::initialize(
 	// scratch memory from L32K64_SCRATCH_BASE of length L32K64_SCRATCH_LENGTH
 	// and mapping for lower half of kernel
 	terminalPrintSpaces4();
-	terminalPrintString(removingId, strlen(removingId));
+	terminalPrintString(removingIdStr, strlen(removingIdStr));
 	terminalPrintDecimal(L32_IDENTITY_MAP_SIZE);
 	terminalPrintString("MiBs", 4);
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -162,6 +163,18 @@ bool Kernel::Memory::Virtual::initialize(
 		!unmapPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / pageSize, false) ||
 		!unmapPages((void*)KERNEL_LOWERHALF_ORIGIN, kernelLowerHalfSize / pageSize, false)
 	) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		return false;
+	}
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
+	// Unmap the first page to detect nullptr accesses
+	terminalPrintSpaces4();
+	terminalPrintString(nullUnmapStr, strlen(nullUnmapStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (!unmapPages((void*)0, 1, false)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
@@ -191,7 +204,7 @@ bool Kernel::Memory::Virtual::initialize(
 	terminalPrintSpaces4();
 	terminalPrintString(globalCtorStr, strlen(globalCtorStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	for (size_t i = 0; i < Kernel::infoTable->globalCtorsCount; ++i) {
+	for (size_t i = 0; i < infoTable.globalCtorsCount; ++i) {
 		globalCtors[i]();
 	}
 	terminalPrintString(doneStr, strlen(doneStr));
@@ -620,7 +633,7 @@ Kernel::Memory::Virtual::CrawlResult::CrawlResult(void *virtualAddress) {
 
 	if (Virtual::isCanonical(virtualAddress)) {
 		this->isCanonical = true;
-		this->physicalTables[4] = (PML4E*)infoTable->pml4tPhysicalAddress;
+		this->physicalTables[4] = (PML4E*)infoTable.pml4tPhysicalAddress;
 		for (size_t i = 4; i >= 1; --i) {
 			if (this->tables[i][indexes[i]].present) {
 				this->physicalTables[i - 1] = (PML4E*)((uint64_t)this->tables[i][this->indexes[i]].physicalAddress << pageSizeShift);

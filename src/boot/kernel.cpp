@@ -37,7 +37,7 @@ static Async::Thenable<void> createFileSystems();
 static Async::Thenable<void> bootApus();
 
 bool Kernel::debug = false;
-InfoTable *Kernel::infoTable = nullptr;
+InfoTable Kernel::infoTable;
 
 extern "C" [[noreturn]] void kernelMain(
 	InfoTable *infoTableAddress,
@@ -45,9 +45,9 @@ extern "C" [[noreturn]] void kernelMain(
 	size_t higherHalfSize,
 	void* usablePhyMemStart
 ) {
-	// Be careful of nullptr references until the IVTs in
-	// identity mapped page 0 of virtual address space
-	// are moved somewhere else during interrupt initialization
+	// Be careful of nullptr references until
+	// the virtual memory manager is initialized
+	// and it has unmapped the first page
 
 	// Enable SSE4 first so the rest of the kernel optimizations
 	// can make use of it, otherwise system crashes
@@ -55,12 +55,14 @@ extern "C" [[noreturn]] void kernelMain(
 		Kernel::panic();
 	}
 
-	Kernel::infoTable = infoTableAddress;
-	Kernel::GlobalConstructor globalCtors[Kernel::infoTable->globalCtorsCount];
+	// Copy the infoTable to kernel address space so it can still be accessed
+	// after the first page has been unmapped to detect nullptr accesses
+	memcpy(&Kernel::infoTable, infoTableAddress, sizeof(InfoTable));
+	Kernel::GlobalConstructor globalCtors[Kernel::infoTable.globalCtorsCount];
 	memcpy(
 		globalCtors,
-		(void*)Kernel::infoTable->globalCtorsLocation,
-		Kernel::infoTable->globalCtorsCount * sizeof(uint64_t)
+		(void*)Kernel::infoTable.globalCtorsLocation,
+		Kernel::infoTable.globalCtorsCount * sizeof(uint64_t)
 	);
 
 	terminalSetBgColour(TERMINAL_COLOUR_BLUE);

@@ -41,10 +41,10 @@ bool Kernel::Memory::Physical::initialize(
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
 
-	map = (ACPI::Entryv3*)((uint64_t)(Kernel::infoTable->mmapEntriesSegment << 4) + Kernel::infoTable->mmapEntriesOffset);
+	map = (ACPI::Entryv3*)((uint64_t)(infoTable.mmapEntriesSegment << 4) + infoTable.mmapEntriesOffset);
 
 	phyMemTotalSize = 0;
-	for (size_t i = 0; i < Kernel::infoTable->mmapEntryCount; ++i) {
+	for (size_t i = 0; i < infoTable.mmapEntryCount; ++i) {
 		phyMemTotalSize += map[i].length;
 	}
 	terminalPrintSpaces4();
@@ -54,7 +54,7 @@ bool Kernel::Memory::Physical::initialize(
 	terminalPrintChar('\n');
 
 	phyMemUsableSize = 0;
-	for (size_t i = 0; i < Kernel::infoTable->mmapEntryCount; ++i) {
+	for (size_t i = 0; i < infoTable.mmapEntryCount; ++i) {
 		if (map[i].regionType == ACPI::MemoryType::Usable) {
 			phyMemUsableSize += map[i].length;
 		}
@@ -109,13 +109,13 @@ bool Kernel::Memory::Physical::initialize(
 
 	// Mark pages used by higher half of kernel process as used
 	// All the kernel sections are aligned at 4KiB in the linker
-	markPages((void*)(infoTable->kernelPhyMemBase + kernelLowerHalfSize), kernelHigherHalfSize / pageSize, MarkPageType::Used);
+	markPages((void*)(infoTable.kernelPhyMemBase + kernelLowerHalfSize), kernelHigherHalfSize / pageSize, MarkPageType::Used);
 
 	// Mark the phyMemBuddyBitmaps themselves as used
 	markPages(buddyBitmaps[0], phyMemBuddyPagesCount, MarkPageType::Used);
 
 	// Mark all the unusable areas in MMAP as used
-	for (size_t i = 0; i < infoTable->mmapEntryCount; ++i) {
+	for (size_t i = 0; i < infoTable.mmapEntryCount; ++i) {
 		if (map[i].regionType == ACPI::MemoryType::Usable) {
 			continue;
 		}
@@ -312,10 +312,10 @@ void Kernel::Memory::Physical::listMapEntries() {
 
 	size_t i = 0;
 	terminalPrintString(countStr, strlen(countStr));
-	terminalPrintHex(&infoTable->mmapEntryCount, sizeof(infoTable->mmapEntryCount));
+	terminalPrintHex(&infoTable.mmapEntryCount, sizeof(infoTable.mmapEntryCount));
 	terminalPrintChar('\n');
 	terminalPrintString(mmapTableHeader, strlen(mmapTableHeader));
-	for (i = 0; i < infoTable->mmapEntryCount; ++i) {
+	for (i = 0; i < infoTable.mmapEntryCount; ++i) {
 		terminalPrintSpaces4();
 		terminalPrintHex(&(map[i].base), sizeof(map->base));
 		terminalPrintChar(' ');

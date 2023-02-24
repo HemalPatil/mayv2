@@ -228,9 +228,9 @@ bool ACPI::validTable(SDTHeader* header) {
 
 static ACPI::RSDPDescriptor2* searchRsdp() {
 	// Search for the magic string 'RSD PTR ' at every 8 byte boundary
-	// Start searching from 0x8 because GCC hates to access 0x0
+	// Start searching from 0x1000
 	uint64_t rsdPtr = 0x2052545020445352UL;
-	for (uint64_t *p = (uint64_t*)8; p < (uint64_t*)L32K64_SCRATCH_BASE; ++p) {
+	for (uint64_t *p = (uint64_t*)0x1000; p < (uint64_t*)L32K64_SCRATCH_BASE; ++p) {
 		if (*p == rsdPtr) {
 			return (ACPI::RSDPDescriptor2*)p;
 		}

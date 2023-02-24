@@ -33,11 +33,11 @@ kernelCompatibilityModeStart:
 	jmp rax
 
 section .text
+	extern kernelMain
 	global flushTLB
 	global haltSystem
 	global hangSystem
 	global kernelLongModeStart
-	extern kernelMain
 kernelLongModeStart:
 	mov rax, 0x00000000ffffffff
 	and rdi, rax	; rdi contains info table address, pass it as 1st parameter to kernelMain

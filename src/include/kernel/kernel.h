@@ -28,7 +28,7 @@ namespace Kernel {
 
 	// kernelMain is not exposed to other files deliberately
 
-	extern InfoTable *infoTable;
+	extern InfoTable infoTable;
 
 	extern "C" [[noreturn]] void panic();
 
