@@ -109,7 +109,7 @@ setupIdt64DescriptorLoop:
 	mov rax, gpFaultHandler
 	call fillOffsets
 	add rdx, 16
-	mov rax, gpFaultHandler
+	mov rax, pageFaultHandler
 	call fillOffsets
 	mov rax, idtDescriptor
 	lidt [rax]	; load the IDT
