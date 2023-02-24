@@ -1,0 +1,247 @@
+VirtualBox Debugger Help
+------------------------
+
+
+Commands for CodeView/WinDbg emulation:
+ba          <access> <size> <address> [passes [max passes]] [cmds]
+                                           Sets a data access breakpoint.
+bc          all | <bp#> [bp# []]           Deletes a set of breakpoints.
+bd          all | <bp#> [bp# []]           Disables a set of breakpoints.
+be          all | <bp#> [bp# []]           Enables a set of breakpoints.
+bl                                         Lists all the breakpoints.
+bp          <address> [passes [max passes]] [cmds]
+                                           Sets a breakpoint (int 3).
+br          <address> [passes [max passes]] [cmds]
+                                           Sets a recompiler specific breakpoint.
+d           [addr]                         Dump memory using last element size and type.
+dF          [addr]                         Dump memory as far 16:16.
+dFs         [addr]                         Dump memory as far 16:16 with near symbols.
+da          [addr]                         Dump memory as ascii string.
+db          [addr]                         Dump memory in bytes.
+dd          [addr]                         Dump memory in double words.
+dds         [addr]                         Dump memory as double words with near symbols.
+da          [addr]                         Dump memory as ascii string.
+dg          [sel [..]]                     Dump the global descriptor table (GDT).
+dga         [sel [..]]                     Dump the global descriptor table (GDT) including
+                                           not-present entries.
+di          [int [..]]                     Dump the interrupt descriptor table (IDT).
+dia         [int [..]]                     Dump the interrupt descriptor table (IDT) including
+                                           not-present entries.
+dl          [sel [..]]                     Dump the local descriptor table (LDT).
+dla         [sel [..]]                     Dump the local descriptor table (LDT) including
+                                           not-present entries.
+dpd         [addr|index]                   Dumps page directory entries of the default context.
+dpda        [addr]                         Dumps memory at given address as a page directory.
+dpdb        [addr|index]                   Dumps page directory entries of the guest and the
+                                           hypervisor. 
+dpdg        [addr|index]                   Dumps page directory entries of the guest.
+dpdh        [addr|index]                   Dumps page directory entries of the hypervisor. 
+dph         [addr [cr3 [mode]]             Dumps the paging hierarchy at for specfied address range.
+                                           Default context.
+dphg        [addr [cr3 [mode]]             Dumps the paging hierarchy at for specfied address range.
+                                           Guest context.
+dphh        [addr [cr3 [mode]]             Dumps the paging hierarchy at for specfied address range.
+                                           Hypervisor context.
+dp          [addr]                         Dump memory in mode sized words.
+dps         [addr]                         Dump memory in mode sized words with near symbols.
+dpt         <addr>                         Dumps page table entries of the default context.
+dpta        <addr>                         Dumps memory at given address as a page table.
+dptb        <addr>                         Dumps page table entries of the guest and the hypervisor.
+dptg        <addr>                         Dumps page table entries of the guest.
+dpth        <addr>                         Dumps page table entries of the hypervisor.
+dq          [addr]                         Dump memory in quad words.
+dqs         [addr]                         Dump memory as quad words with near symbols.
+dt          [tss|tss:ign|addr]             Dump the task state segment (TSS).
+dt16        [tss|tss:ign|addr]             Dump the 16-bit task state segment (TSS).
+dt32        [tss|tss:ign|addr]             Dump the 32-bit task state segment (TSS).
+dt64        [tss|tss:ign|addr]             Dump the 64-bit task state segment (TSS).
+dti         <type> [levels]                Dump type information.
+dtv         <type> <addr> [levels]         Dump a memory buffer using the information in the given
+                                           type.
+du          [addr]                         Dump memory as unicode string (little endian).
+dw          [addr]                         Dump memory in words.
+eb          <addr> <value>                 Write a 1-byte value to memory.
+ew          <addr> <value>                 Write a 2-byte value to memory.
+ed          <addr> <value>                 Write a 4-byte value to memory.
+eq          <addr> <value>                 Write a 8-byte value to memory.
+g           [idCpu]                        Continue execution of all or the specified CPU. (The
+                                           latter is not recommended unless you know exactly what
+                                           you're doing.)
+gu                                         Go up - continue execution till after return.
+k                                          Callstack.
+kv                                         Verbose callstack.
+kg                                         Callstack - guest.
+kgv                                        Verbose callstack - guest.
+kh                                         Callstack - hypervisor.
+lm          [module [..]]                  List modules.
+lmv         [module [..]]                  List modules, verbose.
+lmo         [module [..]]                  List modules and their segments.
+lmov        [module [..]]                  List modules and their segments, verbose.
+ln          [addr/sym [..]]                List symbols near to the address. Default address is
+                                           CS:EIP.
+ls          [addr]                         Source.
+m           <addr>                         Display information about that piece of memory.
+p           [count] [cmds]                 Step over.
+pr                                         Toggle displaying registers for tracing & stepping (no
+                                           code executed).
+pa          <addr> [count] [cmds]          Step to the given address.
+pc          [count] [cmds]                 Step to the next call instruction.
+pt          [count] [cmds]                 Step to the next return instruction.
+r           [reg [[=] newval]]             Show or set register(s) - active reg set.
+rg          [reg [[=] newval]]             Show or set register(s) - guest reg set.
+rg32                                       Show 32-bit guest registers.
+rg64                                       Show 64-bit guest registers.
+rt                                         Toggles terse / verbose register info.
+s           [options] <range> <pattern>    Continue last search.
+sa          <range> <pattern>              Search memory for an ascii string.
+sb          <range> <pattern>              Search memory for one or more bytes.
+sd          <range> <pattern>              Search memory for one or more double words.
+sq          <range> <pattern>              Search memory for one or more quad words.
+su          <range> <pattern>              Search memory for an unicode string.
+sw          <range> <pattern>              Search memory for one or more words.
+sx          [<event> [..]]                 Lists settings for exceptions, exits and other events.
+                                           All if no filter is specified.
+sx-         -c <cmd> <event> [..]          Modifies the command for one or more exceptions, exits or
+                                           other event.  'all' addresses all.
+sxe         [-c <cmd>] <event> [..]        Enable: Break into the debugger on the specified
+                                           exceptions, exits and other events.  'all' addresses all.
+sxn         [-c <cmd>] <event> [..]        Notify: Display info in the debugger and continue on the
+                                           specified exceptions, exits and other events. 'all'
+                                           addresses all.
+sxi         [-c <cmd>] <event> [..]        Ignore: Ignore the specified exceptions, exits and other
+                                           events ('all' = all of them).  Without the -c option, the
+                                           guest runs like normal.
+sxr                                        Reset the settings to default for exceptions, exits and
+                                           other events. All if no filter is specified.
+t           [count] [cmds]                 Trace .
+tflowc      all | <tf#> [tf# []]           Clears trace execution flow for the given method.
+tflowd      all | <tf#> [tf# []]           Disables trace execution flow for the given method.
+tflowe      <addr> <hits>                  Enable trace execution flow of the given method.
+tflowp      all | <tf#> [tf# []]           Prints the collected trace data of the given method.
+tflowr      all | <tf#> [tf# []]           Resets the collected trace data of the given trace flow
+                                           module.
+tr                                         Toggle displaying registers for tracing & stepping (no
+                                           code executed).
+ta          <addr> [count] [cmds]          Trace to the given address.
+tc          [count] [cmds]                 Trace to the next call instruction.
+tt          [count] [cmds]                 Trace to the next return instruction.
+u           [addr]                         Unassemble.
+u64         [addr]                         Unassemble 64-bit code.
+u32         [addr]                         Unassemble 32-bit code.
+u16         [addr]                         Unassemble 16-bit code.
+uv86        [addr]                         Unassemble 16-bit code with v8086/real mode addressing.
+ucfg        [addr]                         Unassemble creating a control flow graph.
+ucfgc       [addr]                         Unassemble creating a control flow graph with colors.
+x           * | <Module!Symbol>            Examine symbols.
+
+Common Commands:
+bye                                        Exits the debugger.
+cpu         [idCpu]                        If no argument, display the current CPU, else change to
+                                           the specified CPU.
+echo        <str1> [str2..[strN]]          Displays the strings separated by one blank space and the
+                                           last one followed by a newline.
+exit                                       Exits the debugger.
+format                                     Evaluates an expression and formats it.
+detect                                     Detects or re-detects the guest os and starts the OS
+                                           specific digger.
+dmesg       [N last messages]              Displays the guest os kernel messages, if available.
+dumpimage   <addr1> [addr2..[addrN]]       Dumps executable images.
+harakiri                                   Kills debugger process.
+help        [cmd/op [..]]                  Display help. For help about info items try 'info help'.
+info        <info> [args]                  Display info register in the DBGF. For a list of info
+                                           items try 'info help'.
+loadimage   <filename> <address> [name]    Loads the symbols of an executable image at the specified
+                                           address. 
+loadimage32 <filename> <address> [name]    loadimage variant for selecting 32-bit images (mach-o).
+loadimage64 <filename> <address> [name]    loadimage variant for selecting 64-bit images (mach-o).
+loadinmem   <address> [name]               Tries to load a image mapped at the given address.
+loadmap     <filename> <address> [name] [subtrahend] [seg]
+                                           Loads the symbols from a map file, usually at a specified
+                                           address. 
+loadplugin  <plugin1> [plugin2..N]         Loads one or more plugins
+loadseg     <filename> <address> <seg> [name]
+                                           Loads the symbols of a segment in the executable image at
+                                           the specified address. 
+loadvars    <filename>                     Load variables from file. One per line, same as the args
+                                           to the set command.
+log         [group string]                 Displays or modifies the logging group settings
+                                           (VBOX_LOG)
+logdest     [dest string]                  Displays or modifies the logging destination
+                                           (VBOX_LOG_DEST).
+logflags    [flags string]                 Displays or modifies the logging flags (VBOX_LOG_FLAGS).
+logflush                                   Flushes the log buffers.
+multistep   [count [stride]                Performs the specified number of step-into operations.
+                                           Stops early if non-step event occurs.
+quit                                       Exits the debugger.
+runscript   <filename>                     Runs the command listed in the script. Lines starting
+                                           with '#' (after removing blanks) are comment. blank lines
+                                           are ignored. Stops on failure.
+set         <var> <value>                  Sets a global variable.
+showvars                                   List all the defined variables.
+sleep       <milliseconds>                 Sleeps for the given number of milliseconds (max 30000).
+stop        [idCpu]                        Stop execution either of all or the specified CPU. (The
+                                           latter is not recommended unless you know exactly what
+                                           you're doing.)
+unload      <modname1> [modname2..N]       Unloads one or more modules in the current address space.
+unloadplugin <plugin1> [plugin2..N]        Unloads one or more plugins.
+unset       <var1> [var1..[varN]]          Unsets (delete) one or more global variables.
+writecore   <filename>                     Write core to file.
+writegstmem <filename> <address>           Load data from the given file and write it to guest
+                                           memory at the given start address.
+
+External Commands:
+.injecterror                               Inject error into I/O subsystem.
+.iemflushtlb                               Flushed the code and data TLBs
+.alliem     [boolean]                      Enables or disabled executing ALL code in IEM, if no
+                                           arguments are given it displays the current status.
+.pgmsync                                    Sync the CR3 page.
+.pgmerror                                   Enables inject runtime of errors into parts of PGM.
+.pgmerroroff                               Disables inject runtime errors into parts of PGM.
+.pgmsyncalways                             Toggle permanent CR3 syncing.
+.pgmphystofile                             Save the physical memory to file.
+.pgmpoolcheck                              Check the pgm pool pages.
+.stats       [pattern]                      Display statistics.
+.statsreset  [pattern]                      Resets statistics.
+
+
+Functions for 0 emulation:
+by          address                        Reads a byte at the given address.
+dwo         address                        Reads a 32-bit value at the given address.
+hi          value                          Returns the high 16-bit bits of a value.
+low         value                          Returns the low 16-bit bits of a value.
+not         address                        Boolean NOT.
+poi         address                        Reads a pointer sized (CS) value at the given address.
+qwo         address                        Reads a 32-bit value at the given address.
+wo          address                        Reads a 16-bit value at the given address.
+
+Common Functions:
+randu32                                    Returns an unsigned 32-bit random number.
+
+
+Operators:
+-           Unary                          Unary minus.
++           Unary                          Unary plus.
+!           Unary                          Boolean not.
+~           Unary                          Bitwise complement.
+:           Binary                         Far pointer.
+%           Unary                          Flat address.
+%%          Unary                          Physical address.
+#           Unary                          Flat host address.
+#%%         Unary                          Physical host address.
+$           Unary                          Reference a variable.
+@           Unary                          Reference a register.
+*           Binary                         Multiplication.
+/           Binary                         Division.
+mod         Binary                         Modulus.
++           Binary                         Addition.
+-           Binary                         Subtraction.
+<<          Binary                         Bitwise left shift.
+>>          Binary                         Bitwise right shift.
+&           Binary                         Bitwise and.
+^           Binary                         Bitwise exclusiv or.
+|           Binary                         Bitwise inclusive or.
+&&          Binary                         Boolean and.
+||          Binary                         Boolean or.
+L           Binary                         Range elements.
+LB          Binary                         Range bytes.
+T           Binary                         Range to.
