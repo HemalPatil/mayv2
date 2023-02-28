@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace Random {
 	class GUIDv4 {
@@ -14,6 +15,7 @@ namespace Random {
 		public:
 			GUIDv4();
 			bool operator==(const GUIDv4 &other) const;
+			explicit operator std::string() const;
 			void print() const;
 	};
 

@@ -25,24 +25,32 @@ bool Random::GUIDv4::operator==(const GUIDv4 &other) const {
 	);
 }
 
+Random::GUIDv4::operator std::string() const {
+	std::string toString = "00000000-0000-0000-0000-000000000000";
+	size_t index = 0;
+	for (size_t i = 0; i < 8; ++i, ++index) {
+		toString[index] = hexPalette[(this->timeLow >> (28 - i * 4)) & 0xf];
+	}
+	++index;
+	for (size_t i = 0; i < 4; ++i, ++index) {
+		toString[index] = hexPalette[(this->timeMid >> (12 - i * 4)) & 0xf];
+	}
+	++index;
+	for (size_t i = 0; i < 4; ++i, ++index) {
+		toString[index] = hexPalette[(this->timeHighAndVersion >> (12 - i * 4)) & 0xf];
+	}
+	++index;
+	for (size_t i = 0; i < 4; ++i, ++index) {
+		toString[index] = hexPalette[(this->clockSequenceAndVariant >> (12 - i * 4)) & 0xf];
+	}
+	++index;
+	for (size_t i = 0; i < 12; ++i, ++index) {
+		toString[index] = hexPalette[(this->node >> (44 - i * 4)) & 0xf];
+	}
+	return toString;
+}
+
 void Random::GUIDv4::print() const {
-	for (size_t i = 0; i < 8; ++i) {
-		terminalPrintChar(hexPalette[(this->timeLow >> (28 - i * 4)) & 0xf]);
-	}
-	terminalPrintChar('-');
-	for (size_t i = 0; i < 4; ++i) {
-		terminalPrintChar(hexPalette[(this->timeMid >> (12 - i * 4)) & 0xf]);
-	}
-	terminalPrintChar('-');
-	for (size_t i = 0; i < 4; ++i) {
-		terminalPrintChar(hexPalette[(this->timeHighAndVersion >> (12 - i * 4)) & 0xf]);
-	}
-	terminalPrintChar('-');
-	for (size_t i = 0; i < 4; ++i) {
-		terminalPrintChar(hexPalette[(this->clockSequenceAndVariant >> (12 - i * 4)) & 0xf]);
-	}
-	terminalPrintChar('-');
-	for (size_t i = 0; i < 12; ++i) {
-		terminalPrintChar(hexPalette[(this->node >> (44 - i * 4)) & 0xf]);
-	}
+	std::string toString = static_cast<std::string>(*this);
+	terminalPrintString(toString.c_str(), 36);
 }
