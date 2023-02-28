@@ -1,6 +1,8 @@
 #include <random.h>
 #include <terminal.h>
 
+static const char* const hexPalette = "0123456789abcdef";
+
 Random::GUIDv4::GUIDv4() {
 	this->timeLow = getRandom64();
 	this->timeMid = getRandom64();
@@ -24,15 +26,23 @@ bool Random::GUIDv4::operator==(const GUIDv4 &other) const {
 }
 
 void Random::GUIDv4::print() const {
-	terminalPrintChar('{');
-	terminalPrintHex(&this->timeLow, 4);
+	for (size_t i = 0; i < 8; ++i) {
+		terminalPrintChar(hexPalette[(this->timeLow >> (28 - i * 4)) & 0xf]);
+	}
 	terminalPrintChar('-');
-	terminalPrintHex(&this->timeMid, 2);
+	for (size_t i = 0; i < 4; ++i) {
+		terminalPrintChar(hexPalette[(this->timeMid >> (12 - i * 4)) & 0xf]);
+	}
 	terminalPrintChar('-');
-	terminalPrintHex(&this->timeHighAndVersion, 2);
+	for (size_t i = 0; i < 4; ++i) {
+		terminalPrintChar(hexPalette[(this->timeHighAndVersion >> (12 - i * 4)) & 0xf]);
+	}
 	terminalPrintChar('-');
-	terminalPrintHex(&this->clockSequenceAndVariant, 2);
+	for (size_t i = 0; i < 4; ++i) {
+		terminalPrintChar(hexPalette[(this->clockSequenceAndVariant >> (12 - i * 4)) & 0xf]);
+	}
 	terminalPrintChar('-');
-	terminalPrintHex(&this->node, 6);
-	terminalPrintChar('}');
+	for (size_t i = 0; i < 12; ++i) {
+		terminalPrintChar(hexPalette[(this->node >> (44 - i * 4)) & 0xf]);
+	}
 }
