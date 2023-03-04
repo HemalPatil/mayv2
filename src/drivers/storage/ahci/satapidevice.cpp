@@ -10,9 +10,9 @@ AHCI::SatapiDevice::SatapiDevice(
 }
 
 Async::Thenable<Storage::Buffer> AHCI::SatapiDevice::read(size_t startBlock, size_t blockCount) {
-	Storage::Buffer buffer;
 	size_t freeSlot = SIZE_MAX;
-	if (!(buffer = this->setupRead(blockCount, freeSlot))) {
+	Storage::Buffer buffer = this->setupRead(blockCount, freeSlot);
+	if (!buffer) {
 		co_return nullptr;
 	}
 

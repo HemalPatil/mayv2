@@ -83,6 +83,7 @@ Storage::Buffer& Storage::Buffer::operator=(Buffer &&other) {
 	this->data = other.data;
 	this->pageCount = other.pageCount;
 	this->physicalAddress = other.physicalAddress;
+	this->size = other.size;
 	other.data = nullptr;
 	other.pageCount = other.size = 0;
 	other.physicalAddress = (uint64_t)INVALID_ADDRESS;
@@ -91,6 +92,10 @@ Storage::Buffer& Storage::Buffer::operator=(Buffer &&other) {
 
 void* Storage::Buffer::getData() const {
 	return this->data;
+}
+
+size_t Storage::Buffer::getSize() const {
+	return this->size;
 }
 
 Storage::Buffer::operator bool() const {

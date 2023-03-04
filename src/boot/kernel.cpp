@@ -158,13 +158,22 @@ static Async::Thenable<void> bootApus() {
 		co_return;
 	}
 
-	// Search for APU stage1 boot binary in all the created filesystems
 	terminalPrintString(initApusStr, strlen(initApusStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
+
+	// Get the APU stage1 boot binary from root FS
 	terminalPrintSpaces4();
 	terminalPrintString(apuBootStr, strlen(apuBootStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	const auto fileReadResult = std::move(co_await FS::root->readFile("/boot/stage1/apu.bin"));
+	if (fileReadResult.status == FS::Status::Ok && fileReadResult.data) {
+		memcpy((void*) 0x7c00, fileReadResult.data.getData(), fileReadResult.data.getSize());
+	} else {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -200,7 +209,7 @@ static Async::Thenable<void> startPcieDrivers() {
 
 static Async::Thenable<void> findRootFs() {
 	for (const auto &fs : FS::filesystems) {
-		const auto bootDirResult = co_await fs->readDirectory("/boot/");
+		const auto bootDirResult = std::move(co_await fs->readDirectory("/boot/"));
 		if (bootDirResult.status == FS::Status::Ok) {
 			for (const auto &file : bootDirResult.entries) {
 				if (

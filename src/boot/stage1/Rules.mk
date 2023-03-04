@@ -18,3 +18,6 @@ $(ISO_DIR)/boot/stage1/x64.bin: $(SRC_DIR)/boot/stage1/x64.asm
 
 $(ISO_DIR)/boot/stage1/bootload.bin: $(SRC_DIR)/boot/stage1/bootload.asm
 	$(NASM_BIN) $@ $^
+
+$(ISO_DIR)/boot/stage1/apu.bin: $(SRC_DIR)/boot/stage1/apu.asm
+	$(NASM_BIN) $@ $^

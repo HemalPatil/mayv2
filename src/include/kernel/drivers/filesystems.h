@@ -4,6 +4,7 @@
 #include <memory>
 #include <random.h>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace FS {
@@ -55,5 +56,7 @@ namespace FS {
 	extern std::vector<std::shared_ptr<BaseFS>> filesystems;
 	extern std::shared_ptr<BaseFS> root;
 
-	std::vector<std::string> splitAbsolutePath(const std::string &absolutePath, bool isDir = false);
+	bool isValidAbsolutePath(const std::string &absolutePath, bool isDir);
+	std::vector<std::string> splitAbsolutePath(const std::string &absolutePath);
+	std::tuple<std::string, std::string> splitParentDirectory(const std::string &absolutePath);
 }

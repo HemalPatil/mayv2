@@ -48,8 +48,12 @@ FS::JolietISO::JolietISO(std::shared_ptr<Storage::BlockDevice> device, const Sto
 }
 
 Async::Thenable<bool> FS::JolietISO::initialize() {
+	size_t blockCount = this->rootDirExtentSize / this->lbaSize;
+	if (this->rootDirExtentSize != blockCount * this->lbaSize) {
+		++blockCount;
+	}
 	Storage::Buffer buffer = std::move(
-		co_await this->device->read(this->rootDirLba, this->rootDirExtentSize / this->lbaSize)
+		co_await this->device->read(this->rootDirLba, blockCount)
 	);
 	if (!buffer) {
 		co_return false;
@@ -107,15 +111,49 @@ std::vector<FS::DirectoryEntry> FS::JolietISO::extentToEntries(
 }
 
 Async::Thenable<FS::ReadFileResult> FS::JolietISO::readFile(const std::string &absolutePath) {
-	co_return {
-		.status = Status::Ok,
-		.data = Storage::Buffer()
-	};
+	isValidAbsolutePath(absolutePath, false);
+	const auto parentSplit = splitParentDirectory(absolutePath);
+	const auto parentDirResult = co_await this->readDirectory(std::get<0>(parentSplit));
+	ReadFileResult errorResult;
+	if (parentDirResult.status != Status::Ok) {
+		errorResult.status = parentDirResult.status;
+		co_return std::move(errorResult);
+	}
+	const DirectoryEntry* entry = nullptr;
+	for (const auto &dirEntry : parentDirResult.entries) {
+		if (dirEntry.name == std::get<1>(parentSplit)) {
+			if (dirEntry.isFile) {
+				entry = &dirEntry;
+				break;
+			} else {
+				errorResult.status = Status::NotFile;
+				co_return std::move(errorResult);
+			}
+		}
+	}
+	if (entry) {
+		if (entry->size == 0) {
+			co_return std::move(errorResult);
+		} else {
+			size_t blockCount = entry->size / this->lbaSize;
+			if (entry->size != blockCount * this->lbaSize) {
+				++blockCount;
+			}
+			Storage::Buffer data = std::move(co_await this->device->read(entry->lba, blockCount));
+			co_return {
+				.status = data ? Status::Ok : Status::IOError,
+				.data = std::move(data)
+			};
+		}
+	}
+	errorResult.status = Status::NoSuchDirectoryOrFile;
+	co_return std::move(errorResult);
 }
 
 Async::Thenable<FS::ReadDirectoryResult> FS::JolietISO::readDirectory(const std::string &absolutePath) {
+	isValidAbsolutePath(absolutePath, true);
 	if (1 != this->cachedDirectoryEntries.count(absolutePath)) {
-		std::vector<std::string> pathParts = splitAbsolutePath(absolutePath, true);
+		std::vector<std::string> pathParts = splitAbsolutePath(absolutePath);
 		std::string pathSoFar = "/";
 		ReadDirectoryResult errorResult;
 		for (const auto &pathPart : pathParts) {
@@ -134,12 +172,14 @@ Async::Thenable<FS::ReadDirectoryResult> FS::JolietISO::readDirectory(const std:
 					}
 				}
 			}
-
 			if (entry) {
 				if (1 != this->cachedDirectoryEntries.count(pathSoFar + pathPart + '/')) {
 					// Get the entries for pathSoFar
-					Storage::Buffer buffer = std::move(co_await this->device->read(entry->lba, entry->size / this->lbaSize));
-					// TODO: do better error handling
+					size_t blockCount = entry->size / this->lbaSize;
+					if (entry->size != blockCount * this->lbaSize) {
+						++blockCount;
+					}
+					Storage::Buffer buffer = std::move(co_await this->device->read(entry->lba, blockCount));
 					if (buffer) {
 						this->cachedDirectoryEntries.insert({
 							pathSoFar + pathPart + '/',

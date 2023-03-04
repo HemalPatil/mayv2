@@ -2,31 +2,34 @@
 #include <drivers/filesystems.h>
 #include <terminal.h>
 
-static const char* const malformedStr = "FS::splitAbsolutePath malformed absolute path [";
-
-static void malformedAbsolutePath(const std::string &absolutePath);
+static const char* const malformedStr = "FS::isValidAbsolutePath malformed absolute path [";
 
 std::vector<std::shared_ptr<FS::BaseFS>> FS::filesystems;
 std::shared_ptr<FS::BaseFS> FS::root;
 
-std::vector<std::string> FS::splitAbsolutePath(const std::string &absolutePath, bool isDir) {
-	if (
-		0 == absolutePath.length() ||
-		'/' != absolutePath.at(0) ||
-		(isDir && '/' != absolutePath.back())
-	) {
-		// TODO: do better error handling instead of panicking
-		malformedAbsolutePath(absolutePath);
+std::tuple<std::string, std::string> FS::splitParentDirectory(const std::string &absolutePath) {
+	if (absolutePath == "/") {
+		return {absolutePath, ""};
 	}
+	bool isDir = absolutePath.back() == '/';
+	int length = absolutePath.length() - (isDir ? 2 : 1);
+	for (; length >= 0; --length) {
+		if (absolutePath.at(length) == '/') {
+			break;
+		}
+	}
+	return {
+		absolutePath.substr(0, length + 1),
+		absolutePath.substr(length + 1, absolutePath.length() - length - (isDir ? 2 : 1))
+	};
+}
+
+std::vector<std::string> FS::splitAbsolutePath(const std::string &absolutePath) {
 	std::vector<std::string> pathParts;
 	size_t pos = 1;
 	size_t currentPos = 1;
 	for (; currentPos < absolutePath.length(); ++currentPos) {
 		if ('/' == absolutePath.at(currentPos)) {
-			if (currentPos == pos) {
-				// TODO: should probably treat consecutive '/' as harmless like Linux
-				malformedAbsolutePath(absolutePath);
-			}
 			pathParts.push_back(absolutePath.substr(pos, currentPos - pos));
 			pos = currentPos + 1;
 		}
@@ -43,9 +46,23 @@ const Random::GUIDv4& FS::BaseFS::getGuid() const {
 	return this->guid;
 }
 
-static void malformedAbsolutePath(const std::string &absolutePath) {
-	terminalPrintString(malformedStr, strlen(malformedStr));
-	terminalPrintString(absolutePath.c_str(), absolutePath.length());
-	terminalPrintChar(']');
-	Kernel::panic();
+bool FS::isValidAbsolutePath(const std::string &absolutePath, bool isDir) {
+	if (!(
+		0 == absolutePath.length() ||
+		'/' != absolutePath.at(0) ||
+		(isDir && '/' != absolutePath.back()) ||
+		(!isDir && '/' == absolutePath.back())
+	)) {
+		for (size_t i = 1; i < absolutePath.length(); ++i) {
+			if (absolutePath.at(i) == '/' && absolutePath.at(i - 1) == '/') {
+				return false;
+			}
+		}
+		return true;
+	} else {
+		terminalPrintString(malformedStr, strlen(malformedStr));
+		terminalPrintString(absolutePath.c_str(), absolutePath.length());
+		terminalPrintChar(']');
+		Kernel::panic();
+	}
 }
