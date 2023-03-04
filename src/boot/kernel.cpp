@@ -20,9 +20,8 @@ static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit lon
 static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
 static const char* const creatingFsStr = "Creating file systems";
 static const char* const creatingFsDoneStr = "File systems created [";
-static const char* const checkingAhciStr = "Checking AHCI controllers";
-static const char* const checkingAhciDoneStr = "AHCI controllers checked\n";
-static const char* const isoFoundStr = "JolietISO filesystem found at ";
+static const char* const atAhciStr = "on AHCI device";
+static const char* const isoFoundStr = "JolietISO";
 static const char* const globalCtorStr = "Running global constructors";
 static const char* const enabledInterruptsStr = "Enabled interrupts\n\n";
 static const char* const apuBootStr = "Loading auxiliary CPU bootstrap binary";
@@ -31,9 +30,12 @@ static const char* const cpuStr = "CPU ";
 static const char* const noFsStr = "Expected to find at least 1 filesystem\n";
 static const char* const sse4Str = "SSE4.2 enabled\n\n";
 static const char* const checkRandStr = "Checking RDRAND presence";
+static const char* const rootFailStr = "Failed to find root filesystem\n";
+static const char* const rootFoundStr = "Root filesystem found ";
 
 static Async::Thenable<void> startPcieDrivers();
 static Async::Thenable<void> createFileSystems();
+static Async::Thenable<void> findRootFs();
 static Async::Thenable<void> bootApus();
 
 bool Kernel::debug = false;
@@ -141,6 +143,7 @@ extern "C" [[noreturn]] void kernelMain(
 	auto initResults =
 		startPcieDrivers()
 			.then(createFileSystems)
+			.then(findRootFs)
 			.then(bootApus);
 	#pragma GCC diagnostic pop
 
@@ -162,29 +165,6 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintSpaces4();
 	terminalPrintString(apuBootStr, strlen(apuBootStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	for (const auto &fs : FS::filesystems) {
-		terminalPrintChar('\n');
-		const auto x = co_await fs->readDirectory("/boot/stage1/");
-		if (FS::Status::Ok == x.status) {
-			for (const auto &dir : x.entries) {
-				terminalPrintString(dir.name.c_str(), dir.name.length());
-				terminalPrintChar(' ');
-				terminalPrintDecimal(dir.isFile);
-				terminalPrintChar(' ');
-				terminalPrintDecimal(dir.isDir);
-				terminalPrintChar(' ');
-				terminalPrintDecimal(dir.isSymLink);
-				terminalPrintChar(' ');
-				terminalPrintDecimal(dir.lba);
-				terminalPrintChar(' ');
-				terminalPrintDecimal(dir.size);
-				terminalPrintChar('\n');
-			}
-		} else {
-			terminalPrintString("failedReadDir", 13);
-			terminalPrintDecimal(x.status);
-		}
-	}
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -218,16 +198,42 @@ static Async::Thenable<void> startPcieDrivers() {
 	co_return;
 }
 
+static Async::Thenable<void> findRootFs() {
+	for (const auto &fs : FS::filesystems) {
+		const auto bootDirResult = co_await fs->readDirectory("/boot/");
+		if (bootDirResult.status == FS::Status::Ok) {
+			for (const auto &file : bootDirResult.entries) {
+				if (
+					file.isFile &&
+					file.name == std::string(Kernel::infoTable.rootFsGuid) + ".root-fs"
+				) {
+					FS::root = fs;
+					break;
+				}
+			}
+		} else {
+			terminalPrintString(rootFailStr, strlen(rootFailStr));
+			Kernel::panic();
+		}
+	}
+	if (FS::root) {
+		terminalPrintString(rootFoundStr, strlen(rootFoundStr));
+		FS::root->getGuid().print(true);
+		terminalPrintChar('\n');
+		terminalPrintChar('\n');
+	} else {
+		terminalPrintString(rootFailStr, strlen(rootFailStr));
+		Kernel::panic();
+	}
+	co_return;
+}
+
 static Async::Thenable<void> createFileSystems() {
 	terminalPrintString(creatingFsStr, strlen(creatingFsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
 
 	// Create filesystems from AHCI devices
-	terminalPrintSpaces4();
-	terminalPrintString(checkingAhciStr, strlen(checkingAhciStr));
-	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	terminalPrintChar('\n');
 	for (size_t controllerCount = 0; const auto &controller : AHCI::controllers) {
 		for (const auto &device : controller.getDevices()) {
 			// Try with JolietISO for SATAPI devices first because that is the most likely FS
@@ -238,8 +244,12 @@ static Async::Thenable<void> createFileSystems() {
 					if (co_await iso->initialize()) {
 						FS::filesystems.push_back(iso);
 						terminalPrintSpaces4();
-						terminalPrintSpaces4();
+						iso->getGuid().print(true);
+						terminalPrintChar(' ');
 						terminalPrintString(isoFoundStr, strlen(isoFoundStr));
+						terminalPrintChar(' ');
+						terminalPrintString(atAhciStr, strlen(atAhciStr));
+						terminalPrintChar(' ');
 						terminalPrintDecimal(controllerCount);
 						terminalPrintChar(':');
 						terminalPrintDecimal(device->getPortNumber());
@@ -250,8 +260,6 @@ static Async::Thenable<void> createFileSystems() {
 		}
 		++controllerCount;
 	}
-	terminalPrintSpaces4();
-	terminalPrintString(checkingAhciDoneStr, strlen(checkingAhciDoneStr));
 
 	// Create filesystems from other device types here when appropriate drivers are added
 

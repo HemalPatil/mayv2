@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "mayv2 ELF x86_64",
             "includePath": [
                 "${workspaceFolder}/src/include/kernel/**",
                 "${workspaceFolder}/src/include/std/**"

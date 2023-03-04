@@ -16,7 +16,7 @@ namespace Random {
 			GUIDv4();
 			bool operator==(const GUIDv4 &other) const;
 			explicit operator std::string() const;
-			void print() const;
+			void print(bool showBraces = false) const;
 	};
 
 	extern "C" uint64_t getRandom64();

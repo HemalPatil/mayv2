@@ -49,13 +49,12 @@ bool findRecord(const char *directory, const int dirSize, const std::u16string &
 }
 
 int main(int argc, char *argv[]) {
-	// Check if exactly 2 arguments i.e. EXE name and ISO file name are provided
-	if (argc != 2) {
-		std::cerr << "Supply only the disk ISO name" << std::endl;
+	// Check if exactly 3 arguments i.e. EXE name, ISO file name, and root FS GUID are provided
+	if (argc != 3) {
+		std::cerr << "Supply only the disk ISO name and root FS GUID" << std::endl;
 		return 1;
 	}
-	char *isoName = new char[strlen(argv[1])];
-	strcpy(isoName, argv[1]);
+	char *isoName = argv[1];
 	std::fstream isoFile;
 	isoFile.open(isoName, std::ios::in | std::ios::out | std::ios::binary);
 	if (!isoFile.is_open()) {
@@ -203,11 +202,14 @@ int main(int argc, char *argv[]) {
 		bootBinSeekp += 16;
 	}
 
+	// Copy the root FS GUID
+	isoFile.seekp(bootBinSector * ISO_SECTOR_SIZE + BOOTLOADER_PADDING + moduleCount * 16);
+	isoFile.write(argv[2], 36);
+
 	std::cout
 		<< "ISO formatted (Kernel startSector[" << kernel64Sector
 		<< "] sectorCount[" << ceil((double)coreFileSizes[8] / ISO_SECTOR_SIZE) << "])\n";
 
-	delete[] isoName;
 	isoFile.close();
 	return 0;
 }

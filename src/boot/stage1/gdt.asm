@@ -54,8 +54,9 @@ start:
 	mov bx, 0x1000
 	mov es, bx
 	xor bx, bx
-	mov dword [es:bx], 0				; Null entry 8 bytes
-	mov dword [es:bx + 4], 0
+	xor eax, eax
+	mov [es:bx], eax				; Null entry 8 bytes
+	mov [es:bx + 4], eax
 
 ; segment selector 0x08
 	add bx, 8							; cs entry

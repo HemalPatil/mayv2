@@ -7,6 +7,7 @@ static const char* const malformedStr = "FS::splitAbsolutePath malformed absolut
 static void malformedAbsolutePath(const std::string &absolutePath);
 
 std::vector<std::shared_ptr<FS::BaseFS>> FS::filesystems;
+std::shared_ptr<FS::BaseFS> FS::root;
 
 std::vector<std::string> FS::splitAbsolutePath(const std::string &absolutePath, bool isDir) {
 	if (

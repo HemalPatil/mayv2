@@ -1,7 +1,6 @@
+#include <commonstrings.h>
 #include <random.h>
 #include <terminal.h>
-
-static const char* const hexPalette = "0123456789abcdef";
 
 Random::GUIDv4::GUIDv4() {
 	this->timeLow = getRandom64();
@@ -50,7 +49,13 @@ Random::GUIDv4::operator std::string() const {
 	return toString;
 }
 
-void Random::GUIDv4::print() const {
+void Random::GUIDv4::print(bool showBraces) const {
 	std::string toString = static_cast<std::string>(*this);
+	if (showBraces) {
+		terminalPrintChar('{');
+	}
 	terminalPrintString(toString.c_str(), 36);
+	if (showBraces) {
+		terminalPrintChar('}');
+	}
 }

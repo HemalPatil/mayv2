@@ -12,5 +12,6 @@ const char* const outOfMemoryStr = "Out of memory";
 const char* const pagesAvailableStr = "Pages available ";
 const char* const presentStr = "present";
 const char* const trueStr = "true";
+const char* const hexPalette = "0123456789abcdef";
 
 }

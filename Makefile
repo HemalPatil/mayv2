@@ -43,6 +43,10 @@ ALL_SRC_FILES := $(C_FILES) $(CPP_FILES) $(HEADER_FILES) $(ASM_FILES)
 # Final ISO name
 ISO_NAME := mayv2.iso
 
+# Root FS GUID
+EXISTING_ROOT_GUIDS := $(shell find $(ISO_DIR)/boot -type f -name "*.root-fs")
+ROOT_GUID := $(shell uuidgen -r)
+
 .PHONY: all clean directories disassemble fixme todo
 
 # Include the rules from subdirectories recursively using stack-like structure
@@ -90,8 +94,10 @@ all: configure $(ISO_NAME)
 # Boot load size is set to 4 because BOOTLOAD.BIN is 2048 bytes
 # and El-Torito standard must load 4 512 byte sectors
 $(ISO_NAME): $(DIR_BOOT) $(UTILITIES_BUILD_DIR)/format_iso
+	if [ ! -z "$(EXISTING_ROOT_GUIDS)" ]; then rm $(EXISTING_ROOT_GUIDS); fi
+	touch ./$(ISO_DIR)/boot/$(ROOT_GUID).root-fs
 	$(ISO_MAKER) -J -quiet -no-emul-boot -boot-load-size 4 -b boot/stage1/bootload.bin -o $@ ./$(ISO_DIR)/
-	./$(UTILITIES_BUILD_DIR)/format_iso $@
+	./$(UTILITIES_BUILD_DIR)/format_iso $@ $(ROOT_GUID)
 
 $(UTILITIES_BUILD_DIR)/format_iso: $(UTILITIES_DIR)/format_iso.cpp
 	$(CXX) --std=c++23 -O3 $^ -o $@ $(C_WARNINGS)

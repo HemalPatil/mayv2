@@ -27,7 +27,7 @@ static const char* const busStr = "Bus ";
 static const char* const deviceStr = " device ";
 static const char* const multiStr = " multi function";
 static const char* const funcStr = "Function ";
-static const char* const nonMsiStr = "non-MSI";
+static const char* const msiStr = "[msi]";
 static const char* const unmapFailStr = "Failed to unmap configuration page";
 
 std::vector<PCIe::Function> PCIe::functions;
@@ -129,19 +129,14 @@ static bool enumerateFunction(uint8_t function, PCIe::BaseHeader *pcieHeader, PC
 			}
 		}
 		if (msiFound) {
-			goto enumerateFunctionEnd;
+			terminalPrintChar(' ');
+			terminalPrintString(msiStr, strlen(msiStr));
 		} else {
-			goto msiNotFound;
+			*msi = nullptr;
 		}
 	}
-	msiNotFound:
-		*msi = nullptr;
-		terminalPrintChar(' ');
-		terminalPrintString(nonMsiStr, strlen(nonMsiStr));
-
-	enumerateFunctionEnd:
-		terminalPrintChar('\n');
-		return true;
+	terminalPrintChar('\n');
+	return true;
 }
 
 static bool enumerateDevice(uint64_t baseAddress, uint8_t bus, uint8_t device) {

@@ -104,6 +104,9 @@ dapKernel64Elf:
 	dw 0x0000
 	dq 0x00000000
 
+rootFsGuid:
+	times 36 db 0
+
 ; Magic bytes
 x64Magic db 'x64', 0
 mmapMagic db 'MMAP'
@@ -239,6 +242,17 @@ loadCoreFilesCont:
 	mov bx, [infoTableOffset]
 	add bx, 12
 	lgdt [es:bx]
+
+	; Store the root FS GUID in InfoTable
+	add bx, 52
+	mov si, rootFsGuid
+	mov ecx, 9
+rootFsLoop:
+	mov edx, [si]
+	mov [es:bx], edx
+	add si, 4
+	add bx, 4
+	loop rootFsLoop
 
 	cli				; Disable interrupts
 	mov eax, cr0			; Enable protected bit

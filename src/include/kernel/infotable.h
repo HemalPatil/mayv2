@@ -20,5 +20,6 @@ struct InfoTable {
 	uint64_t vbeModeNumbersLocation;
 	uint64_t globalCtorsLocation;
 	uint64_t globalCtorsCount;
+	char rootFsGuid[36];
 } __attribute__((packed));
 typedef struct InfoTable InfoTable;
