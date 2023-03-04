@@ -64,7 +64,13 @@ namespace APIC {
 		uint32_t destinationFormat;
 		char reserved10[12];
 		uint32_t spuriousInterruptVector;
-		char reserved11[12];
+		char reserved11[396];
+		uint32_t errorStatus;
+		char reserved12[124];
+		uint32_t interruptCommandLow;
+		char reserved13[12];
+		uint32_t interruptCommandHigh;
+		char reserved14[12];
 	} __attribute__((packed));
 
 	union IORedirectionEntry {
@@ -93,7 +99,7 @@ namespace APIC {
 	extern std::vector<IOEntry> ioEntries;
 
 	extern void acknowledgeLocalInterrupt();
-	extern LocalAPIC* getLocal();
+	extern volatile LocalAPIC* getLocal();
 	extern bool initialize();
 	extern uint32_t readIo(const uint8_t offset);
 	extern IORedirectionEntry readIoRedirectionEntry(const Kernel::IRQ irq);

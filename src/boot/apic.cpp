@@ -13,7 +13,7 @@ std::vector<APIC::IOEntry> APIC::ioEntries;
 
 static uint32_t apicFlags = 0;
 static void *localApicPhysicalAddress = nullptr;
-static APIC::LocalAPIC *localApic = nullptr;
+static volatile APIC::LocalAPIC *localApic = nullptr;
 static void *ioApic = nullptr;
 
 static const char* const initApicStr = "Initializing APIC";
@@ -217,7 +217,7 @@ bool APIC::initialize() {
 	terminalPrintSpaces4();
 	terminalPrintString(enablingApicStr, strlen(enablingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	localApic->spuriousInterruptVector |= 0x100;
+	localApic->spuriousInterruptVector = localApic->spuriousInterruptVector | 0x100;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
@@ -251,7 +251,7 @@ void APIC::writeIo(const uint8_t offset, const uint32_t value) {
 	*(volatile uint32_t*)((uint64_t)ioApic + 0x10) = value;
 }
 
-APIC::LocalAPIC* APIC::getLocal() {
+volatile APIC::LocalAPIC* APIC::getLocal() {
 	return localApic;
 }
 

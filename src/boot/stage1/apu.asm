@@ -1,9 +1,9 @@
 [bits 16]
 [org 0x0000]
 
-BOOTLOADER_SEGMENT equ 0x07c0
+APU_BOOTLOADER_SEGMENT equ 0x0800
 
-jmp BOOTLOADER_SEGMENT:start	; Ensure cs=0x07c0
+jmp APU_BOOTLOADER_SEGMENT:start	; Ensure execution starts at 0x1000 aligned 0x800:0x0
 
 start:
 	cli
