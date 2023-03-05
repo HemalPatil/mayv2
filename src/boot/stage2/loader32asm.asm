@@ -13,16 +13,16 @@ diskNumber dw 0
 section .rodata
 	global hexSpace
 	; A copy of the initial GDT from kernel is
-	; here because doing far jumps in 64-bit mode is tedious
+	; here because doing far jumps to 64-bit long mode is tedious
 	; so to change the cs selector, a copy of GDT will be loaded from here itself
 	; do a far jump and then just change base of GDT to a 64-bit address
 kernelGdtCopy:
 	; null entry
 	dq 0
 	; 64 bit code segment
-	dq 0x00209a0000000000
+	dq 0x00a09a0000000000
 	; 64 bit data segment
-	dq 0x0020920000000000
+	dq 0x00a0920000000000
 gdtDescriptor:
 	dw $ - kernelGdtCopy -1
 	dd kernelGdtCopy
