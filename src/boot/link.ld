@@ -8,12 +8,12 @@ PHDRS {
 }
 
 SECTIONS {
-	. = 0x80000000;
+	. = 0x80000000; /* lowerhalf origin */
 	.lowerhalf : {
 		*(.lowerhalf)
 	} : lowerhalf
 
-	. = 0xffffffff80000000;
+	. = 0xffffffff80000000; /* higherhalf origin */
 	.text : {
 		*(.text)
 		*(.text.*)

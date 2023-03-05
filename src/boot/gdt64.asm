@@ -18,7 +18,6 @@ LONG_MODE     equ 1 << 5
 section .data
 	global GDT_START
 	global GDT_END
-	global gdtDescriptor
 
 GDT_START:
 ; null entry
@@ -55,6 +54,7 @@ GDT_START:
 GDT_END:
 
 section .rodata
+	global gdtDescriptor
 gdtDescriptor:
 	gdt64Limit dw 65535
 	gdt64Base dq GDT_START

@@ -25,8 +25,7 @@ kernelCompatibilityModeStart:
 	xor rbp, rbp
 
 	; Setup 64-bit GDT
-	mov rax, gdtDescriptor
-	lgdt [rax]
+	lgdt [gdtDescriptor]
 
 	; Jump to true 64-bit long mode
 	mov rax, kernelLongModeStart
@@ -37,7 +36,7 @@ section .text
 	global flushTLB
 	global haltSystem
 	global hangSystem
-	global kernelLongModeStart
+	global prepareApuInfoTable
 kernelLongModeStart:
 	mov rax, 0x00000000ffffffff
 	and rdi, rax	; rdi contains info table address, pass it as 1st parameter to kernelMain
@@ -50,6 +49,11 @@ kernelEnd:
 	cli
 	hlt
 	jmp kernelEnd
+
+apuLongModeStart:
+	mov r8, 0x0807060504030201
+	cli
+	hlt
 
 flushTLB:
 	cli
@@ -65,3 +69,9 @@ hangSystem:
 	cli
 	hlt
 	jmp hangSystem
+
+prepareApuInfoTable:
+	mov qword [rdi], apuLongModeStart
+	mov [rdi + 8], rsi
+	sgdt [rdi + 16]
+	ret

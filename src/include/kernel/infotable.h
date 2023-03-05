@@ -22,4 +22,9 @@ struct InfoTable {
 	uint64_t globalCtorsCount;
 	char rootFsGuid[36];
 } __attribute__((packed));
-typedef struct InfoTable InfoTable;
+
+struct ApuInfoTable {
+	uint64_t apuLongModeStart;
+	uint64_t pml4tPhysicalAddress;
+	char gdt64Descriptor[10];
+} __attribute__((packed));

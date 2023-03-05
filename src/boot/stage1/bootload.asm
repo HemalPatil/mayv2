@@ -129,8 +129,8 @@ returnX64 db 'returned form x64.bin', 13, 10, 0
 
 start:
 	cli						; Disable interrupts
-	mov ax, BOOTLOADER_SEGMENT	; Right now DS == CS
-	mov ds, ax		; Setup DS
+	mov ax, cs
+	mov ds, ax
 	mov ax, [infoTableSegment]
 	mov es, ax
 	mov [driveNumber], dl	; Store the disk number from which this bootloader was loaded

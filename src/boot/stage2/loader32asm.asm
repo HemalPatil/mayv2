@@ -299,7 +299,7 @@ jumpToKernel64:
 	mov eax, cr4
 	or eax, 1 << 5		; Set PAE enable bit
 	mov cr4, eax
-	mov ecx, 0xc0000080	; Copy contents of EFER MSR in eax
+	mov ecx, 0xc0000080		; Copy contents of EFER MSR in eax
 	rdmsr
 	or eax, 1 << 8 | 1 << 11	; Set LM (long mode) bit and NX (execute disable) bit
 	wrmsr				; Write back to EFER MSR

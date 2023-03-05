@@ -170,7 +170,8 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	const auto fileReadResult = std::move(co_await FS::root->readFile("/boot/stage1/apu.bin"));
 	if (fileReadResult.status == FS::Status::Ok && fileReadResult.data) {
-		memcpy((void*)(APU_BOOTLOADER_SEGMENT << 4), fileReadResult.data.getData(), fileReadResult.data.getSize());
+		memcpy((void*)APU_BOOTLOADER_ORIGIN, fileReadResult.data.getData(), fileReadResult.data.getSize());
+		Kernel::prepareApuInfoTable((ApuInfoTable*)(APU_BOOTLOADER_ORIGIN + APU_BOOTLOADER_PADDING), Kernel::infoTable.pml4tPhysicalAddress);
 	} else {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -189,7 +190,7 @@ static Async::Thenable<void> bootApus() {
 			terminalPrintChar('\n');
 			localApic->errorStatus = 0;
 			localApic->interruptCommandHigh = (localApic->interruptCommandHigh & 0x00ffffff) | (((uint32_t)cpu.cpuId) << 24);
-			localApic->interruptCommandLow = (localApic->interruptCommandLow & 0xfff32000) | (0x4600 | (APU_BOOTLOADER_SEGMENT >> 8));
+			localApic->interruptCommandLow = (localApic->interruptCommandLow & 0xfff32000) | (0x4600 | (APU_BOOTLOADER_ORIGIN >> 12));
 			terminalPrintSpaces4();
 			terminalPrintSpaces4();
 			terminalPrintString(sipiSentStr, strlen(sipiSentStr));

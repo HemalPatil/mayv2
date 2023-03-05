@@ -13,7 +13,8 @@
 #define KIB_4 4 * 1024
 #define MIB_2 2 * 1024 * 1024
 
-#define APU_BOOTLOADER_SEGMENT 0x0800
+#define APU_BOOTLOADER_PADDING 32
+#define APU_BOOTLOADER_ORIGIN 0x8000
 #define INVALID_ADDRESS ((void*) 0x8000000000000000)
 #define KERNEL_LOWERHALF_ORIGIN 0x80000000
 #define KERNEL_HIGHERHALF_ORIGIN 0xffffffff80000000
@@ -41,6 +42,8 @@ namespace Kernel {
 
 	// Disables interrupts, halts the systems, and never returns
 	extern "C" [[noreturn]] void hangSystem();
+
+	extern "C" void prepareApuInfoTable(ApuInfoTable *apuInfoTable, uint64_t pml4tPhysicalAddress);
 
 	enum IRQ : uint8_t {
 		Keyboard = 1,
