@@ -4,6 +4,8 @@
 #include <pml4t.h>
 #include <terminal.h>
 
+#define BPU_COMPAT_MODE_ORIGIN 0x80000000
+
 static const size_t maxVirtualAddressBits = 48;
 static const size_t pml4tRecursiveEntry = 510;
 static const uint64_t nonCanonicalStart = (uint64_t)1 << (maxVirtualAddressBits - 1);
@@ -152,7 +154,7 @@ bool Kernel::Memory::Virtual::initialize(
 
 	// Remove identity mapping for virtual addresses from 1MiB to L32_IDENTITY_MAP_SIZE MiBs,
 	// scratch memory from L32K64_SCRATCH_BASE of length L32K64_SCRATCH_LENGTH
-	// and mapping for lower half of kernel
+	// and mapping for boot CPU compatibility mode segment
 	terminalPrintSpaces4();
 	terminalPrintString(removingIdStr, strlen(removingIdStr));
 	terminalPrintDecimal(L32_IDENTITY_MAP_SIZE);
@@ -161,7 +163,7 @@ bool Kernel::Memory::Virtual::initialize(
 	if (
 		!unmapPages((void*)mib1, (L32_IDENTITY_MAP_SIZE - 1) * mib1 / pageSize, false) ||
 		!unmapPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / pageSize, false) ||
-		!unmapPages((void*)KERNEL_LOWERHALF_ORIGIN, kernelLowerHalfSize / pageSize, false)
+		!unmapPages((void*)BPU_COMPAT_MODE_ORIGIN, kernelLowerHalfSize / pageSize, false)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');

@@ -1,22 +1,22 @@
 [bits 64]
 
-KERNEL_STACK_SIZE equ 65536 ; 64 KiB stack
+KERNEL_STACK_SIZE equ 65536 ; 64KiB stack
 
 ;Reserve space for stack
 section .bss
 kernelStack:
 	resb KERNEL_STACK_SIZE
 
-section .lowerhalf progbits alloc exec nowrite align=4096
+section .bpuorigin progbits alloc exec nowrite align=0x1000
 	extern gdtDescriptor
-	global kernelCompatibilityModeStart
+	global bpuCompatibilityModeStart
 
 ; Kernel64 execution starts here
 ; rdi, rsi, rdx, and rcx will have important kernel parameters, DO NOT trash them
 ; 32-bit code of the loader cannot jump to 64-bit address directly
-; Hence, first jump to KERNEL_LOWERHALF_ORIGIN and then jump to KERNEL_HIGHERHALF_ORIGIN
+; Hence, first jump to bpuCompatibilityModeStart (BPU_COMPAT_MODE_ORIGIN) and then jump to bpuLongModeStart
 ; Currently CPU is in 32-bit compatibility mode since GDT64 is not loaded
-kernelCompatibilityModeStart:
+bpuCompatibilityModeStart:
 	mov ax, 0x10		; 64-bit data segment
 	mov ds, ax
 	mov es, ax
@@ -28,27 +28,27 @@ kernelCompatibilityModeStart:
 	lgdt [gdtDescriptor]
 
 	; Jump to true 64-bit long mode
-	mov rax, kernelLongModeStart
+	mov rax, bpuLongModeStart
 	jmp rax
 
 section .text
-	extern kernelMain
+	extern bpuMain
 	global flushTLB
 	global haltSystem
 	global hangSystem
 	global prepareApuInfoTable
-kernelLongModeStart:
+bpuLongModeStart:
 	mov rax, 0x00000000ffffffff
-	and rdi, rax	; rdi contains info table address, pass it as 1st parameter to kernelMain
-	and rsi, rax	; rsi contains kernel's lower half size, 2nd parameter
+	and rdi, rax	; rdi contains info table address, pass it as 1st parameter to bpuMain
+	and rsi, rax	; rsi contains boot CPU compatibility mode segment size
 	and rdx, rax	; rdx contains kernel's higher half size, 3rd parameter
 	and rcx, rax	; rcx contains usable physical memory address right after PML4 entries, 4th parameter
-	call kernelMain
+	call bpuMain
 	; code beyond this should never get executed
-kernelEnd:
+bpuEnd:
 	cli
 	hlt
-	jmp kernelEnd
+	jmp bpuEnd
 
 apuLongModeStart:
 	mov r8, 0x0807060504030201

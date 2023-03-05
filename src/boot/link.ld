@@ -1,17 +1,17 @@
-ENTRY(kernelCompatibilityModeStart)
+ENTRY(bpuCompatibilityModeStart)
 
 PHDRS {
-	lowerhalf PT_LOAD;
+	bpuorigin PT_LOAD;
 	text PT_LOAD;
 	rodata PT_LOAD;
 	data PT_LOAD;
 }
 
 SECTIONS {
-	. = 0x80000000; /* lowerhalf origin */
-	.lowerhalf : {
-		*(.lowerhalf)
-	} : lowerhalf
+	. = 0x80000000; /* bpu origin */
+	.bpuorigin : {
+		*(.bpuorigin)
+	} : bpuorigin
 
 	. = 0xffffffff80000000; /* higherhalf origin */
 	.text : {

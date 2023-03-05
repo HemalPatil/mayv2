@@ -43,7 +43,7 @@ static Async::Thenable<void> bootApus();
 bool Kernel::debug = false;
 InfoTable Kernel::infoTable;
 
-extern "C" [[noreturn]] void kernelMain(
+extern "C" [[noreturn]] void bpuMain(
 	InfoTable *infoTableAddress,
 	size_t lowerHalfSize,
 	size_t higherHalfSize,

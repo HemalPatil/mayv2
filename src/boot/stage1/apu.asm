@@ -66,5 +66,8 @@ apuCompatibilityModeStart:
 	lgdt [gdt64Descriptor]
 	mov rax, [apuLongModeStart]
 	jmp rax
+	; code beyond this should never get executed
+apuEnd:
 	cli
 	hlt
+	jmp apuEnd

@@ -9,14 +9,13 @@
 #include <terminal.h>
 #include <vector>
 
-#define GIB_1 (uint64_t)1024 * 1024 * 1024
-#define KIB_4 4 * 1024
-#define MIB_2 2 * 1024 * 1024
+#define GIB_1 (1024 * 1024 * 1024UL)
+#define KIB_4 (4 * 1024UL)
+#define MIB_2 (2 * 1024 * 1024UL)
 
 #define APU_BOOTLOADER_PADDING 32
 #define APU_BOOTLOADER_ORIGIN 0x8000
 #define INVALID_ADDRESS ((void*) 0x8000000000000000)
-#define KERNEL_LOWERHALF_ORIGIN 0x80000000
 #define KERNEL_HIGHERHALF_ORIGIN 0xffffffff80000000
 #define L32_IDENTITY_MAP_SIZE 32
 #define L32K64_SCRATCH_BASE 0x80000
@@ -27,8 +26,6 @@ namespace Kernel {
 	extern bool debug;
 
 	typedef void(*GlobalConstructor)();
-
-	// kernelMain is not exposed to other files deliberately
 
 	extern InfoTable infoTable;
 
