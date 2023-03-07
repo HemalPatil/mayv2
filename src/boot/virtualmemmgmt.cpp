@@ -4,8 +4,6 @@
 #include <pml4t.h>
 #include <terminal.h>
 
-#define BPU_COMPAT_MODE_ORIGIN 0x80000000
-
 static const size_t maxVirtualAddressBits = 48;
 static const size_t pml4tRecursiveEntry = 510;
 static const uint64_t nonCanonicalStart = (uint64_t)1 << (maxVirtualAddressBits - 1);
@@ -56,7 +54,6 @@ Kernel::Memory::Virtual::AddressSpaceList Kernel::Memory::Virtual::kernelAddress
 // Initializes virtual memory space for use by higher level dynamic memory manager and other kernel services
 bool Kernel::Memory::Virtual::initialize(
 	void* usableKernelSpaceStart,
-	size_t kernelLowerHalfSize,
 	size_t phyMemBuddyPagesCount,
 	GlobalConstructor (&globalCtors)[]
 ) {
@@ -154,7 +151,6 @@ bool Kernel::Memory::Virtual::initialize(
 
 	// Remove identity mapping for virtual addresses from 1MiB to L32_IDENTITY_MAP_SIZE MiBs,
 	// scratch memory from L32K64_SCRATCH_BASE of length L32K64_SCRATCH_LENGTH
-	// and mapping for boot CPU compatibility mode segment
 	terminalPrintSpaces4();
 	terminalPrintString(removingIdStr, strlen(removingIdStr));
 	terminalPrintDecimal(L32_IDENTITY_MAP_SIZE);
@@ -162,8 +158,7 @@ bool Kernel::Memory::Virtual::initialize(
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	if (
 		!unmapPages((void*)mib1, (L32_IDENTITY_MAP_SIZE - 1) * mib1 / pageSize, false) ||
-		!unmapPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / pageSize, false) ||
-		!unmapPages((void*)BPU_COMPAT_MODE_ORIGIN, kernelLowerHalfSize / pageSize, false)
+		!unmapPages((void*)L32K64_SCRATCH_BASE, L32K64_SCRATCH_LENGTH / pageSize, false)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -216,14 +211,14 @@ bool Kernel::Memory::Virtual::initialize(
 	// 1) 0x0 to L32K64_SCRATCH_BASE
 	// 2) (L32K64_SCRATCH_BASE + L32K64_SCRATCH_LENGTH) to 1MiB
 	// 3) PML4 recursive mapping
-	// 4) KERNEL_HIGHERHALF_ORIGIN to usableKernelSpaceStart
+	// 4) KERNEL_ORIGIN to usableKernelSpaceStart
 	terminalPrintSpaces4();
 	terminalPrintString(creatingListsStr, strlen(creatingListsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	// Used kernel space
 	kernelAddressSpaceList.at(0).available = false;
-	kernelAddressSpaceList.at(0).base = (void*) KERNEL_HIGHERHALF_ORIGIN;
-	kernelAddressSpaceList.at(0).pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_HIGHERHALF_ORIGIN) / pageSize;
+	kernelAddressSpaceList.at(0).base = (void*) KERNEL_ORIGIN;
+	kernelAddressSpaceList.at(0).pageCount = ((uint64_t)usableKernelSpaceStart - KERNEL_ORIGIN) / pageSize;
 	// Available kernel space
 	kernelAddressSpaceList.at(1).available = true;
 	kernelAddressSpaceList.at(1).base = usableKernelSpaceStart;
@@ -261,10 +256,10 @@ bool Kernel::Memory::Virtual::initialize(
 	generalAddressSpaceList.at(6).available = false;
 	generalAddressSpaceList.at(6).base = (void*) ptMask;
 	generalAddressSpaceList.at(6).pageCount = ((uint64_t)512 * GIB_1) / pageSize;
-	// General PML4 recursive map to KERNEL_HIGHERHALF_ORIGIN available
+	// General PML4 recursive map to KERNEL_ORIGIN available
 	generalAddressSpaceList.at(7).available = true;
 	generalAddressSpaceList.at(7).base = (void*)(ptMask + 512 * GIB_1);
-	generalAddressSpaceList.at(7).pageCount = ((uint64_t)KERNEL_HIGHERHALF_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
+	generalAddressSpaceList.at(7).pageCount = ((uint64_t)KERNEL_ORIGIN - ptMask - 512 * GIB_1) / pageSize;
 	generalPagesAvailableCount += generalAddressSpaceList.at(7).pageCount;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
@@ -467,7 +462,7 @@ static void defragAddressSpaceList(uint32_t flags) {
 		}
 	}
 	total += list.back().pageCount;
-	bool isStartValid = kernelList ? list.at(0).base == (void*)KERNEL_HIGHERHALF_ORIGIN : list.at(0).base == (void*)0;
+	bool isStartValid = kernelList ? list.at(0).base == (void*)KERNEL_ORIGIN : list.at(0).base == nullptr;
 	if (
 		!isStartValid ||
 		!listMono ||

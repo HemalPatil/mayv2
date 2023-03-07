@@ -33,8 +33,7 @@ size_t Kernel::Memory::Physical::buddySizes[PHY_MEM_BUDDY_MAX_ORDER] = { 0 };
 // Initializes the physical memory for use by higher level virtual memory manager and other kernel services
 bool Kernel::Memory::Physical::initialize(
 	void* usablePhyMemStart,
-	size_t kernelLowerHalfSize,
-	size_t kernelHigherHalfSize,
+	size_t kernelSize,
 	size_t &phyMemBuddyPagesCount
 ) {
 	terminalPrintString(initPhyMemStr, strlen(initPhyMemStr));
@@ -107,9 +106,9 @@ bool Kernel::Memory::Physical::initialize(
 		MarkPageType::Used
 	);
 
-	// Mark pages used by higher half of kernel process as used
+	// Mark pages used by the kernel as used
 	// All the kernel sections are aligned at 4KiB in the linker
-	markPages((void*)(infoTable.kernelPhyMemBase + kernelLowerHalfSize), kernelHigherHalfSize / pageSize, MarkPageType::Used);
+	markPages((void*)infoTable.kernelPhyMemBase, kernelSize / pageSize, MarkPageType::Used);
 
 	// Mark the phyMemBuddyBitmaps themselves as used
 	markPages(buddyBitmaps[0], phyMemBuddyPagesCount, MarkPageType::Used);

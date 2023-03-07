@@ -39,7 +39,6 @@ struct ELF64Header {
 	uint16_t sectionEntryCount;
 	uint16_t sectionNamesIndex;
 } __attribute__((packed));
-typedef struct ELF64Header ELF64Header;
 
 struct ELF64ProgramHeader {
 	uint32_t segmentType;
@@ -51,7 +50,6 @@ struct ELF64ProgramHeader {
 	uint64_t segmentSizeInMemory;
 	uint64_t alignment;
 } __attribute__((packed));
-typedef struct ELF64ProgramHeader ELF64ProgramHeader;
 
 struct ELF64SectionHeader {
 	uint32_t nameOffset;
@@ -65,4 +63,3 @@ struct ELF64SectionHeader {
 	uint64_t alignment;
 	uint64_t entrySize;
 } __attribute__((packed));
-typedef struct ELF64SectionHeader ELF64SectionHeader;

@@ -6,7 +6,7 @@
 #include <pml4t.h>
 
 #define ISO_SECTOR_SIZE 2048
-#define KERNEL_HIGHERHALF_ORIGIN 0xffffffff80000000
+#define KERNEL_ORIGIN 0xffffffff80000000
 #define L32_IDENTITY_MAP_SIZE 32
 #define L32K64_SCRATCH_BASE 0x80000
 #define L32K64_SCRATCH_LENGTH 0x10000
@@ -53,8 +53,7 @@ extern "C" void loadKernel64ElfSectors();
 extern "C" void jumpToKernel64(
 	const PML4E* const pml4t,
 	const InfoTable* const table,
-	const uint32_t lowerHalfSize,
-	const uint32_t higherHalfSize,
+	const uint32_t kernelSize,
 	const uint32_t usablePhyMemStart
 );
 extern "C" uint8_t getLinearAddressLimit();
@@ -371,12 +370,13 @@ extern "C" int loader32Main(
 	printHex(&kernelBase, sizeof(kernelBase));
 	printString("\n");
 	printString("ProgramHeaderEntryCount = 0x");
+	elfHeader = (ELF64Header*)kernelElfBase;
 	printHex(&elfHeader->headerEntryCount, sizeof(elfHeader->headerEntryCount));
 	printString("\n");
 	PML4E *pml4t = (PML4E *)(uint32_t)infoTable->pml4tPhysicalAddress;
 	// New pages that need to be made should start from this address and add pageSize to it.
 	uint32_t newPageStart = infoTable->pml4tPhysicalAddress + pml4Count * pageSize;
-	uint32_t lowerHalfSize = 0, higherHalfSize = 0;
+	uint32_t kernelSize = 0;
 	elfHeader = (ELF64Header*)kernelElfBase;
 	programHeader = (ELF64ProgramHeader*)(kernelElfBase + (uint32_t)elfHeader->headerTablePosition);
 	for (uint16_t i = 0; i < elfHeader->headerEntryCount; ++i) {
@@ -395,18 +395,11 @@ extern "C" int loader32Main(
 			(uint32_t)programHeader[i].segmentSizeInFile
 		);
 
-		// Kernel is linked at higher half addresses.
-		// Right now it is last 2GiB of 64-bit address space, may change if linker script is changed
-		// Map this section in the paging structure
 		size_t pageCount = sizeInMemory / pageSize;
 		if (sizeInMemory - pageCount * pageSize) {
 			++pageCount;
 		}
-		if (programHeader[i].virtualAddress < (uint64_t)KERNEL_HIGHERHALF_ORIGIN) {
-			lowerHalfSize += pageCount * pageSize;
-		} else {
-			higherHalfSize += pageCount * pageSize;
-		}
+		kernelSize += pageCount * pageSize;
 		printString("  PageCount = 0x");
 		printHex(&pageCount, sizeof(pageCount));
 		printString("\n");
@@ -484,8 +477,7 @@ extern "C" int loader32Main(
 	jumpToKernel64(
 		pml4t,
 		infoTableAddress,
-		lowerHalfSize,
-		higherHalfSize,
+		kernelSize,
 		newPageStart
 	);
 	printString("Fatal error : Cannot boot!");

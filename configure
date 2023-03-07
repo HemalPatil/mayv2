@@ -59,19 +59,13 @@ L32_IDENTITY_MAP_SIZE=32
 sed -i "s/\#define L32_IDENTITY_MAP_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define L32_IDENTITY_MAP_SIZE $L32_IDENTITY_MAP_SIZE/" src/boot/stage2/loader32.cpp
 sed -i "s/\#define L32_IDENTITY_MAP_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define L32_IDENTITY_MAP_SIZE $L32_IDENTITY_MAP_SIZE/" src/include/kernel/kernel.h
 
-# Configure boot CPU compatibility mode origin
-# Should always fit in the first 2-4GiB of the virtual address space to allow jumping into x64 32-bit compatibility mode
-BPU_COMPAT_MODE_ORIGIN=0x80000000
-sed -i "s/BPU_COMPAT_MODE_ORIGIN equ $SED_HEX_OR_NUMBER_REGEX/BPU_COMPAT_MODE_ORIGIN equ $BPU_COMPAT_MODE_ORIGIN/" src/boot/stage2/loader32asm.asm
-sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* bpu origin \*\//\. = $BPU_COMPAT_MODE_ORIGIN; \/\* bpu origin \*\//" src/boot/link.ld
-sed -i "s/\#define BPU_COMPAT_MODE_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define BPU_COMPAT_MODE_ORIGIN $BPU_COMPAT_MODE_ORIGIN/" src/boot/virtualmemmgmt.cpp
-
-# Configure kernel higherhalf origin
+# Configure kernel origin
 # Should always fit in the last 4 GiB of virtual address space to allow mcmodel=kernel during linking
-KERNEL_HIGHERHALF_ORIGIN=0xffffffff80000000
-sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* higherhalf origin \*\//\. = $KERNEL_HIGHERHALF_ORIGIN; \/\* higherhalf origin \*\//" src/boot/link.ld
-sed -i "s/\#define KERNEL_HIGHERHALF_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define KERNEL_HIGHERHALF_ORIGIN $KERNEL_HIGHERHALF_ORIGIN/" src/boot/stage2/loader32.cpp
-sed -i "s/\#define KERNEL_HIGHERHALF_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define KERNEL_HIGHERHALF_ORIGIN $KERNEL_HIGHERHALF_ORIGIN/" src/include/kernel/kernel.h
+KERNEL_ORIGIN=0xffffffff80000000
+sed -i "s/KERNEL_ORIGIN equ $SED_HEX_OR_NUMBER_REGEX/KERNEL_ORIGIN equ $KERNEL_ORIGIN/" src/boot/stage2/loader32asm.asm
+sed -i "s/\. = $SED_HEX_OR_NUMBER_REGEX; \/\* kernel origin \*\//\. = $KERNEL_ORIGIN; \/\* kernel origin \*\//" src/boot/link.ld
+sed -i "s/\#define KERNEL_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define KERNEL_ORIGIN $KERNEL_ORIGIN/" src/boot/stage2/loader32.cpp
+sed -i "s/\#define KERNEL_ORIGIN $SED_HEX_OR_NUMBER_REGEX/\#define KERNEL_ORIGIN $KERNEL_ORIGIN/" src/include/kernel/kernel.h
 
 # Configure scheduler event loop dispatch limit
 SCHEDULER_EVENT_DISPATCH_LIMIT=100

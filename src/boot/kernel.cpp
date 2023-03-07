@@ -45,8 +45,7 @@ InfoTable Kernel::infoTable;
 
 extern "C" [[noreturn]] void bpuMain(
 	InfoTable *infoTableAddress,
-	size_t lowerHalfSize,
-	size_t higherHalfSize,
+	size_t kernelSize,
 	void* usablePhyMemStart
 ) {
 	// Be careful of nullptr references until
@@ -93,8 +92,7 @@ extern "C" [[noreturn]] void bpuMain(
 	size_t phyMemBuddyPagesCount;
 	if (!Kernel::Memory::Physical::initialize(
 		usablePhyMemStart,
-		lowerHalfSize,
-		higherHalfSize,
+		kernelSize,
 		phyMemBuddyPagesCount
 	)) {
 		Kernel::panic();
@@ -102,8 +100,7 @@ extern "C" [[noreturn]] void bpuMain(
 
 	// Initialize virtual memory
 	if (!Kernel::Memory::Virtual::initialize(
-		(void*)(KERNEL_HIGHERHALF_ORIGIN + higherHalfSize),
-		lowerHalfSize,
+		(void*)(KERNEL_ORIGIN + kernelSize),
 		phyMemBuddyPagesCount,
 		globalCtors
 	)) {

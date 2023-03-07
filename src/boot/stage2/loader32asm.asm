@@ -1,6 +1,6 @@
 [bits 32]
 
-BPU_COMPAT_MODE_ORIGIN equ 0x80000000
+KERNEL_ORIGIN equ 0xffffffff80000000
 LOADER_STACK_SIZE equ 4096
 
 section .data
@@ -26,7 +26,7 @@ kernelGdtCopy:
 gdtDescriptor:
 	dw $ - kernelGdtCopy -1
 	dd kernelGdtCopy
-hexSpace db '0123456789ABCDEF', 0
+hexSpace db '0123456789abcdef', 0
 
 section .bss
 	global loaderStack
@@ -308,13 +308,16 @@ jumpToKernel64:
 	mov cr0, eax
 	cli
 	mov edi, [ebp + 12]	; Load edi/rdi with info table address, which is the 1st parameter passed to bpuMain
-	mov esi, [ebp + 16]	; Load esi/rsi with boot CPU compatibility mode segment size
-	mov edx, [ebp + 20]	; Load edx/rdx with kernel's higher half size
-	mov ecx, [ebp + 24]	; Load edx/rdx with usable memory address right after PML4 pages
-	lgdt [gdtDescriptor]	; shift to kernel GDT
-	; Jump to the boot CPU compatibility mode entry point of the kernel
-	jmp 0x8:BPU_COMPAT_MODE_ORIGIN
+	mov esi, [ebp + 16]	; Load esi/rsi with kernel's size
+	mov edx, [ebp + 20]	; Load edx/rdx with usable memory address right after PML4 pages
+	lgdt [gdtDescriptor]	; shift to kernel GDT copy
+	jmp 0x8:bpuCompatibilityModeStart
 	; Code beyond this should never get executed
 	mov esp, ebp
 	pop ebp
 	ret
+
+[bits 64]
+bpuCompatibilityModeStart:
+	mov rax, KERNEL_ORIGIN
+	jmp rax

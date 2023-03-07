@@ -16,7 +16,7 @@
 #define APU_BOOTLOADER_PADDING 32
 #define APU_BOOTLOADER_ORIGIN 0x8000
 #define INVALID_ADDRESS ((void*) 0x8000000000000000)
-#define KERNEL_HIGHERHALF_ORIGIN 0xffffffff80000000
+#define KERNEL_ORIGIN 0xffffffff80000000
 #define L32_IDENTITY_MAP_SIZE 32
 #define L32K64_SCRATCH_BASE 0x80000
 #define L32K64_SCRATCH_LENGTH 0x10000
@@ -101,8 +101,7 @@ namespace Kernel {
 			[[nodiscard]] bool areBuddiesOfType(void* address, size_t order, size_t count, MarkPageType type);
 			[[nodiscard]] bool initialize(
 				void* usablePhyMemStart,
-				size_t kernelLowerHalfSize,
-				size_t kernelHigherHalfSize,
+				size_t kernelSize,
 				size_t &phyMemBuddyPagesCount
 			);
 			void listMapEntries();
@@ -139,7 +138,6 @@ namespace Kernel {
 			[[nodiscard]] bool freePages(void *virtualAddress, size_t count, uint32_t flags);
 			[[nodiscard]] bool initialize(
 				void *usableKernelSpaceStart,
-				size_t kernelLowerHalfSize,
 				size_t phyMemBuddyPagesCount,
 				GlobalConstructor (&globalCtors)[]
 			);
