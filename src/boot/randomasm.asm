@@ -2,7 +2,6 @@
 
 section .rodata
 	randomFailedStr db 'Random::getRandom64 failed', 10, 0
-	
 
 section .text
 	extern panic
@@ -11,18 +10,16 @@ section .text
 	global isRandomAvailable
 isRandomAvailable:
 	push rbx	; Preserve rbx to stay compatible with System V ABI
-	mov eax, 1
+	xor eax, eax
+	inc eax
 	cpuid
+	pop rbx
+	xor rax, rax
 	and ecx, 1 << 30
 	jz noRandom
-	pop rbx
-	mov rax, 1
-	ret
+	inc rax
 noRandom:
-	; TODO: show some error message. Cannot use terminal functions
-	; since they rely on optimizations
-	cli
-	hlt
+	ret
 
 getRandom64:
 	mov ecx, 100
