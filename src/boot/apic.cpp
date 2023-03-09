@@ -7,6 +7,7 @@
 #include <terminal.h>
 
 uint8_t APIC::bootCpuId = 0xff;
+std::vector<APIC::CPU> APIC::cpus;
 std::vector<APIC::CPUEntry> APIC::cpuEntries;
 std::vector<APIC::InterruptSourceOverrideEntry> APIC::interruptOverrideEntries;
 std::vector<APIC::IOEntry> APIC::ioEntries;
@@ -21,16 +22,122 @@ static const char* const apicInitCompleteStr = "APIC initialized\n\n";
 static const char* const checkingApicStr = "Checking APIC presence";
 static const char* const disablingPicStr = "Disabling legacy PIC";
 static const char* const parsingApicStr = "Parsing APIC table";
-static const char* const apicParsedStr = "APIC table parsed";
+static const char* const apicParsedStr = "APIC table parsed\n\n";
 static const char* const localApicAddrStr = "Local APIC address ";
-static const char* const flagsStr = " Flags ";
+static const char* const flagsStr = "Flags ";
 static const char* const lengthStr = " Length ";
 static const char* const entriesStr = "APIC entries\n";
-static const char* const entryHeaderStr = "Type Flags        CpuID APICID IOapicAddr   IRQ Global\n";
+static const char* const entryHeaderStr = "Type Flags        APICID IOapicAddr   IRQ Global\n";
 static const char* const mappingApicStr = "Mapping local APIC to kernel address space";
 static const char* const mappingIoApicStr = "Mapping IOAPIC to kernel address space";
 static const char* const enablingApicStr = "Enabling APIC";
 static const char* const bootCpuStr = "Boot CPU [";
+
+bool APIC::parse() {
+	terminalPrintString(parsingApicStr, strlen(parsingApicStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (!ACPI::apicSdtHeader || ACPI::apicSdtHeader == INVALID_ADDRESS) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		return false;
+	}
+	terminalPrintChar('\n');
+
+	terminalPrintSpaces4();
+	terminalPrintString(flagsStr, strlen(flagsStr));
+	const uint32_t* const apicFlags = (uint32_t*)((uint64_t)ACPI::apicSdtHeader + sizeof(ACPI::SDTHeader) + 4);
+	terminalPrintHex(apicFlags, 4);
+	terminalPrintChar('\n');
+
+	terminalPrintSpaces4();
+	terminalPrintString(entriesStr, strlen(entriesStr));
+	terminalPrintSpaces4();
+	terminalPrintSpaces4();
+	terminalPrintString(entryHeaderStr, strlen(entryHeaderStr));
+	uint64_t apicEnd = (uint64_t)ACPI::apicSdtHeader + ACPI::apicSdtHeader->length;
+	EntryHeader *entry = (EntryHeader*)(apicFlags + 1);
+	while ((uint64_t)entry < apicEnd) {
+		terminalPrintSpaces4();
+		terminalPrintSpaces4();
+		terminalPrintDecimal(entry->type);
+		terminalPrintSpaces4();
+		uint32_t flags;
+		size_t x, y;
+		sizeof(CPU);
+		terminalGetCursorPosition(&x, &y);
+		if (entry->type == EntryType::xAPIC) {
+			xAPICEntry *xApicEntry = (xAPICEntry*)entry;
+			CPU cpu;
+			cpu.apicId = xApicEntry->apicId;
+			flags = cpu.flags = xApicEntry->flags;
+			cpus.push_back(cpu);
+			terminalPrintHex(&flags, sizeof(flags));
+			terminalPrintChar(' ');
+			terminalPrintDecimal(cpu.apicId);
+			terminalSetCursorPosition(33, y);
+			terminalPrintChar('-');
+			terminalSetCursorPosition(46, y);
+			terminalPrintChar('-');
+			terminalSetCursorPosition(50, y);
+			terminalPrintChar('-');
+		} else if (entry->type == EntryType::InterruptSourceOverride) {
+			InterruptSourceOverrideEntry *overrideEntry = (InterruptSourceOverrideEntry*)entry;
+			interruptOverrideEntries.push_back(*overrideEntry);
+			flags = overrideEntry->flags;
+			terminalPrintHex(&flags, sizeof(flags));
+			terminalPrintChar(' ');
+			terminalPrintChar('-');
+			terminalSetCursorPosition(33, y);
+			terminalPrintChar('-');
+			terminalSetCursorPosition(46, y);
+			terminalPrintDecimal(overrideEntry->irqSource);
+			terminalSetCursorPosition(50, y);
+			terminalPrintHex(&overrideEntry->globalSystemInterrupt, sizeof(overrideEntry->globalSystemInterrupt));
+		} else if (entry->type == EntryType::IOAPIC) {
+			IOEntry *ioEntry = (IOEntry*)entry;
+			ioEntries.push_back(*ioEntry);
+			terminalPrintChar('-');
+			terminalSetCursorPosition(26, y);
+			terminalPrintDecimal(ioEntry->apicId);
+			terminalSetCursorPosition(33, y);
+			terminalPrintHex(&ioEntry->address, sizeof(ioEntry->address));
+			terminalSetCursorPosition(46, y);
+			terminalPrintChar('-');
+			terminalSetCursorPosition(50, y);
+			terminalPrintChar('-');
+		} else if (entry->type == EntryType::x2APIC) {
+			x2APICEntry *x2ApicEntry = (x2APICEntry*)entry;
+			CPU cpu;
+			cpu.apicId = x2ApicEntry->apicId;
+			flags = cpu.flags = x2ApicEntry->flags;
+			cpus.push_back(cpu);
+			terminalPrintHex(&flags, sizeof(flags));
+			terminalPrintChar(' ');
+			terminalPrintDecimal(cpu.apicId);
+			terminalSetCursorPosition(33, y);
+			terminalPrintChar('-');
+			terminalSetCursorPosition(46, y);
+			terminalPrintChar('-');
+			terminalSetCursorPosition(50, y);
+			terminalPrintChar('-');
+		}
+		terminalPrintChar('\n');
+		entry = (EntryHeader*)((uint64_t)entry + entry->length);
+	}
+
+	// Disable legacy PIC if present
+	if (*apicFlags & 1) {
+		terminalPrintSpaces4();
+		terminalPrintString(disablingPicStr, strlen(disablingPicStr));
+		terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+		disableLegacyPic();
+		terminalPrintString(doneStr, strlen(doneStr));
+		terminalPrintChar('\n');
+	}
+
+	terminalPrintString(apicParsedStr, strlen(apicParsedStr));
+	return true;
+}
 
 bool APIC::initialize() {
 	using namespace Kernel::Memory;
@@ -43,7 +150,7 @@ bool APIC::initialize() {
 	terminalPrintSpaces4();
 	terminalPrintString(checkingApicStr, strlen(checkingApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!isApicPresent() || ACPI::apicSdtHeader == nullptr || ACPI::apicSdtHeader == INVALID_ADDRESS) {
+	if (ACPI::apicSdtHeader == nullptr || ACPI::apicSdtHeader == INVALID_ADDRESS) {
 		terminalPrintString(notStr, strlen(notStr));
 		terminalPrintChar(' ');
 		terminalPrintString(presentStr, strlen(presentStr));

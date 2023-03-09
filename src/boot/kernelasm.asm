@@ -26,16 +26,12 @@ bpuLongModeStart:
 	lgdt [gdtDescriptor]
 
 	call bpuMain
-	; code beyond this should never get executed
-bpuEnd:
-	cli
-	hlt
-	jmp bpuEnd
 
 section .text
 	global flushTLB
 	global haltSystem
 	global hangSystem
+	global perpetualWait
 	global prepareApuInfoTable
 apuLongModeStart:
 	mov r8, 0x0807060504030201
@@ -56,6 +52,10 @@ hangSystem:
 	cli
 	hlt
 	jmp hangSystem
+
+perpetualWait:
+	hlt
+	jmp perpetualWait
 
 prepareApuInfoTable:
 	mov qword [rdi], apuLongModeStart

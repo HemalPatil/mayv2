@@ -22,7 +22,7 @@ GDT_START:
 ; null entry
 	dq 0
 
-; selector 0x8 - 64 bit code segment descriptor
+; selector 0x8 - 64-bit code segment descriptor
 	dw 0	; limit[0..15], ignored
 	dw 0	; base[0..15], ignored
 	db 0	; base[16..23], ignored
@@ -30,7 +30,7 @@ GDT_START:
 	db GRAN_4K | LONG_MODE	; limit[16..19] (low), ignored
 	db 0	; base[24..31], ignored
 
-; selector 0x10 - 64 bit data segment descriptor
+; selector 0x10 - 64-bit data segment descriptor
 	dw 0	; limit[0..15], ignored
 	dw 0	; base[0..15], ignored
 	db 0	; base[16..23], ignored
@@ -38,22 +38,13 @@ GDT_START:
 	db GRAN_4K | LONG_MODE	; limit[16..19] (low), ignored
 	db 0	; base[24..31], ignored
 
-; selector 0x18 - 64 bit TSS descriptor
-	; TSS base address to be filled in at runtime
-	dw 104	; TSS size
-	dw 0	; TSS base[0..15]
-	db 0	; TSS base[16..23]
-	db 0x89	; TSS access flags
-	db 0x90	; TSS flags and limit[16..19]
-	db 0	; base[24..31]
-	dq 0	; TSS base[32..63] and reserved dword
-
 	times 4096 - ($-$$) db 0	; Make the GDT 4 KiB long
 
 GDT_END:
 
 section .rodata
+	global gdt64Base
 	global gdtDescriptor
 gdtDescriptor:
-	gdt64Limit dw 65535
+	gdt64Limit dw GDT_END - GDT_START - 1
 	gdt64Base dq GDT_START

@@ -40,11 +40,35 @@ namespace Kernel {
 	// Disables interrupts, halts the systems, and never returns
 	extern "C" [[noreturn]] void hangSystem();
 
+	// Enters a halt loop and never returns
+	extern "C" [[noreturn]] void perpetualWait();
+
 	extern "C" void prepareApuInfoTable(ApuInfoTable *apuInfoTable, uint64_t pml4tPhysicalAddress);
 
 	enum IRQ : uint8_t {
 		Keyboard = 1,
 		Timer = 3
+	};
+
+	namespace GDT {
+		struct Entry {
+			uint16_t limitLow;
+			uint16_t baseLow;
+			uint8_t baseMid;
+			uint8_t type : 4;
+			uint8_t isNotSystem : 1;
+			uint8_t privilegeLevel : 2;
+			uint8_t present : 1;
+			uint8_t limitHigh : 4;
+			uint8_t osUse : 1;
+			uint8_t longMode : 1;
+			uint8_t defaultOperationSize : 1;
+			uint8_t granularity : 1;
+			uint8_t baseHigh;
+		} __attribute__((packed));
+
+		extern "C" Entry *gdt64Base;
+		uint16_t getAvailableSelector();
 	};
 
 	namespace Scheduler {
@@ -59,6 +83,24 @@ namespace Kernel {
 		bool start();
 		void timerLoop();
 	}
+
+	struct TSS {
+		uint32_t reserved0;
+		uint64_t rsp0;
+		uint64_t rsp1;
+		uint64_t rsp2;
+		uint64_t reserved1;
+		uint64_t ist1;
+		uint64_t ist2;
+		uint64_t ist3;
+		uint64_t ist4;
+		uint64_t ist5;
+		uint64_t ist6;
+		uint64_t ist7;
+		uint64_t reserved2;
+		uint16_t reserved3;
+		uint16_t ioMapBase;
+	} __attribute__((packed));
 
 	namespace Memory {
 		extern const size_t pageSize;
@@ -174,10 +216,10 @@ namespace Kernel {
 				struct Header *previous;
 			};
 
+			[[nodiscard]] void* allocate(size_t count);
 			[[nodiscard]] bool create(void *newHeapAddress, void **entryTable);
 			void free(void *address);
 			void listRegions(bool forwardDirection = true);
-			void* allocate(size_t count);
 		}
 	}
 }

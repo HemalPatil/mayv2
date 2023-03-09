@@ -15,9 +15,31 @@
 #define IOAPIC_READTBL_HIGH(n) (0x10 + 2 * n + 1)
 
 namespace APIC {
+	enum EntryType : uint8_t {
+		xAPIC = 0,
+		IOAPIC = 1,
+		InterruptSourceOverride = 2,
+		x2APIC = 9,
+	};
+
 	struct EntryHeader {
-		uint8_t type;
+		EntryType type;
 		uint8_t length;
+	} __attribute__((packed));
+
+	struct xAPICEntry {
+		EntryHeader header;
+		uint8_t acpiId;
+		uint8_t apicId;
+		uint32_t flags;
+	} __attribute__((packed));
+
+	struct x2APICEntry {
+		EntryHeader header;
+		uint16_t reserved;
+		uint32_t apicId;
+		uint32_t flags;
+		uint32_t acpiId;
 	} __attribute__((packed));
 
 	struct CPUEntry {
@@ -93,7 +115,17 @@ namespace APIC {
 		} __attribute__((packed));
 	};
 
+	struct CPU {
+		uint32_t apicId = UINT32_MAX;
+		uint32_t flags = UINT32_MAX;
+		uint16_t tssSelector = 0;
+		void *ist1 = nullptr;
+		void *ist2 = nullptr;
+		void *floatSaveRegion = nullptr;
+	};
+
 	extern uint8_t bootCpuId;
+	extern std::vector<CPU> cpus;
 	extern std::vector<CPUEntry> cpuEntries;
 	extern std::vector<InterruptSourceOverrideEntry> interruptOverrideEntries;
 	extern std::vector<IOEntry> ioEntries;
@@ -101,6 +133,7 @@ namespace APIC {
 	extern void acknowledgeLocalInterrupt();
 	extern volatile LocalAPIC* getLocal();
 	extern bool initialize();
+	extern bool parse();
 	extern uint32_t readIo(const uint8_t offset);
 	extern IORedirectionEntry readIoRedirectionEntry(const Kernel::IRQ irq);
 	extern void writeIo(const uint8_t offset, const uint32_t value);
@@ -108,5 +141,5 @@ namespace APIC {
 
 	// apicasm.asm
 	extern "C" void disableLegacyPic();
-	extern "C" bool isApicPresent();
+	extern "C" bool isX2ApicPresent();
 }

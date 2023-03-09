@@ -107,18 +107,19 @@ extern "C" [[noreturn]] void bpuMain(
 		Kernel::panic();
 	}
 
-	// Initialize TSS first because ISTs in IDT require TSS
-	setupTss64();
-	setupIdt64();
+	// // Initialize TSS first because ISTs in IDT require TSS
+	// setupTss64();
+	// setupIdt64();
 
 	if (!ACPI::parse()) {
 		Kernel::panic();
 	}
 
-	// Disable PIC and setup APIC
-	if (!APIC::initialize()) {
+	// Parse APIC table and create CPU entries
+	if (!APIC::parse()) {
 		Kernel::panic();
 	}
+	Kernel::hangSystem();
 
 	initializePs2Keyboard();
 
@@ -147,9 +148,21 @@ extern "C" [[noreturn]] void bpuMain(
 	#pragma GCC diagnostic pop
 
 	// Wait perpetually and let the scheduler and interrupts do their thing
-	while (true) {
-		Kernel::haltSystem();
+	Kernel::perpetualWait();
+}
+
+uint16_t Kernel::GDT::getAvailableSelector() {
+	for (size_t i = 1; i < 512; ++i) {
+		if (!gdt64Base[i].present) {
+			return i * 8;
+		}
 	}
+	return 0;
+}
+
+extern "C" [[noreturn]] void apuMain() {
+	// Wait perpetually and let the scheduler and interrupts do their thing
+	Kernel::perpetualWait();
 }
 
 static Async::Thenable<void> bootApus() {

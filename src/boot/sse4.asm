@@ -1,6 +1,7 @@
 [bits 64]
 
 section .data
+	; FIXME: must be changed to an array of 512 byte regions per CPU
 	global floatSaveRegion
 align 16
 floatSaveRegion:
@@ -63,6 +64,6 @@ enableSse4:
 	ret
 noSse4:
 	; TODO: show some error message. Cannot use terminal functions
-	; since they rely on optimizations
+	; since they rely on optimizations.
 	cli
 	hlt
