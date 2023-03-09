@@ -1,6 +1,6 @@
 [bits 64]
 
-CPU_STACK_SIZE equ 65536
+CPU_STACK_SIZE equ 0x10000
 
 ;Reserve space for BPU stack
 section .bss align=16

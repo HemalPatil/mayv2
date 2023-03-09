@@ -18,6 +18,11 @@ BOOTLOADER_STACK_SIZE=0x0c00
 sed -i "s/BOOTLOADER_STACK_SIZE equ $SED_HEX_OR_NUMBER_REGEX/BOOTLOADER_STACK_SIZE equ $BOOTLOADER_STACK_SIZE/" src/boot/stage1/bootload.asm
 sed -i "s/BOOTLOADER_STACK_SIZE equ $SED_HEX_OR_NUMBER_REGEX/BOOTLOADER_STACK_SIZE equ $BOOTLOADER_STACK_SIZE/" src/boot/stage2/k64load.asm
 
+# Configure per CPU stack size for 64-bit mode
+CPU_STACK_SIZE=0x10000
+sed -i "s/CPU_STACK_SIZE equ $SED_HEX_OR_NUMBER_REGEX/CPU_STACK_SIZE equ $CPU_STACK_SIZE/" src/boot/kernelasm.asm
+sed -i "s/\#define CPU_STACK_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define CPU_STACK_SIZE $CPU_STACK_SIZE/" src/include/kernel/kernel.h
+
 # Configure ISO sector size
 ISO_SECTOR_SIZE=2048
 sed -i "s/\#define ISO_SECTOR_SIZE $SED_HEX_OR_NUMBER_REGEX/\#define ISO_SECTOR_SIZE $ISO_SECTOR_SIZE/" utilities/format_iso.cpp
