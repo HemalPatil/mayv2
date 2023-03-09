@@ -31,8 +31,11 @@ section .text
 	global flushTLB
 	global haltSystem
 	global hangSystem
+	global loadTss
 	global perpetualWait
 	global prepareApuInfoTable
+	global readMsr
+	global writeMsr
 apuLongModeStart:
 	mov r8, 0x0807060504030201
 	cli
@@ -53,6 +56,10 @@ hangSystem:
 	hlt
 	jmp hangSystem
 
+loadTss:
+	ltr di
+	ret
+
 perpetualWait:
 	hlt
 	jmp perpetualWait
@@ -61,4 +68,21 @@ prepareApuInfoTable:
 	mov qword [rdi], apuLongModeStart
 	mov [rdi + 8], rsi
 	sgdt [rdi + 16]
+	ret
+
+readMsr:
+	mov ecx, edi
+	xor rax, rax
+	rdmsr
+	shl rdx, 32
+	xor edx, edx
+	or rax, rdx
+	ret
+
+writeMsr:
+	mov ecx, edi
+	mov rax, rsi
+	mov rdx, rsi
+	shr rdx, 32
+	wrmsr
 	ret

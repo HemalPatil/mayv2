@@ -23,6 +23,20 @@
 #define PHY_MEM_BUDDY_MAX_ORDER 10
 
 namespace Kernel {
+	enum IRQ : uint8_t {
+		Keyboard = 1,
+		Timer = 3
+	};
+
+	enum MSR : uint32_t {
+		x2ApicEnable = 0x1b,
+		x2ApicId = 0x802,
+		x2ApicEOI = 0x80b,
+		x2ApicSpuriousInterrupt = 0x80f,
+		x2ApicErrorStatus = 0x828,
+		x2ApicInterruptCommand = 0x830
+	};
+
 	extern bool debug;
 
 	typedef void(*GlobalConstructor)();
@@ -45,30 +59,64 @@ namespace Kernel {
 
 	extern "C" void prepareApuInfoTable(ApuInfoTable *apuInfoTable, uint64_t pml4tPhysicalAddress);
 
-	enum IRQ : uint8_t {
-		Keyboard = 1,
-		Timer = 3
-	};
+	extern "C" uint64_t readMsr(MSR msr);
+	extern "C" void writeMsr(MSR msr, uint64_t value);
 
 	namespace GDT {
 		struct Entry {
-			uint16_t limitLow;
-			uint16_t baseLow;
-			uint8_t baseMid;
-			uint8_t type : 4;
-			uint8_t isNotSystem : 1;
-			uint8_t privilegeLevel : 2;
-			uint8_t present : 1;
-			uint8_t limitHigh : 4;
-			uint8_t osUse : 1;
-			uint8_t longMode : 1;
-			uint8_t defaultOperationSize : 1;
-			uint8_t granularity : 1;
-			uint8_t baseHigh;
+			uint16_t limitLow = 0;
+			uint16_t baseLow = 0;
+			uint8_t baseMid = 0;
+			uint8_t type : 4 = 0;
+			uint8_t isNotSystem : 1 = 0;
+			uint8_t privilegeLevel : 2 = 0;
+			uint8_t present : 1 = 0;
+			uint8_t limitHigh : 4 = 0;
+			uint8_t osUse : 1 = 0;
+			uint8_t longMode : 1 = 0;
+			uint8_t defaultOperationSize : 1 = 0;
+			uint8_t granularity : 1 = 0;
+			uint8_t baseHigh = 0;
 		} __attribute__((packed));
 
 		extern "C" Entry *gdt64Base;
 		uint16_t getAvailableSelector();
+	};
+
+	namespace IDT {
+		struct Entry {
+			uint16_t offsetLow;
+			uint16_t segmentSelector;
+			uint8_t ist : 3;
+			uint8_t reserved0 : 5;
+			uint8_t type : 4;
+			uint8_t reserved1 : 1;
+			uint8_t desiredPrivilegeLevel : 2;
+			uint8_t present : 1;
+			uint16_t offsetMid;
+			uint32_t offsetHigh;
+			uint32_t reserved2;
+		} __attribute__((packed));
+
+		extern "C" size_t availableInterrupt;
+		extern "C" Entry *idt64Base;
+
+		extern "C" void boundRangeHandler();
+		extern "C" void breakpointHandler();
+		extern "C" void debugHandler();
+		extern "C" void disableInterrupts();
+		extern "C" void divisionByZeroHandler();
+		extern "C" void doubleFaultHandler();
+		extern "C" void enableInterrupts();
+		extern "C" void gpFaultHandler();
+		extern "C" void invalidOpcodeHandler();
+		extern "C" void loadIdt();
+		extern "C" void nmiHandler();
+		extern "C" void noSseHandler();
+		extern "C" void overflowHandler();
+		extern "C" void pageFaultHandler();
+		bool installEntry(uint8_t interruptNumber, void (*handler)(), uint8_t ist);
+		bool setup();
 	};
 
 	namespace Scheduler {
@@ -84,23 +132,29 @@ namespace Kernel {
 		void timerLoop();
 	}
 
-	struct TSS {
-		uint32_t reserved0;
-		uint64_t rsp0;
-		uint64_t rsp1;
-		uint64_t rsp2;
-		uint64_t reserved1;
-		uint64_t ist1;
-		uint64_t ist2;
-		uint64_t ist3;
-		uint64_t ist4;
-		uint64_t ist5;
-		uint64_t ist6;
-		uint64_t ist7;
-		uint64_t reserved2;
-		uint16_t reserved3;
-		uint16_t ioMapBase;
-	} __attribute__((packed));
+	namespace TSS {
+		struct Entry {
+			uint32_t reserved0 = 0;
+			uint64_t rsp0 = 0;
+			uint64_t rsp1 = 0;
+			uint64_t rsp2 = 0;
+			uint64_t reserved1 = 0;
+			void *ist1Rsp = nullptr;
+			void *ist2Rsp = nullptr;
+			void *ist3Rsp = nullptr;
+			void *ist4Rsp = nullptr;
+			void *ist5Rsp = nullptr;
+			void *ist6Rsp = nullptr;
+			void *ist7Rsp = nullptr;
+			uint64_t reserved2 = 0;
+			uint16_t reserved3 = 0;
+			uint16_t ioMapBase = 0;
+		} __attribute__((packed));
+
+		std::tuple<uint16_t, Entry*> createAndInstall();
+
+		extern "C" void loadTss(uint16_t selector);
+	}
 
 	namespace Memory {
 		extern const size_t pageSize;

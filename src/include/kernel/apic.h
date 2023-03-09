@@ -5,12 +5,6 @@
 #include <kernel.h>
 #include <vector>
 
-#define APIC_TYPE_CPU 0
-#define APIC_TYPE_IO 1
-#define APIC_TYPE_INTERRUPT_SOURCE_OVERRIDE 2
-
-#define LOCAL_APIC_DEFAULT_ADDRESS 0xfee00000
-
 #define IOAPIC_READTBL_LOW(n) (0x10 + 2 * n)
 #define IOAPIC_READTBL_HIGH(n) (0x10 + 2 * n + 1)
 
@@ -42,13 +36,6 @@ namespace APIC {
 		uint32_t acpiId;
 	} __attribute__((packed));
 
-	struct CPUEntry {
-		EntryHeader header;
-		uint8_t cpuId;
-		uint8_t apicId;
-		uint32_t flags;
-	} __attribute__((packed));
-
 	struct IOEntry {
 		EntryHeader header;
 		uint8_t apicId;
@@ -65,34 +52,11 @@ namespace APIC {
 		uint16_t flags;
 	} __attribute__((packed));
 
-	struct LocalAPIC {
-		char reserved1[32];
+	struct InterruptDataZone {
 		uint32_t apicId;
-		char reserved2[12];
-		uint32_t version;
-		char reserved3[76];
-		uint32_t taskPriority;
-		char reserved4[12];
-		uint32_t arbitrationPriority;
-		char reserved5[12];
-		uint32_t cpuPriority;
-		char reserved6[12];
-		uint32_t endOfInterrupt;
-		char reserved7[12];
-		uint32_t remoteRead;
-		char reserved8[12];
-		uint32_t logicalDestination;
-		char reserved9[12];
-		uint32_t destinationFormat;
-		char reserved10[12];
-		uint32_t spuriousInterruptVector;
-		char reserved11[396];
-		uint32_t errorStatus;
-		char reserved12[124];
-		uint32_t interruptCommandLow;
-		char reserved13[12];
-		uint32_t interruptCommandHigh;
-		char reserved14[12];
+		uint32_t reserved0;
+		uint64_t reserved1;
+		uint8_t floatSaveRegion[512];
 	} __attribute__((packed));
 
 	union IORedirectionEntry {
@@ -118,21 +82,18 @@ namespace APIC {
 	struct CPU {
 		uint32_t apicId = UINT32_MAX;
 		uint32_t flags = UINT32_MAX;
+		uint64_t apicPhyAddr = UINT64_MAX;
 		uint16_t tssSelector = 0;
-		void *ist1 = nullptr;
-		void *ist2 = nullptr;
-		void *floatSaveRegion = nullptr;
+		InterruptDataZone *intZone1 = nullptr;
+		InterruptDataZone *intZone2 = nullptr;
 	};
 
-	extern uint8_t bootCpuId;
+	extern CPU *bootCpu;
 	extern std::vector<CPU> cpus;
-	extern std::vector<CPUEntry> cpuEntries;
 	extern std::vector<InterruptSourceOverrideEntry> interruptOverrideEntries;
 	extern std::vector<IOEntry> ioEntries;
 
 	extern void acknowledgeLocalInterrupt();
-	extern volatile LocalAPIC* getLocal();
-	extern bool initialize();
 	extern bool parse();
 	extern uint32_t readIo(const uint8_t offset);
 	extern IORedirectionEntry readIoRedirectionEntry(const Kernel::IRQ irq);
@@ -141,5 +102,5 @@ namespace APIC {
 
 	// apicasm.asm
 	extern "C" void disableLegacyPic();
-	extern "C" bool isX2ApicPresent();
+	extern "C" bool enableX2Apic();
 }

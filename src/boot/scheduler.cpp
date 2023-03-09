@@ -3,7 +3,6 @@
 #include <commonstrings.h>
 #include <cstring>
 #include <drivers/timers/hpet.h>
-#include <idt64.h>
 #include <kernel.h>
 #include <queue>
 #include <terminal.h>
@@ -96,16 +95,16 @@ static void enableHpet() {
 
 	// Install the timer IRQ handler
 	APIC::IORedirectionEntry timerEntry = APIC::readIoRedirectionEntry(Kernel::IRQ::Timer);
-	installIdt64Entry(availableInterrupt, &hpetHandlerWrapper);
-	timerEntry.vector = availableInterrupt;
+	Kernel::IDT::installEntry(Kernel::IDT::availableInterrupt, &hpetHandlerWrapper, 2);
+	timerEntry.vector = Kernel::IDT::availableInterrupt;
 	timerEntry.deliveryMode = 0;
 	timerEntry.destinationMode = 0;
 	timerEntry.pinPolarity = 0;
 	timerEntry.triggerMode = 0;
 	timerEntry.mask = 0;
-	timerEntry.destination = APIC::bootCpuId;
+	timerEntry.destination = APIC::bootCpu->apicId;
 	APIC::writeIoRedirectionEntry(Kernel::IRQ::Timer, timerEntry);
-	++availableInterrupt;
+	++Kernel::IDT::availableInterrupt;
 	// HPET registers must be written at 8-byte boundaries hence setting the bit fields directly is not possible
 	#pragma GCC diagnostic push
 	#pragma GCC diagnostic ignored "-Waddress-of-packed-member"

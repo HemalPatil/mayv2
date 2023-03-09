@@ -15,9 +15,6 @@ SZ_32         equ 1 << 6
 LONG_MODE     equ 1 << 5
 
 section .data
-	global GDT_START
-	global GDT_END
-
 GDT_START:
 ; null entry
 	dq 0
@@ -39,10 +36,9 @@ GDT_START:
 	db 0	; base[24..31], ignored
 
 	times 4096 - ($-$$) db 0	; Make the GDT 4 KiB long
-
 GDT_END:
 
-section .rodata
+section .rodata align=16
 	global gdt64Base
 	global gdtDescriptor
 gdtDescriptor:

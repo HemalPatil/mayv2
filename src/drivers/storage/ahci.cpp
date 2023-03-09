@@ -4,7 +4,6 @@
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
-#include <idt64.h>
 #include <terminal.h>
 
 static const char* const initAhciStr = "Initializing AHCI controller ";
@@ -47,9 +46,9 @@ Async::Thenable<bool> AHCI::initialize(const PCIe::Function &pcieFunction) {
 		terminalPrintSpaces4();
 		terminalPrintString(msiInstallingStr, strlen(msiInstallingStr));
 		terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-		msiInterrupt = availableInterrupt;
-		installIdt64Entry(msiInterrupt, &ahciMsiHandlerWrapper);
-		++availableInterrupt;
+		msiInterrupt = Kernel::IDT::availableInterrupt;
+		Kernel::IDT::installEntry(msiInterrupt, &ahciMsiHandlerWrapper, 2);
+		++Kernel::IDT::availableInterrupt;
 		terminalPrintString(doneStr, strlen(doneStr));
 		terminalPrintChar('\n');
 	}
@@ -67,11 +66,11 @@ Async::Thenable<bool> AHCI::initialize(const PCIe::Function &pcieFunction) {
 	}
 	if (pcieFunction.msi->bit64Capable) {
 		PCIe::MSI64Capability *msi64 = (PCIe::MSI64Capability*)pcieFunction.msi;
-		msi64->messageAddress = LOCAL_APIC_DEFAULT_ADDRESS;
+		msi64->messageAddress = APIC::bootCpu->apicPhyAddr;
 		msi64->data = msiInterrupt;
 		msi64->enable = 1;
 	} else {
-		pcieFunction.msi->messageAddress = LOCAL_APIC_DEFAULT_ADDRESS;
+		pcieFunction.msi->messageAddress = APIC::bootCpu->apicPhyAddr;
 		pcieFunction.msi->data = msiInterrupt;
 		pcieFunction.msi->enable = 1;
 	}

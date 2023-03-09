@@ -2,7 +2,6 @@
 #include <commonstrings.h>
 #include <cstring>
 #include <drivers/ps2/keyboard.h>
-#include <idt64.h>
 #include <kernel.h>
 #include <terminal.h>
 
@@ -14,16 +13,16 @@ bool initializePs2Keyboard() {
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 
 	APIC::IORedirectionEntry keyEntry = APIC::readIoRedirectionEntry(Kernel::IRQ::Keyboard);
-	installIdt64Entry(availableInterrupt, &ps2KeyboardHandlerWrapper);
-	keyEntry.vector = availableInterrupt;
+	Kernel::IDT::installEntry(Kernel::IDT::availableInterrupt, &ps2KeyboardHandlerWrapper, 2);
+	keyEntry.vector = Kernel::IDT::availableInterrupt;
 	keyEntry.deliveryMode = 0;
 	keyEntry.destinationMode = 0;
 	keyEntry.pinPolarity = 0;
 	keyEntry.triggerMode = 0;
 	keyEntry.mask = 0;
-	keyEntry.destination = APIC::bootCpuId;
+	keyEntry.destination = APIC::bootCpu->apicId;
 	writeIoRedirectionEntry(Kernel::IRQ::Keyboard, keyEntry);
-	++availableInterrupt;
+	++Kernel::IDT::availableInterrupt;
 
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');

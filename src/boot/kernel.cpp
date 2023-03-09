@@ -7,7 +7,6 @@
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
-#include <idt64.h>
 #include <kernel.h>
 #include <pcie.h>
 #include <random.h>
@@ -30,10 +29,13 @@ static const char* const cpuStr = "CPU ";
 static const char* const noFsStr = "Expected to find at least 1 filesystem\n";
 static const char* const sse4Str = "SSE4.2 enabled\n";
 static const char* const checkRandStr = "Checking RDRAND presence";
+static const char* const enableX2ApicStr = "Enabling x2APIC";
 static const char* const rootFailStr = "Failed to find root filesystem\n";
 static const char* const rootFoundStr = "Root filesystem found ";
 static const char* const sipiSentStr = "SIPI sent\n";
 static const char* const initApuStr = "Initializing";
+static const char* const creatingTssStr = "Creating TSS";
+static const char* const loadingIdtStr = "Loading IDT";
 
 static Async::Thenable<void> startPcieDrivers();
 static Async::Thenable<void> createFileSystems();
@@ -107,10 +109,6 @@ extern "C" [[noreturn]] void bpuMain(
 		Kernel::panic();
 	}
 
-	// // Initialize TSS first because ISTs in IDT require TSS
-	// setupTss64();
-	// setupIdt64();
-
 	if (!ACPI::parse()) {
 		Kernel::panic();
 	}
@@ -119,7 +117,67 @@ extern "C" [[noreturn]] void bpuMain(
 	if (!APIC::parse()) {
 		Kernel::panic();
 	}
-	Kernel::hangSystem();
+
+	// Check the presence of x2APIC and enable it
+	terminalPrintString(enableX2ApicStr, strlen(enableX2ApicStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (!APIC::enableX2Apic()) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
+	uint64_t spuriousInterruptVector = Kernel::readMsr(Kernel::MSR::x2ApicSpuriousInterrupt);
+	spuriousInterruptVector &= 0xffffffffUL;
+	spuriousInterruptVector |= 0x100;
+	Kernel::writeMsr(Kernel::MSR::x2ApicSpuriousInterrupt, spuriousInterruptVector);
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
+	// Get the boot CPU entry
+	uint64_t bootApicId = Kernel::readMsr(Kernel::MSR::x2ApicId);
+	for (auto &cpu : APIC::cpus) {
+		if (cpu.apicId == bootApicId) {
+			APIC::bootCpu = &cpu;
+			APIC::bootCpu->apicPhyAddr = Kernel::readMsr(Kernel::MSR::x2ApicEnable) & 0xffffff000;
+			break;
+		}
+	}
+	if (!APIC::bootCpu) {
+		Kernel::panic();
+	}
+
+	// Create TSS and install it
+	terminalPrintString(creatingTssStr, strlen(creatingTssStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	const auto tss = Kernel::TSS::createAndInstall();
+	uint16_t tssSelector = std::get<0>(tss);
+	Kernel::TSS::Entry *tssEntry = std::get<1>(tss);
+	if (tssSelector == 0xffff || !tssEntry) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
+	APIC::bootCpu->tssSelector = tssSelector;
+	APIC::bootCpu->intZone1 = (APIC::InterruptDataZone*)tssEntry->ist1Rsp;
+	APIC::bootCpu->intZone1->apicId = bootApicId;
+	APIC::bootCpu->intZone1->reserved0 = APIC::bootCpu->intZone1->reserved1 = 0;
+	APIC::bootCpu->intZone2 = (APIC::InterruptDataZone*)tssEntry->ist2Rsp;
+	APIC::bootCpu->intZone2->apicId = bootApicId;
+	APIC::bootCpu->intZone2->reserved0 = APIC::bootCpu->intZone2->reserved1 = 0;
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
+	// Load the common 64-bit IDT
+	terminalPrintString(loadingIdtStr, strlen(loadingIdtStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (!Kernel::IDT::setup()) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+	terminalPrintChar('\n');
 
 	initializePs2Keyboard();
 
@@ -127,7 +185,7 @@ extern "C" [[noreturn]] void bpuMain(
 		Kernel::panic();
 	}
 
-	enableInterrupts();
+	Kernel::IDT::enableInterrupts();
 	terminalPrintString(enabledInterruptsStr, strlen(enabledInterruptsStr));
 
 	// Enumerate PCIe devices
@@ -151,9 +209,93 @@ extern "C" [[noreturn]] void bpuMain(
 	Kernel::perpetualWait();
 }
 
+bool Kernel::IDT::setup() {
+	bool installedExceptionHandlers =
+		installEntry(0, divisionByZeroHandler, 1) &&
+		installEntry(1, debugHandler, 1) &&
+		installEntry(2, nmiHandler, 1) &&
+		installEntry(3, breakpointHandler, 1) &&
+		installEntry(4, overflowHandler, 1) &&
+		installEntry(5, boundRangeHandler, 1) &&
+		installEntry(6, invalidOpcodeHandler, 1) &&
+		installEntry(7, noSseHandler, 1) &&
+		installEntry(8, doubleFaultHandler, 1) &&
+		installEntry(13, gpFaultHandler, 1) &&
+		installEntry(14, pageFaultHandler, 1) &&
+		installEntry(19, noSseHandler, 1);
+	if (!installedExceptionHandlers) {
+		return false;
+	}
+	loadIdt();
+	return true;
+}
+
+bool Kernel::IDT::installEntry(uint8_t interruptNumber, void (*handler)(), uint8_t ist) {
+	if (ist > 7) {
+		return false;
+	}
+	Entry *entry = &idt64Base[interruptNumber];
+	uint64_t handlerAddr = (uint64_t)handler;
+	entry->offsetLow = handlerAddr & 0xffff;
+	entry->segmentSelector = 0x8;
+	entry->ist = ist;
+	entry->reserved0 = 0;
+	entry->type = 0xe;
+	entry->reserved1 = 0;
+	entry->desiredPrivilegeLevel = 0;
+	entry->present = 1;
+	entry->offsetMid = (handlerAddr >> 16) & 0xffff;
+	entry->offsetHigh = handlerAddr >> 32;
+	entry->reserved2 = 0;
+	return true;
+}
+
+std::tuple<uint16_t, Kernel::TSS::Entry*> Kernel::TSS::createAndInstall() {
+	using namespace Kernel::Memory;
+
+	Entry *tss = new Entry();
+	auto requestResult = Virtual::requestPages(
+		2,
+		(
+			RequestType::AllocatePhysical |
+			RequestType::CacheDisable |
+			RequestType::Kernel |
+			RequestType::PhysicalContiguous |
+			RequestType::VirtualContiguous |
+			RequestType::Writable
+		)
+	);
+	if (requestResult.allocatedCount != 2 || requestResult.address == INVALID_ADDRESS) {
+		return { 0xffff, nullptr };
+	}
+
+	uint64_t istBase = (uint64_t)requestResult.address;
+	tss->ist1Rsp = (void*)(istBase + pageSize - sizeof(APIC::InterruptDataZone));
+	tss->ist2Rsp = (void*)(istBase + 2 * pageSize - sizeof(APIC::InterruptDataZone));
+
+	const auto tssSelector = GDT::getAvailableSelector();
+	const auto i = tssSelector / 8;
+	const auto tssBase = (uint64_t)tss;
+	GDT::gdt64Base[i].limitLow = 104;
+	GDT::gdt64Base[i].baseLow = tssBase & 0xffff;
+	GDT::gdt64Base[i].baseMid = (tssBase & 0xff0000) >> 16;
+	GDT::gdt64Base[i].type = 9;
+	GDT::gdt64Base[i].present = 1;
+	GDT::gdt64Base[i].baseHigh = (tssBase & 0xff000000) >> 24;
+	GDT::gdt64Base[i + 1].limitLow = (tssBase & 0xffff00000000) >> 32;
+	GDT::gdt64Base[i + 1].baseLow = tssBase >> 48;
+	loadTss(tssSelector);
+	return { tssSelector, tss };
+}
+
 uint16_t Kernel::GDT::getAvailableSelector() {
 	for (size_t i = 1; i < 512; ++i) {
-		if (!gdt64Base[i].present) {
+		if (gdt64Base[i].present) {
+			if (gdt64Base[i].type == 9) {
+				// Skip next entry because this is a 16-byte wide 64-bit TSS descriptor
+				++i;
+			}
+		} else {
 			return i * 8;
 		}
 	}
@@ -166,7 +308,7 @@ extern "C" [[noreturn]] void apuMain() {
 }
 
 static Async::Thenable<void> bootApus() {
-	if (1 == APIC::cpuEntries.size()) {
+	if (1 == APIC::cpus.size()) {
 		co_return;
 	}
 
@@ -190,17 +332,15 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
-	const auto localApic = APIC::getLocal();
-	for (const auto &cpu : APIC::cpuEntries) {
-		if (cpu.cpuId != APIC::bootCpuId) {
+	for (const auto &cpu : APIC::cpus) {
+		if (cpu.apicId != APIC::bootCpu->apicId) {
 			terminalPrintSpaces4();
 			terminalPrintString(cpuStr, strlen(cpuStr));
-			terminalPrintDecimal(cpu.cpuId);
+			terminalPrintDecimal(cpu.apicId);
 			terminalPrintChar(':');
 			terminalPrintChar('\n');
-			localApic->errorStatus = 0;
-			localApic->interruptCommandHigh = (localApic->interruptCommandHigh & 0x00ffffff) | (((uint32_t)cpu.cpuId) << 24);
-			localApic->interruptCommandLow = (localApic->interruptCommandLow & 0xfff32000) | (0x4600 | (APU_BOOTLOADER_ORIGIN >> 12));
+			Kernel::writeMsr(Kernel::MSR::x2ApicErrorStatus, 0);
+			Kernel::writeMsr(Kernel::MSR::x2ApicInterruptCommand, ((uint64_t)cpu.apicId << 32) | 0x4600 | (APU_BOOTLOADER_ORIGIN >> 12));
 			terminalPrintSpaces4();
 			terminalPrintSpaces4();
 			terminalPrintString(sipiSentStr, strlen(sipiSentStr));
