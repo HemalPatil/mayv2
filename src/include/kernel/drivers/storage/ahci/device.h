@@ -22,9 +22,9 @@ class AHCI::Device : public Storage::BlockDevice {
 				Command(Device *device, size_t freeSlot);
 				Command() = delete;
 				Command(const Command&) = delete;
-				Command(Command &&other) = delete;
+				Command(Command&&) = delete;
 				Command& operator=(const Command&) = delete;
-				Command& operator=(Command &&other) = delete;
+				Command& operator=(Command&&) = delete;
 
 				~Command();
 

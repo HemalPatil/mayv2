@@ -86,6 +86,7 @@ namespace APIC {
 		uint16_t tssSelector = 0;
 		InterruptDataZone *intZone1 = nullptr;
 		InterruptDataZone *intZone2 = nullptr;
+		void *rsp = nullptr;
 	};
 
 	extern CPU *bootCpu;

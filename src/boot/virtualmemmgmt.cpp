@@ -400,7 +400,7 @@ bool Kernel::Memory::Virtual::freePages(void *virtualAddress, size_t count, uint
 						.pageCount = count
 					}
 				);
-				block.pageCount -= count;
+				block.pageCount = (vBeg - blockBeg) / pageSize;
 			}
 			if (flags & RequestType::Kernel) {
 				kernelPagesAvailableCount += count;
@@ -471,7 +471,7 @@ static void defragAddressSpaceList(uint32_t flags) {
 	) {
 		terminalPrintString(virtualNamespaceStr, strlen(virtualNamespaceStr));
 		terminalPrintString(listDefragFailStr, strlen(listDefragFailStr));
-		terminalPrintString(kernelList ? "Kernel" : "General", kernelList ? 6 : 7);
+		terminalPrintString(kernelList ? "Kernel\n" : "General\n", kernelList ? 7 : 8);
 		Kernel::Memory::Virtual::showAddressSpaceList(kernelList);
 		Kernel::panic();
 	}

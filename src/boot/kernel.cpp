@@ -33,14 +33,17 @@ static const char* const enableX2ApicStr = "Enabling x2APIC";
 static const char* const rootFailStr = "Failed to find root filesystem\n";
 static const char* const rootFoundStr = "Root filesystem found ";
 static const char* const sipiSentStr = "SIPI sent\n";
-static const char* const initApuStr = "Initializing";
+static const char* const initApuDoneStr = "Initialized";
 static const char* const creatingTssStr = "Creating TSS";
 static const char* const loadingIdtStr = "Loading IDT";
+static const char* const createStackStr = "Creating stack";
 
 static Async::Thenable<void> startPcieDrivers();
 static Async::Thenable<void> createFileSystems();
 static Async::Thenable<void> findRootFs();
 static Async::Thenable<void> bootApus();
+
+static Kernel::ApuAwaiter *apuAwaiter = nullptr;
 
 bool Kernel::debug = false;
 InfoTable Kernel::infoTable;
@@ -303,11 +306,17 @@ uint16_t Kernel::GDT::getAvailableSelector() {
 }
 
 extern "C" [[noreturn]] void apuMain() {
+	if (apuAwaiter) {
+		apuAwaiter->resumeBpu();
+	}
+
 	// Wait perpetually and let the scheduler and interrupts do their thing
 	Kernel::perpetualWait();
 }
 
 static Async::Thenable<void> bootApus() {
+	using namespace Kernel::Memory;
+
 	if (1 == APIC::cpus.size()) {
 		co_return;
 	}
@@ -323,7 +332,6 @@ static Async::Thenable<void> bootApus() {
 	const auto fileReadResult = std::move(co_await FS::root->readFile("/boot/stage1/apu.bin"));
 	if (fileReadResult.status == FS::Status::Ok && fileReadResult.data) {
 		memcpy((void*)APU_BOOTLOADER_ORIGIN, fileReadResult.data.getData(), fileReadResult.data.getSize());
-		Kernel::prepareApuInfoTable((ApuInfoTable*)(APU_BOOTLOADER_ORIGIN + APU_BOOTLOADER_PADDING), Kernel::infoTable.pml4tPhysicalAddress);
 	} else {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
@@ -332,23 +340,48 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
-	for (const auto &cpu : APIC::cpus) {
+	for (auto &cpu : APIC::cpus) {
 		if (cpu.apicId != APIC::bootCpu->apicId) {
 			terminalPrintSpaces4();
 			terminalPrintString(cpuStr, strlen(cpuStr));
 			terminalPrintDecimal(cpu.apicId);
 			terminalPrintChar(':');
 			terminalPrintChar('\n');
-			Kernel::writeMsr(Kernel::MSR::x2ApicErrorStatus, 0);
-			Kernel::writeMsr(Kernel::MSR::x2ApicInterruptCommand, ((uint64_t)cpu.apicId << 32) | 0x4600 | (APU_BOOTLOADER_ORIGIN >> 12));
+			terminalPrintSpaces4();
+			terminalPrintSpaces4();
+			terminalPrintString(createStackStr, strlen(createStackStr));
+			terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+			const size_t stackPageCount = 1UL * CPU_STACK_SIZE / pageSize;
+			const auto requestResult = Virtual::requestPages(
+				stackPageCount,
+				(
+					RequestType::AllocatePhysical |
+					RequestType::Kernel |
+					RequestType::PhysicalContiguous |
+					RequestType::VirtualContiguous |
+					RequestType::Writable
+				)
+			);
+			if (requestResult.allocatedCount != stackPageCount || requestResult.address == INVALID_ADDRESS) {
+				terminalPrintString(failedStr, strlen(failedStr));
+				terminalPrintChar('\n');
+				Kernel::panic();
+			}
+			terminalPrintString(doneStr, strlen(doneStr));
+			terminalPrintChar('\n');
+			cpu.rsp = (void*)((uint64_t)requestResult.address + CPU_STACK_SIZE);
+			Kernel::prepareApuInfoTable(
+				(ApuInfoTable*)(APU_BOOTLOADER_ORIGIN + APU_BOOTLOADER_PADDING),
+				Kernel::infoTable.pml4tPhysicalAddress,
+				cpu.rsp
+			);
 			terminalPrintSpaces4();
 			terminalPrintSpaces4();
 			terminalPrintString(sipiSentStr, strlen(sipiSentStr));
+			co_await Kernel::ApuAwaiter(cpu.apicId);
 			terminalPrintSpaces4();
 			terminalPrintSpaces4();
-			terminalPrintString(initApuStr, strlen(initApuStr));
-			terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-			terminalPrintString(doneStr, strlen(doneStr));
+			terminalPrintString(initApuDoneStr, strlen(initApuDoneStr));
 			terminalPrintChar('\n');
 		}
 	}
@@ -455,4 +488,27 @@ void Kernel::panic() {
 	// TODO : improve kernel panic implementation
 	terminalPrintString(kernelPanicStr, strlen(kernelPanicStr));
 	Kernel::hangSystem();
+}
+
+Kernel::ApuAwaiter::ApuAwaiter(uint32_t apicId) : apicId(apicId) {}
+
+Kernel::ApuAwaiter::~ApuAwaiter() {
+	if (this->awaitingCoroutine) {
+		delete this->awaitingCoroutine;
+		this->awaitingCoroutine = nullptr;
+	}
+	apuAwaiter = nullptr;
+}
+
+void Kernel::ApuAwaiter::await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept {
+	this->awaitingCoroutine = new std::coroutine_handle<>(awaitingCoroutine);
+	apuAwaiter = this;
+	Kernel::writeMsr(Kernel::MSR::x2ApicErrorStatus, 0);
+	Kernel::writeMsr(Kernel::MSR::x2ApicInterruptCommand, ((uint64_t)apicId << 32) | 0x4600 | (APU_BOOTLOADER_ORIGIN >> 12));
+}
+
+void Kernel::ApuAwaiter::resumeBpu() noexcept {
+	if (this->awaitingCoroutine) {
+		Kernel::Scheduler::queueEvent(*this->awaitingCoroutine);
+	}
 }

@@ -28,6 +28,7 @@ bpuLongModeStart:
 	call bpuMain
 
 section .text
+	extern apuMain
 	global flushTLB
 	global haltSystem
 	global hangSystem
@@ -36,10 +37,18 @@ section .text
 	global prepareApuInfoTable
 	global readMsr
 	global writeMsr
+; APU execution starts here
+; rdi has stack pointer, DO NOT trash it
 apuLongModeStart:
-	mov r8, 0x0807060504030201
-	cli
-	hlt
+	mov ax, 0x10
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+	mov ss, ax
+	mov rsp, rdi
+	xor rbp, rbp
+	call apuMain
 
 flushTLB:
 	cli
@@ -67,7 +76,8 @@ perpetualWait:
 prepareApuInfoTable:
 	mov qword [rdi], apuLongModeStart
 	mov [rdi + 8], rsi
-	sgdt [rdi + 16]
+	mov [rdi + 16], rdx
+	sgdt [rdi + 24]
 	ret
 
 readMsr:

@@ -26,5 +26,6 @@ struct InfoTable {
 struct ApuInfoTable {
 	uint64_t apuLongModeStart;
 	uint64_t pml4tPhysicalAddress;
+	uint64_t stackPointer;
 	char gdt64Descriptor[10];
 } __attribute__((packed));

@@ -17,6 +17,7 @@ times APU_BOOTLOADER_PADDING - ($-$$) db 0
 apuInfoTable:
 	apuLongModeStart dq 0
 	pml4tPhysicalAddress dq 0
+	stackPointer dq 0
 gdt64Descriptor:
 	dw 0
 	dq 0
@@ -63,11 +64,6 @@ start:
 apuCompatibilityModeStart:
 	mov ax, 0x10
 	mov ds, ax
+	mov rdi, [stackPointer]
 	lgdt [gdt64Descriptor]
-	mov rax, [apuLongModeStart]
-	jmp rax
-	; code beyond this should never get executed
-apuEnd:
-	cli
-	hlt
-	jmp apuEnd
+	jmp [apuLongModeStart]

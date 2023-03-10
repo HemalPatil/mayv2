@@ -38,6 +38,32 @@ namespace Kernel {
 		x2ApicInterruptCommand = 0x830
 	};
 
+	class [[nodiscard]] ApuAwaiter {
+		private:
+			uint32_t apicId;
+			std::coroutine_handle<> *awaitingCoroutine;
+
+		public:
+			ApuAwaiter(uint32_t apicId);
+			ApuAwaiter() = delete;
+			ApuAwaiter(const ApuAwaiter&) = delete;
+			ApuAwaiter(ApuAwaiter&&) = delete;
+			ApuAwaiter& operator=(const ApuAwaiter&) = delete;
+			ApuAwaiter& operator=(ApuAwaiter&&) = delete;
+
+			~ApuAwaiter();
+
+			constexpr bool await_ready() const noexcept {
+				return false;
+			};
+
+			void await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept;
+
+			constexpr void await_resume() const noexcept {}
+
+			void resumeBpu() noexcept;
+	};
+
 	extern bool debug;
 
 	typedef void(*GlobalConstructor)();
@@ -58,7 +84,11 @@ namespace Kernel {
 	// Enters a halt loop and never returns
 	extern "C" [[noreturn]] void perpetualWait();
 
-	extern "C" void prepareApuInfoTable(ApuInfoTable *apuInfoTable, uint64_t pml4tPhysicalAddress);
+	extern "C" void prepareApuInfoTable(
+		ApuInfoTable *apuInfoTable,
+		uint64_t pml4tPhysicalAddress,
+		void *stackPointer
+	);
 
 	extern "C" uint64_t readMsr(MSR msr);
 	extern "C" void writeMsr(MSR msr, uint64_t value);
