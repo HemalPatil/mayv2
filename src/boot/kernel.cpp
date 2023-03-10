@@ -22,7 +22,7 @@ static const char* const creatingFsDoneStr = "File systems created [";
 static const char* const atAhciStr = "on AHCI device";
 static const char* const isoFoundStr = "JolietISO";
 static const char* const globalCtorStr = "Running global constructors";
-static const char* const enabledInterruptsStr = "Enabled interrupts\n\n";
+static const char* const enabledInterruptsStr = "Enabled interrupts\n";
 static const char* const apuBootStr = "Loading auxiliary CPU bootstrap binary";
 static const char* const initApusStr = "Initializing CPUs";
 static const char* const cpuStr = "CPU ";
@@ -37,11 +37,13 @@ static const char* const initApuDoneStr = "Initialized";
 static const char* const creatingTssStr = "Creating TSS";
 static const char* const loadingIdtStr = "Loading IDT";
 static const char* const createStackStr = "Creating stack";
+static const char* const apuInitDoneStr = "CPUs initialized\n\n";
 
 static Async::Thenable<void> startPcieDrivers();
 static Async::Thenable<void> createFileSystems();
 static Async::Thenable<void> findRootFs();
 static Async::Thenable<void> bootApus();
+static Async::Thenable<void> initKeyboard();
 
 static Kernel::ApuAwaiter *apuAwaiter = nullptr;
 
@@ -183,14 +185,13 @@ extern "C" [[noreturn]] void bpuMain(
 	terminalPrintChar('\n');
 	terminalPrintChar('\n');
 
-	Drivers::PS2::Keyboard::initialize(bootApicId);
-
 	if (!Kernel::Scheduler::start()) {
 		Kernel::panic();
 	}
 
 	Kernel::IDT::enableInterrupts();
 	terminalPrintString(enabledInterruptsStr, strlen(enabledInterruptsStr));
+	terminalPrintChar('\n');
 
 	// Enumerate PCIe devices
 	if (!PCIe::enumerate()) {
@@ -206,11 +207,24 @@ extern "C" [[noreturn]] void bpuMain(
 		startPcieDrivers()
 			.then(createFileSystems)
 			.then(findRootFs)
-			.then(bootApus);
+			.then(bootApus)
+			.then(initKeyboard);
 	#pragma GCC diagnostic pop
 
 	// Wait perpetually and let the scheduler and interrupts do their thing
 	Kernel::perpetualWait();
+}
+
+static Async::Thenable<void> initKeyboard() {
+	// Find the last CPU and install keyboard IRQ handler on it
+	const APIC::CPU *keyboardCpu = &APIC::cpus.at(0);
+	for (const auto &cpu : APIC::cpus) {
+		if (cpu.apicId > keyboardCpu->apicId) {
+			keyboardCpu = &cpu;
+		}
+	}
+	Drivers::PS2::Keyboard::initialize(keyboardCpu->apicId);
+	co_return;
 }
 
 bool Kernel::IDT::setup() {
@@ -386,6 +400,11 @@ extern "C" [[noreturn]] void apuMain() {
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
 
+	terminalPrintSpaces4();
+	terminalPrintSpaces4();
+	Kernel::IDT::enableInterrupts();
+	terminalPrintString(enabledInterruptsStr, strlen(enabledInterruptsStr));
+
 	if (apuAwaiter) {
 		apuAwaiter->resumeBpu();
 	}
@@ -466,6 +485,7 @@ static Async::Thenable<void> bootApus() {
 		}
 	}
 
+	terminalPrintString(apuInitDoneStr, strlen(apuInitDoneStr));
 	co_return;
 }
 
