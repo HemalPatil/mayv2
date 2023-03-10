@@ -21,7 +21,6 @@ ps2KeyboardHandlerWrapper:
 	push r14
 	push r15
 	push rbp
-	in al, 0x60
 	call ps2KeyboardHandler
 	pop rbp
 	pop r15

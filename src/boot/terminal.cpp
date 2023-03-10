@@ -85,10 +85,10 @@ void terminalSetCursorPosition(size_t x, size_t y) {
 	cursorX = x;
 	cursorY = y;
 	size_t position = y * vgaWidth + x; // Multiply 80 to row and add column to it
-	outputByte(cursorPort, 0x0f); // Cursor LOW port to VGA INDEX register
-	outputByte(cursorPortIndex, (uint8_t)(position & 0xff));
-	outputByte(cursorPort, 0x0e); // Cursor HIGH port to VGA INDEX register
-	outputByte(cursorPortIndex, (uint8_t)((position >> 8) & 0xff));
+	IO::outputByte(cursorPort, 0x0f); // Cursor LOW port to VGA INDEX register
+	IO::outputByte(cursorPortIndex, (uint8_t)(position & 0xff));
+	IO::outputByte(cursorPort, 0x0e); // Cursor HIGH port to VGA INDEX register
+	IO::outputByte(cursorPortIndex, (uint8_t)((position >> 8) & 0xff));
 }
 
 void terminalScroll(size_t lineCount) {

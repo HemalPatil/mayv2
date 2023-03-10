@@ -2,14 +2,22 @@
 #include <commonstrings.h>
 #include <cstring>
 #include <drivers/ps2/keyboard.h>
+#include <io.h>
 #include <kernel.h>
 #include <terminal.h>
 
 static const char* const keyStr = "key ";
-static const char* const initIntrStr = "Initializing PS2 keyboard on CPU [";
+static const char* const initKeyStr = "Initializing PS2 keyboard on CPU [";
+
+static uint64_t scanCodeBuffer = 0;
+
+uint16_t Drivers::PS2::Keyboard::inPort = 0x60;
 
 bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
-	terminalPrintString(initIntrStr, strlen(initIntrStr));
+	// FIXME: Assumes the BIOS initialized the PS/2 controller and devices correctly
+	// Should perhaps add a PS/2 controller initializer
+
+	terminalPrintString(initKeyStr, strlen(initKeyStr));
 	terminalPrintDecimal(apicId);
 	terminalPrintChar(']');
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -35,9 +43,10 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 }
 
 void ps2KeyboardHandler() {
-	const uint64_t cpuApicId = Kernel::readMsr(Kernel::MSR::x2ApicId);
-	terminalPrintChar('[');
-	terminalPrintDecimal(cpuApicId);
-	terminalPrintString("] ", 2);
+	// FIXME: Assumes the PS/2 keyboard is using scan code set 1
+	const auto byte = IO::inputByte(Drivers::PS2::Keyboard::inPort);
+	scanCodeBuffer <<= 8;
+	scanCodeBuffer |= byte;
+	terminalPrintHex(&byte, 1);
 	APIC::acknowledgeLocalInterrupt();
 }
