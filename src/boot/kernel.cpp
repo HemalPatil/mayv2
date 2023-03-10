@@ -47,6 +47,7 @@ static Kernel::ApuAwaiter *apuAwaiter = nullptr;
 
 bool Kernel::debug = false;
 InfoTable Kernel::infoTable;
+uint8_t Kernel::TSS::type = 9;
 
 extern "C" [[noreturn]] void bpuMain(
 	InfoTable *infoTableAddress,
@@ -137,7 +138,7 @@ extern "C" [[noreturn]] void bpuMain(
 	terminalPrintChar('\n');
 
 	// Get the boot CPU entry
-	uint64_t bootApicId = Kernel::readMsr(Kernel::MSR::x2ApicId);
+	const uint64_t bootApicId = Kernel::readMsr(Kernel::MSR::x2ApicId);
 	for (auto &cpu : APIC::cpus) {
 		if (cpu.apicId == bootApicId) {
 			APIC::bootCpu = &cpu;
@@ -282,7 +283,7 @@ std::tuple<uint16_t, Kernel::TSS::Entry*> Kernel::TSS::createAndInstall() {
 	GDT::gdt64Base[i].limitLow = 104;
 	GDT::gdt64Base[i].baseLow = tssBase & 0xffff;
 	GDT::gdt64Base[i].baseMid = (tssBase & 0xff0000) >> 16;
-	GDT::gdt64Base[i].type = 9;
+	GDT::gdt64Base[i].type = Kernel::TSS::type;
 	GDT::gdt64Base[i].present = 1;
 	GDT::gdt64Base[i].baseHigh = (tssBase & 0xff000000) >> 24;
 	GDT::gdt64Base[i + 1].limitLow = (tssBase & 0xffff00000000) >> 32;
@@ -294,7 +295,7 @@ std::tuple<uint16_t, Kernel::TSS::Entry*> Kernel::TSS::createAndInstall() {
 uint16_t Kernel::GDT::getAvailableSelector() {
 	for (size_t i = 1; i < 512; ++i) {
 		if (gdt64Base[i].present) {
-			if (gdt64Base[i].type == 9) {
+			if ((gdt64Base[i].type & TSS::type) == TSS::type) {
 				// Skip next entry because this is a 16-byte wide 64-bit TSS descriptor
 				++i;
 			}
@@ -306,6 +307,85 @@ uint16_t Kernel::GDT::getAvailableSelector() {
 }
 
 extern "C" [[noreturn]] void apuMain() {
+	if (!enableSse4()) {
+		Kernel::panic();
+	}
+	terminalPrintSpaces4();
+	terminalPrintSpaces4();
+	terminalPrintString(sse4Str, strlen(sse4Str));
+
+	terminalPrintSpaces4();
+	terminalPrintSpaces4();
+	terminalPrintString(checkRandStr, strlen(checkRandStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (!Random::isRandomAvailable()) {
+		terminalPrintString(notStr, strlen(notStr));
+		terminalPrintChar(' ');
+		terminalPrintString(okStr, strlen(okStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
+	terminalPrintString(okStr, strlen(okStr));
+	terminalPrintChar('\n');
+
+	// Check the presence of x2APIC and enable it
+	terminalPrintSpaces4();
+	terminalPrintSpaces4();
+	terminalPrintString(enableX2ApicStr, strlen(enableX2ApicStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (!APIC::enableX2Apic()) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
+	uint64_t spuriousInterruptVector = Kernel::readMsr(Kernel::MSR::x2ApicSpuriousInterrupt);
+	spuriousInterruptVector &= 0xffffffffUL;
+	spuriousInterruptVector |= 0x100;
+	Kernel::writeMsr(Kernel::MSR::x2ApicSpuriousInterrupt, spuriousInterruptVector);
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
+	// Get the APU entry
+	const uint64_t apuApicId = Kernel::readMsr(Kernel::MSR::x2ApicId);
+	for (auto &cpu : APIC::cpus) {
+		if (cpu.apicId == apuApicId) {
+			cpu.apicPhyAddr = Kernel::readMsr(Kernel::MSR::x2ApicEnable) & 0xffffff000;
+			break;
+		}
+	}
+
+	// Create TSS and install it
+	terminalPrintSpaces4();
+	terminalPrintSpaces4();
+	terminalPrintString(creatingTssStr, strlen(creatingTssStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	const auto tss = Kernel::TSS::createAndInstall();
+	uint16_t tssSelector = std::get<0>(tss);
+	Kernel::TSS::Entry *tssEntry = std::get<1>(tss);
+	if (tssSelector == 0xffff || !tssEntry) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
+	APIC::bootCpu->tssSelector = tssSelector;
+	APIC::bootCpu->intZone1 = (APIC::InterruptDataZone*)tssEntry->ist1Rsp;
+	APIC::bootCpu->intZone1->apicId = apuApicId;
+	APIC::bootCpu->intZone1->reserved0 = APIC::bootCpu->intZone1->reserved1 = 0;
+	APIC::bootCpu->intZone2 = (APIC::InterruptDataZone*)tssEntry->ist2Rsp;
+	APIC::bootCpu->intZone2->apicId = apuApicId;
+	APIC::bootCpu->intZone2->reserved0 = APIC::bootCpu->intZone2->reserved1 = 0;
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
+	// Load the common 64-bit IDT
+	terminalPrintSpaces4();
+	terminalPrintSpaces4();
+	terminalPrintString(loadingIdtStr, strlen(loadingIdtStr));
+	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	Kernel::IDT::loadIdt();
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
+
 	if (apuAwaiter) {
 		apuAwaiter->resumeBpu();
 	}

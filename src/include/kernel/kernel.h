@@ -182,8 +182,9 @@ namespace Kernel {
 			uint16_t ioMapBase = 0;
 		} __attribute__((packed));
 
-		std::tuple<uint16_t, Entry*> createAndInstall();
+		extern uint8_t type;
 
+		std::tuple<uint16_t, Entry*> createAndInstall();
 		extern "C" void loadTss(uint16_t selector);
 	}
 

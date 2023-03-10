@@ -1,6 +1,6 @@
-; Assumes that if a processor starts executing this code,
-; it supports 64-bit long mode, SSE4.2, NX bit, RDRAND,
-; and all other processor capability checks done by the boot CPU
+; Assumes that if a processor starts executing this code
+; it supports 64-bit long mode, NX bit.
+; Other capability checks like SSE4.2, x2APIC, RDRAND are done at runtime.
 
 APU_BOOTLOADER_ORIGIN equ 0x8000
 APU_BOOTLOADER_PADDING equ 32
