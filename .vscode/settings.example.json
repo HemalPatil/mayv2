@@ -24,7 +24,7 @@
 		"algorithm": "c",
 		"keyboard.h": "c",
 		"interrupts.h": "c",
-		"hpet.h": "c",
+		"hpet.h": "cpp",
 		"*.xcppx": "cpp",
 		"functional": "cpp",
 		"compare": "cpp",

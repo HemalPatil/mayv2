@@ -8,7 +8,7 @@
 static const char* const keyStr = "key ";
 static const char* const initIntrStr = "Initializing PS2 keyboard";
 
-bool initializePs2Keyboard() {
+bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 	terminalPrintString(initIntrStr, strlen(initIntrStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 
@@ -20,7 +20,7 @@ bool initializePs2Keyboard() {
 	keyEntry.pinPolarity = 0;
 	keyEntry.triggerMode = 0;
 	keyEntry.mask = 0;
-	keyEntry.destination = APIC::bootCpu->apicId;
+	keyEntry.destination = apicId;
 	writeIoRedirectionEntry(Kernel::IRQ::Keyboard, keyEntry);
 	++Kernel::IDT::availableInterrupt;
 

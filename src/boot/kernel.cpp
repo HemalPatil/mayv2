@@ -183,7 +183,7 @@ extern "C" [[noreturn]] void bpuMain(
 	terminalPrintChar('\n');
 	terminalPrintChar('\n');
 
-	initializePs2Keyboard();
+	Drivers::PS2::Keyboard::initialize(bootApicId);
 
 	if (!Kernel::Scheduler::start()) {
 		Kernel::panic();
