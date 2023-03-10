@@ -7,6 +7,7 @@
 #include <tuple>
 #include <vector>
 
+namespace Drivers {
 namespace FS {
 	enum Status : uint32_t {
 		Ok = 0,
@@ -34,16 +35,16 @@ namespace FS {
 
 	struct ReadFileResult {
 		Status status = Status::Ok;
-		Storage::Buffer data;
+		Drivers::Storage::Buffer data;
 	};
 
 	class BaseFS {
 		protected:
-			std::shared_ptr<Storage::BlockDevice> device;
+			std::shared_ptr<Drivers::Storage::BlockDevice> device;
 			Random::GUIDv4 guid;
 
 		public:
-			BaseFS(std::shared_ptr<Storage::BlockDevice> blockDevice);
+			BaseFS(std::shared_ptr<Drivers::Storage::BlockDevice> blockDevice);
 			const Random::GUIDv4& getGuid() const;
 
 			// Reads directory at given absolute path ending in '/'
@@ -59,4 +60,5 @@ namespace FS {
 	bool isValidAbsolutePath(const std::string &absolutePath, bool isDir);
 	std::vector<std::string> splitAbsolutePath(const std::string &absolutePath);
 	std::tuple<std::string, std::string> splitParentDirectory(const std::string &absolutePath);
+}
 }

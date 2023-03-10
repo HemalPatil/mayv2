@@ -3,6 +3,7 @@
 #include <drivers/filesystems.h>
 #include <map>
 
+namespace Drivers {
 namespace FS {
 	class JolietISO : public BaseFS {
 		public:
@@ -94,4 +95,5 @@ namespace FS {
 
 			static Async::Thenable<Storage::Buffer> isJolietIso(std::shared_ptr<Storage::BlockDevice> device);
 	};
+}
 }

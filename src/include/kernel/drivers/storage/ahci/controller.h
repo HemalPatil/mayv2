@@ -3,7 +3,7 @@
 #include <drivers/storage/ahci.h>
 #include <memory>
 
-class AHCI::Controller {
+class Drivers::Storage::AHCI::Controller {
 	private:
 		volatile HostBusAdapter *hba;
 		std::vector<std::shared_ptr<Device>> devices;

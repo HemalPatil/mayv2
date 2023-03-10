@@ -13,10 +13,10 @@ static const char* const msiInstallingStr = "Installing AHCI MSI handler";
 
 static size_t msiInterrupt = SIZE_MAX;
 
-std::vector<AHCI::Controller> AHCI::controllers;
+std::vector<Drivers::Storage::AHCI::Controller> Drivers::Storage::AHCI::controllers;
 
 void ahciMsiHandler() {
-	for (const auto &controller : AHCI::controllers) {
+	for (const auto &controller : Drivers::Storage::AHCI::controllers) {
 		uint32_t interruptStatus = controller.hba->interruptStatus;
 		if (interruptStatus) {
 			// If any port needs servicing write its value back to hba->interruptStatus
@@ -35,9 +35,9 @@ void ahciMsiHandler() {
 	APIC::acknowledgeLocalInterrupt();
 }
 
-Async::Thenable<bool> AHCI::initialize(const PCIe::Function &pcieFunction) {
+Async::Thenable<bool> Drivers::Storage::AHCI::initialize(const PCIe::Function &pcieFunction) {
 	terminalPrintString(initAhciStr, strlen(initAhciStr));
-	terminalPrintDecimal(AHCI::controllers.size());
+	terminalPrintDecimal(controllers.size());
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
 
@@ -78,8 +78,8 @@ Async::Thenable<bool> AHCI::initialize(const PCIe::Function &pcieFunction) {
 	terminalPrintChar('\n');
 
 	// Create new controller, add it to the list, and initialize it
-	AHCI::controllers.push_back(AHCI::Controller());
-	bool result = co_await AHCI::controllers.back().initialize(pcieFunction);
+	AHCI::controllers.push_back(Controller());
+	bool result = co_await controllers.back().initialize(pcieFunction);
 	if (result) {
 		terminalPrintString(initAhciCompleteStr, strlen(initAhciCompleteStr));
 	}

@@ -409,8 +409,8 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintSpaces4();
 	terminalPrintString(apuBootStr, strlen(apuBootStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	const auto fileReadResult = std::move(co_await FS::root->readFile("/boot/stage1/apu.bin"));
-	if (fileReadResult.status == FS::Status::Ok && fileReadResult.data) {
+	const auto fileReadResult = std::move(co_await Drivers::FS::root->readFile("/boot/stage1/apu.bin"));
+	if (fileReadResult.status == Drivers::FS::Status::Ok && fileReadResult.data) {
 		memcpy((void*)APU_BOOTLOADER_ORIGIN, fileReadResult.data.getData(), fileReadResult.data.getSize());
 	} else {
 		terminalPrintString(failedStr, strlen(failedStr));
@@ -477,7 +477,7 @@ static Async::Thenable<void> startPcieDrivers() {
 			PCIe::Subclass::Sata == function.configurationSpace->subClass &&
 			PCIe::ProgramType::Ahci == function.configurationSpace->progIf
 		) {
-			initializer = &AHCI::initialize;
+			initializer = &Drivers::Storage::AHCI::initialize;
 		}
 		if (initializer && !(co_await (*initializer)(function))) {
 			Kernel::panic();
@@ -487,6 +487,8 @@ static Async::Thenable<void> startPcieDrivers() {
 }
 
 static Async::Thenable<void> findRootFs() {
+	using namespace Drivers;
+	
 	for (const auto &fs : FS::filesystems) {
 		const auto bootDirResult = std::move(co_await fs->readDirectory("/boot/"));
 		if (bootDirResult.status == FS::Status::Ok) {
@@ -517,6 +519,9 @@ static Async::Thenable<void> findRootFs() {
 }
 
 static Async::Thenable<void> createFileSystems() {
+	using namespace Drivers;
+	using namespace Drivers::Storage;
+
 	terminalPrintString(creatingFsStr, strlen(creatingFsStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');

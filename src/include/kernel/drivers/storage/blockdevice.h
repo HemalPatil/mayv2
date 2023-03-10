@@ -2,6 +2,7 @@
 
 #include <async.h>
 
+namespace Drivers{
 namespace Storage {
 	class Buffer {
 		private:
@@ -34,4 +35,5 @@ namespace Storage {
 			size_t getBlockSize() const;
 			virtual Async::Thenable<Buffer> read(size_t startBlock, size_t blockCount) = 0;
 	};
+}
 }

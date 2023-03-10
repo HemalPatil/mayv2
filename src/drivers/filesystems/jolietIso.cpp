@@ -6,11 +6,11 @@
 static const char* const isoNamespaceStr = "FS::JolietISO::";
 static const char* const lbaSizeErrorStr = "JolietISO device block size and LBA size don't match\n";
 
-const std::string FS::JolietISO::cdSignature = "CD001";
+const std::string Drivers::FS::JolietISO::cdSignature = "CD001";
 
 // Returns Storage::Buffer to PrimaryVolumeDescriptor of an ISO filesystem if found on device
 // Returns nullptr otherwise
-Async::Thenable<Storage::Buffer> FS::JolietISO::isJolietIso(std::shared_ptr<Storage::BlockDevice> device) {
+Async::Thenable<Drivers::Storage::Buffer> Drivers::FS::JolietISO::isJolietIso(std::shared_ptr<Storage::BlockDevice> device) {
 	// Get sectors starting from sector 16 until Supplementary Volume Descriptor is found
 	// Try until sector 32
 	// TODO: get rid of arbitrary sector 32 check
@@ -30,7 +30,10 @@ Async::Thenable<Storage::Buffer> FS::JolietISO::isJolietIso(std::shared_ptr<Stor
 	co_return nullptr;
 }
 
-FS::JolietISO::JolietISO(std::shared_ptr<Storage::BlockDevice> device, const Storage::Buffer &svdSectorBuffer) : BaseFS(device) {
+Drivers::FS::JolietISO::JolietISO(
+	std::shared_ptr<Storage::BlockDevice> device,
+	const Storage::Buffer &svdSectorBuffer
+) : BaseFS(device) {
 	SupplementaryVolumeDescriptor *svdSector = (SupplementaryVolumeDescriptor*) svdSectorBuffer.getData();
 
 	this->lbaSize = svdSector->lbaSize;
@@ -47,7 +50,7 @@ FS::JolietISO::JolietISO(std::shared_ptr<Storage::BlockDevice> device, const Sto
 	this->rootDirExtentSize = svdSector->rootDirectory.extentSize;
 }
 
-Async::Thenable<bool> FS::JolietISO::initialize() {
+Async::Thenable<bool> Drivers::FS::JolietISO::initialize() {
 	size_t blockCount = this->rootDirExtentSize / this->lbaSize;
 	if (this->rootDirExtentSize != blockCount * this->lbaSize) {
 		++blockCount;
@@ -71,7 +74,7 @@ Async::Thenable<bool> FS::JolietISO::initialize() {
 	co_return true;
 }
 
-std::vector<FS::DirectoryEntry> FS::JolietISO::extentToEntries(
+std::vector<Drivers::FS::DirectoryEntry> Drivers::FS::JolietISO::extentToEntries(
 	const DirectoryRecord* const extent,
 	size_t lba,
 	size_t size,
@@ -110,7 +113,7 @@ std::vector<FS::DirectoryEntry> FS::JolietISO::extentToEntries(
 	return entries;
 }
 
-Async::Thenable<FS::ReadFileResult> FS::JolietISO::readFile(const std::string &absolutePath) {
+Async::Thenable<Drivers::FS::ReadFileResult> Drivers::FS::JolietISO::readFile(const std::string &absolutePath) {
 	isValidAbsolutePath(absolutePath, false);
 	const auto parentSplit = splitParentDirectory(absolutePath);
 	const auto parentDirResult = co_await this->readDirectory(std::get<0>(parentSplit));
@@ -150,7 +153,7 @@ Async::Thenable<FS::ReadFileResult> FS::JolietISO::readFile(const std::string &a
 	co_return std::move(errorResult);
 }
 
-Async::Thenable<FS::ReadDirectoryResult> FS::JolietISO::readDirectory(const std::string &absolutePath) {
+Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::JolietISO::readDirectory(const std::string &absolutePath) {
 	isValidAbsolutePath(absolutePath, true);
 	if (1 != this->cachedDirectoryEntries.count(absolutePath)) {
 		std::vector<std::string> pathParts = splitAbsolutePath(absolutePath);

@@ -1,14 +1,14 @@
 #include <cstring>
 #include <drivers/storage/ahci/satadevice.h>
 
-AHCI::SataDevice::SataDevice(
+Drivers::Storage::AHCI::SataDevice::SataDevice(
 	Controller *controller,
 	size_t portNumber
 ) : Device(controller, portNumber) {
 	this->type = Type::Sata;
 }
 
-Async::Thenable<Storage::Buffer> AHCI::SataDevice::read(size_t startBlock, size_t blockCount) {
+Async::Thenable<Drivers::Storage::Buffer> Drivers::Storage::AHCI::SataDevice::read(size_t startBlock, size_t blockCount) {
 	Storage::Buffer buffer;
 	size_t freeSlot = SIZE_MAX;
 	if (!(buffer = this->setupRead(blockCount, freeSlot))) {
