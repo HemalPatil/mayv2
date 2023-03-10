@@ -3,7 +3,7 @@
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/blockdevice.h>
 
-class AHCI::Device : public Storage::BlockDevice {
+class Drivers::Storage::AHCI::Device : public BlockDevice {
 	public:
 		enum Type {
 			None = 0,

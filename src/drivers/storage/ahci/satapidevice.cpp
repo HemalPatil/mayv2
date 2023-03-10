@@ -2,14 +2,14 @@
 #include <drivers/storage/ahci/satapidevice.h>
 #include <terminal.h>
 
-AHCI::SatapiDevice::SatapiDevice(
+Drivers::Storage::AHCI::SatapiDevice::SatapiDevice(
 	Controller *controller,
 	size_t portNumber
 ) : Device(controller, portNumber) {
 	this->type = Type::Satapi;
 }
 
-Async::Thenable<Storage::Buffer> AHCI::SatapiDevice::read(size_t startBlock, size_t blockCount) {
+Async::Thenable<Drivers::Storage::Buffer> Drivers::Storage::AHCI::SatapiDevice::read(size_t startBlock, size_t blockCount) {
 	size_t freeSlot = SIZE_MAX;
 	Storage::Buffer buffer = this->setupRead(blockCount, freeSlot);
 	if (!buffer) {

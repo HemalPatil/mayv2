@@ -4,10 +4,10 @@
 
 static const char* const malformedStr = "FS::isValidAbsolutePath malformed absolute path [";
 
-std::vector<std::shared_ptr<FS::BaseFS>> FS::filesystems;
-std::shared_ptr<FS::BaseFS> FS::root;
+std::vector<std::shared_ptr<Drivers::FS::BaseFS>> Drivers::FS::filesystems;
+std::shared_ptr<Drivers::FS::BaseFS> Drivers::FS::root;
 
-std::tuple<std::string, std::string> FS::splitParentDirectory(const std::string &absolutePath) {
+std::tuple<std::string, std::string> Drivers::FS::splitParentDirectory(const std::string &absolutePath) {
 	if (absolutePath == "/") {
 		return {absolutePath, ""};
 	}
@@ -24,7 +24,7 @@ std::tuple<std::string, std::string> FS::splitParentDirectory(const std::string 
 	};
 }
 
-std::vector<std::string> FS::splitAbsolutePath(const std::string &absolutePath) {
+std::vector<std::string> Drivers::FS::splitAbsolutePath(const std::string &absolutePath) {
 	std::vector<std::string> pathParts;
 	size_t pos = 1;
 	size_t currentPos = 1;
@@ -40,13 +40,13 @@ std::vector<std::string> FS::splitAbsolutePath(const std::string &absolutePath) 
 	return pathParts;
 }
 
-FS::BaseFS::BaseFS(std::shared_ptr<Storage::BlockDevice> blockDevice) : device(blockDevice), guid() {}
+Drivers::FS::BaseFS::BaseFS(std::shared_ptr<Storage::BlockDevice> blockDevice) : device(blockDevice), guid() {}
 
-const Random::GUIDv4& FS::BaseFS::getGuid() const {
+const Random::GUIDv4& Drivers::FS::BaseFS::getGuid() const {
 	return this->guid;
 }
 
-bool FS::isValidAbsolutePath(const std::string &absolutePath, bool isDir) {
+bool Drivers::FS::isValidAbsolutePath(const std::string &absolutePath, bool isDir) {
 	if (!(
 		0 == absolutePath.length() ||
 		'/' != absolutePath.at(0) ||

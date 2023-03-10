@@ -4,7 +4,7 @@
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
 
-class AHCI::SatapiDevice : public AHCI::Device {
+class Drivers::Storage::AHCI::SatapiDevice : public Device {
 	public:
 		SatapiDevice(Controller *controller, size_t portNumber);
 

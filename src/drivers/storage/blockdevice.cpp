@@ -7,9 +7,9 @@ static const char* const bufAllocErrorStr = "could not allocate buffer";
 static const char* const wrongAlignStr = "wrong alignment";
 static const char* const freeFailStr = "operator=(nullptr) failed to free buffer pages";
 
-Storage::Buffer::Buffer(std::nullptr_t) : data(nullptr), pageCount(0), physicalAddress((uint64_t)INVALID_ADDRESS), size(0) {}
+Drivers::Storage::Buffer::Buffer(std::nullptr_t) : data(nullptr), pageCount(0), physicalAddress((uint64_t)INVALID_ADDRESS), size(0) {}
 
-Storage::Buffer::Buffer(size_t size, size_t alignAt) {
+Drivers::Storage::Buffer::Buffer(size_t size, size_t alignAt) {
 	using namespace Kernel::Memory;
 
 	this->size = size;
@@ -50,17 +50,21 @@ Storage::Buffer::Buffer(size_t size, size_t alignAt) {
 	this->physicalAddress = physicalAddress;
 }
 
-Storage::Buffer::Buffer(Buffer &&other) : data(other.data), pageCount(other.pageCount), physicalAddress(other.physicalAddress), size(other.size) {
+Drivers::Storage::Buffer::Buffer(Buffer &&other)
+	:	data(other.data),
+		pageCount(other.pageCount),
+		physicalAddress(other.physicalAddress),
+		size(other.size) {
 	other.data = nullptr;
 	other.pageCount = other.size = 0;
 	other.physicalAddress = (uint64_t)INVALID_ADDRESS;
 }
 
-Storage::Buffer::~Buffer() {
+Drivers::Storage::Buffer::~Buffer() {
 	*this = nullptr;
 }
 
-Storage::Buffer& Storage::Buffer::operator=(std::nullptr_t) {
+Drivers::Storage::Buffer& Drivers::Storage::Buffer::operator=(std::nullptr_t) {
 	using namespace Kernel::Memory;
 
 	if (
@@ -78,7 +82,7 @@ Storage::Buffer& Storage::Buffer::operator=(std::nullptr_t) {
 	return *this;
 }
 
-Storage::Buffer& Storage::Buffer::operator=(Buffer &&other) {
+Drivers::Storage::Buffer& Drivers::Storage::Buffer::operator=(Buffer &&other) {
 	*this = nullptr;
 	this->data = other.data;
 	this->pageCount = other.pageCount;
@@ -90,22 +94,22 @@ Storage::Buffer& Storage::Buffer::operator=(Buffer &&other) {
 	return *this;
 }
 
-void* Storage::Buffer::getData() const {
+void* Drivers::Storage::Buffer::getData() const {
 	return this->data;
 }
 
-size_t Storage::Buffer::getSize() const {
+size_t Drivers::Storage::Buffer::getSize() const {
 	return this->size;
 }
 
-Storage::Buffer::operator bool() const {
+Drivers::Storage::Buffer::operator bool() const {
 	return this->data != nullptr;
 }
 
-uint64_t Storage::Buffer::getPhysicalAddress() const {
+uint64_t Drivers::Storage::Buffer::getPhysicalAddress() const {
 	return this->physicalAddress;
 }
 
-size_t Storage::BlockDevice::getBlockSize() const {
+size_t Drivers::Storage::BlockDevice::getBlockSize() const {
 	return this->blockSize;
 }

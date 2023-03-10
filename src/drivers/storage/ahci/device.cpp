@@ -15,7 +15,7 @@ static const char* const tfeUnsolicitedStr = "AHCI unsolicited task file error "
 static const char* const d2hUnsolicitedStr = "AHCI unsolicited register D2H FIS ";
 static const char* const atDeviceStr = "at device";
 
-Storage::Buffer AHCI::Device::setupRead(size_t blockCount, size_t &freeSlot) {
+Drivers::Storage::Buffer Drivers::Storage::AHCI::Device::setupRead(size_t blockCount, size_t &freeSlot) {
 	if (blockCount == 0) {
 		return nullptr;
 	}
@@ -76,7 +76,7 @@ Storage::Buffer AHCI::Device::setupRead(size_t blockCount, size_t &freeSlot) {
 	return buffer;
 }
 
-void AHCI::Device::msiHandler() {
+void Drivers::Storage::AHCI::Device::msiHandler() {
 	Device *thisDevice = this;
 	uint32_t interruptStatus = this->port->interruptStatus;
 	this->port->interruptStatus = interruptStatus;
@@ -129,7 +129,7 @@ void AHCI::Device::msiHandler() {
 	}
 }
 
-Async::Thenable<bool> AHCI::Device::identify() {
+Async::Thenable<bool> Drivers::Storage::AHCI::Device::identify() {
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
@@ -183,7 +183,7 @@ Async::Thenable<bool> AHCI::Device::identify() {
 	co_return false;
 }
 
-bool AHCI::Device::initialize() {
+bool Drivers::Storage::AHCI::Device::initialize() {
 	using namespace Kernel::Memory;
 
 	terminalPrintSpaces4();
@@ -289,7 +289,7 @@ bool AHCI::Device::initialize() {
 	return true;
 }
 
-size_t AHCI::Device::findFreeCommandSlot() const {
+size_t Drivers::Storage::AHCI::Device::findFreeCommandSlot() const {
 	uint32_t slots = this->port->commandIssue | this->port->sataActive | this->runningCommandsBitmap;
 	for (size_t i = 0; i < AHCI_COMMAND_LIST_SIZE / sizeof(CommandHeader); ++i) {
 		if ((slots & 1) == 0) {
@@ -300,15 +300,15 @@ size_t AHCI::Device::findFreeCommandSlot() const {
 	return SIZE_MAX;
 }
 
-AHCI::Device::Type AHCI::Device::getType() const {
+Drivers::Storage::AHCI::Device::Type Drivers::Storage::AHCI::Device::getType() const {
 	return this->type;
 }
 
-size_t AHCI::Device::getPortNumber() const {
+size_t Drivers::Storage::AHCI::Device::getPortNumber() const {
 	return this->portNumber;
 }
 
-AHCI::Device::Device(Controller *controller, size_t portNumber) {
+Drivers::Storage::AHCI::Device::Device(Controller *controller, size_t portNumber) {
 	this->type = Type::None;
 	this->portNumber = portNumber;
 	this->port = &controller->hba->ports[portNumber];
@@ -322,9 +322,13 @@ AHCI::Device::Device(Controller *controller, size_t portNumber) {
 	this->controller = controller;
 }
 
-AHCI::Device::Command::Command(Device *device, size_t freeSlot) : device(device), freeSlot(freeSlot), awaitingCoroutine(nullptr), result(nullptr) {}
+Drivers::Storage::AHCI::Device::Command::Command(Device *device, size_t freeSlot)
+	:	device(device),
+		freeSlot(freeSlot),
+		awaitingCoroutine(nullptr),
+		result(nullptr) {}
 
-AHCI::Device::Command::~Command() {
+Drivers::Storage::AHCI::Device::Command::~Command() {
 	if (this->awaitingCoroutine) {
 		delete this->awaitingCoroutine;
 		this->awaitingCoroutine = nullptr;
@@ -335,14 +339,14 @@ AHCI::Device::Command::~Command() {
 	}
 }
 
-void AHCI::Device::Command::await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept {
+void Drivers::Storage::AHCI::Device::Command::await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept {
 	this->awaitingCoroutine = new std::coroutine_handle<>(awaitingCoroutine);
 	this->device->commands[freeSlot] = this;
 	this->device->runningCommandsBitmap |= 1 << freeSlot;
 	this->device->port->commandIssue = 1 << this->freeSlot;
 }
 
-bool AHCI::Device::Command::await_resume() const noexcept {
+bool Drivers::Storage::AHCI::Device::Command::await_resume() const noexcept {
 	if (!this->result) {
 		terminalPrintString(commandNamespaceStr, strlen(commandNamespaceStr));
 		terminalPrintString(noResultStr, strlen(noResultStr));
@@ -351,7 +355,7 @@ bool AHCI::Device::Command::await_resume() const noexcept {
 	return *this->result;
 }
 
-void AHCI::Device::Command::setResult(bool result) noexcept {
+void Drivers::Storage::AHCI::Device::Command::setResult(bool result) noexcept {
 	if (this->result) {
 		terminalPrintString(commandNamespaceStr, strlen(commandNamespaceStr));
 		terminalPrintString(multiSetStr, strlen(multiSetStr));

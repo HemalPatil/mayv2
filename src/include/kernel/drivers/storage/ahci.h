@@ -31,6 +31,8 @@
 #define AHCI_TASK_FILE_ERROR ((uint32_t)1 << 30)
 #define AHCI_REGISTER_D2H 1
 
+namespace Drivers {
+namespace Storage {
 namespace AHCI {
 	// Refer AHCI spec https://www.intel.com.au/content/dam/www/public/us/en/documents/technical-specifications/serial-ata-ahci-spec-rev1-3-1.pdf
 	struct PortStatus {
@@ -575,6 +577,8 @@ namespace AHCI {
 	extern std::vector<Controller> controllers;
 
 	extern Async::Thenable<bool> initialize(const PCIe::Function &pcieFunction);
+}
+}
 }
 
 extern "C" void ahciMsiHandler();
