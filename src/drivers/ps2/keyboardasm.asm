@@ -1,11 +1,11 @@
 [bits 64]
 
 section .text
-	extern floatSaveRegion
 	extern ps2KeyboardHandler
 	extern terminalPrintString
 	global ps2KeyboardHandlerWrapper
 ps2KeyboardHandlerWrapper:
+	fxsave64 [rsp + 56]		; 40 bytes of IRQ stack frame + 16-byte offset into InterruptDataZone
 	push rax	; Save all general registers, SSE registers, and align stack to 16-byte boundary
 	push rbx
 	push rcx
@@ -21,10 +21,8 @@ ps2KeyboardHandlerWrapper:
 	push r14
 	push r15
 	push rbp
-	fxsave64 [floatSaveRegion]
 	in al, 0x60
 	call ps2KeyboardHandler
-	fxrstor64 [floatSaveRegion]
 	pop rbp
 	pop r15
 	pop r14
@@ -40,4 +38,5 @@ ps2KeyboardHandlerWrapper:
 	pop rcx
 	pop rbx
 	pop rax
+	fxrstor64 [rsp + 56]
 	iretq

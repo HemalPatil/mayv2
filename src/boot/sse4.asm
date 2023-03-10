@@ -1,12 +1,5 @@
 [bits 64]
 
-section .data
-	; FIXME: must be changed to an array of 512 byte regions per CPU
-	global floatSaveRegion
-align 16
-floatSaveRegion:
-	times 512 db 0
-
 section .text
 	global enableSse4
 enableSse4:

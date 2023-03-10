@@ -2,9 +2,9 @@
 
 section .text
 	extern ahciMsiHandler
-	extern floatSaveRegion
 	global ahciMsiHandlerWrapper
 ahciMsiHandlerWrapper:
+	fxsave64 [rsp + 56]		; 40 bytes of IRQ stack frame + 16-byte offset into InterruptDataZone
 	push rax	; Save all general registers, SSE registers, and align stack to 16-byte boundary
 	push rbx
 	push rcx
@@ -20,10 +20,8 @@ ahciMsiHandlerWrapper:
 	push r14
 	push r15
 	push rbp
-	fxsave64 [floatSaveRegion]
 	cld
 	call ahciMsiHandler
-	fxrstor64 [floatSaveRegion]
 	pop rbp
 	pop r15
 	pop r14
@@ -39,4 +37,5 @@ ahciMsiHandlerWrapper:
 	pop rcx
 	pop rbx
 	pop rax
+	fxrstor64 [rsp + 56]
 	iretq
