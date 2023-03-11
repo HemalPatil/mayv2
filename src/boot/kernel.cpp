@@ -3,6 +3,7 @@
 #include <commonstrings.h>
 #include <cstring>
 #include <drivers/filesystems/jolietIso.h>
+#include <drivers/ps2/controller.h>
 #include <drivers/ps2/keyboard.h>
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/ahci/controller.h>
@@ -43,7 +44,7 @@ static Async::Thenable<void> startPcieDrivers();
 static Async::Thenable<void> createFileSystems();
 static Async::Thenable<void> findRootFs();
 static Async::Thenable<void> bootApus();
-static Async::Thenable<void> initKeyboard();
+static Async::Thenable<void> initPs2Devices();
 
 static Kernel::ApuAwaiter *apuAwaiter = nullptr;
 
@@ -208,22 +209,21 @@ extern "C" [[noreturn]] void bpuMain(
 			.then(createFileSystems)
 			.then(findRootFs)
 			.then(bootApus)
-			.then(initKeyboard);
+			.then(initPs2Devices);
 	#pragma GCC diagnostic pop
 
 	// Wait perpetually and let the scheduler and interrupts do their thing
 	Kernel::perpetualWait();
 }
 
-static Async::Thenable<void> initKeyboard() {
-	// Find the last CPU and install keyboard IRQ handler on it
-	const APIC::CPU *keyboardCpu = &APIC::cpus.at(0);
-	for (const auto &cpu : APIC::cpus) {
-		if (cpu.apicId > keyboardCpu->apicId) {
-			keyboardCpu = &cpu;
-		}
+static Async::Thenable<void> initPs2Devices() {
+	// Install keyboard IRQ handler on last CPU
+	if (
+		!Drivers::PS2::Controller::initialize() ||
+		!Drivers::PS2::Keyboard::initialize(APIC::cpus.back().apicId)
+	) {
+		Kernel::panic();
 	}
-	Drivers::PS2::Keyboard::initialize(keyboardCpu->apicId);
 	co_return;
 }
 

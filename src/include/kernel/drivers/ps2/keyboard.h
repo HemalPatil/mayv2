@@ -10,8 +10,6 @@ namespace Drivers {
 				Esc
 			};
 
-			extern uint16_t inPort;
-
 			extern bool initialize(uint32_t apicId);
 		}
 	}

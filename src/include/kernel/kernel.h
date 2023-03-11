@@ -26,7 +26,8 @@
 namespace Kernel {
 	enum IRQ : uint8_t {
 		Keyboard = 1,
-		Timer = 3
+		Timer = 3,
+		Mouse = 12
 	};
 
 	enum MSR : uint32_t {

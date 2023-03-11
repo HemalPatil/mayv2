@@ -2,7 +2,6 @@
 
 section .text
 	extern ps2KeyboardHandler
-	extern terminalPrintString
 	global ps2KeyboardHandlerWrapper
 ps2KeyboardHandlerWrapper:
 	fxsave64 [rsp + 56]		; 40 bytes of IRQ stack frame + 16-byte offset into InterruptDataZone
