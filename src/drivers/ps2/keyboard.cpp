@@ -10,6 +10,7 @@
 
 static const char* const keyStr = "key ";
 static const char* const initKeyStr = "Initializing PS2 keyboard on CPU [";
+static const char* const discardStr = "Drivers::PS2::Keyboard::ps2KeyboardHandler discarded buffer ";
 
 static uint64_t scanCodeBuffer = 0;
 
@@ -81,10 +82,46 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 }
 
 void ps2KeyboardHandler() {
+	using namespace Drivers::PS2::Keyboard;
+
 	const auto byte = IO::inputByte(Drivers::PS2::Controller::dataPort);
 	scanCodeBuffer <<= 8;
 	scanCodeBuffer |= byte;
-	terminalPrintHex(&byte, 1);
+	// terminalPrintHex(&byte, 1);
+	bool isValid = false;
+	for (size_t i = 0; i < 227; ++i) {
+		if (scanCodeBuffer == validScanCodes[i]) {
+			isValid = true;
+			break;
+		}
+	}
+	if (isValid) {
+		scanCodeBuffer = 0;
+	} else {
+		if (
+			scanCodeBuffer == 0xe1 ||
+			scanCodeBuffer == 0xe114 ||
+			scanCodeBuffer == 0xe11477 ||
+			scanCodeBuffer == 0xe11477e1 ||
+			scanCodeBuffer == 0xe11477e1f0 ||
+			scanCodeBuffer == 0xe11477e1f014 ||
+			scanCodeBuffer == 0xe11477e1f014f0
+		) {
+			// Anticipate Pause/Break key press, do nothing
+		} else if (scanCodeBuffer == 0xe0f0) {
+			// Anticipate extended key release, do nothing
+		} else if (scanCodeBuffer == 0xe0) {
+			// Anticipate multiple bytes, do nothing
+		} else if (scanCodeBuffer == 0xf0) {
+			// Anticipate key release, do nothing
+		} else {
+			// Discard the scanCodeBuffer
+			// Perhaps it's an unhandled scan code or a fake shift code (0xe012/0xe0f012)
+			terminalPrintString(discardStr, strlen(discardStr));
+			terminalPrintHex(&scanCodeBuffer, sizeof(scanCodeBuffer));
+			scanCodeBuffer = 0;
+		}
+	}
 	APIC::acknowledgeLocalInterrupt();
 }
 

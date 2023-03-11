@@ -120,7 +120,7 @@ namespace Drivers {
 				Pressed_Up = 0xe075,
 				Pressed_PageDown = 0xe07a,
 				Pressed_PageUp = 0xe07d,
-				Pressed_PrintScreen = 0xe012e07c,
+				Pressed_PrintScreen = 0xe07c,
 				Pressed_PauseBreak = 0xe11477e1f014f077,
 
 				Released_F9 = 0xf001,
@@ -235,7 +235,7 @@ namespace Drivers {
 				Released_Up = 0xe0f075,
 				Released_PageDown = 0xe0f07a,
 				Released_PageUp = 0xe0f07d,
-				Released_PrintScreen = 0xe0f07ce0f012,
+				Released_PrintScreen = 0xe0f07c,
 			};
 
 			extern uint64_t validScanCodes[];
