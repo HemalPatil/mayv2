@@ -19,7 +19,9 @@ static const char* const ledFailStr = "updateLedState failed to set led state";
 static bool capsLocked = false;
 static bool capsToggleDone = false;
 static bool numLocked = true;
+static bool numToggleDone = true;
 static bool scrollLocked = false;
+static bool scrollToggleDone = false;
 static bool irqInstalled = false;
 static uint64_t scanCodeBuffer = 0;
 
@@ -180,6 +182,36 @@ void ps2KeyboardHandler() {
 					updateLedState();
 				} else {
 					capsToggleDone = true;
+				}
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Pressed_NumLock) {
+			if (!numLocked) {
+				numLocked = true;
+				updateLedState();
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Released_NumLock) {
+			if (numLocked) {
+				if (numToggleDone) {
+					numToggleDone = false;
+					numLocked = false;
+					updateLedState();
+				} else {
+					numToggleDone = true;
+				}
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Pressed_ScrollLock) {
+			if (!scrollLocked) {
+				scrollLocked = true;
+				updateLedState();
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Released_ScrollLock) {
+			if (scrollLocked) {
+				if (scrollToggleDone) {
+					scrollToggleDone = false;
+					scrollLocked = false;
+					updateLedState();
+				} else {
+					scrollToggleDone = true;
 				}
 			}
 		}
