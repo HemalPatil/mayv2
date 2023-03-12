@@ -14,12 +14,18 @@ static const char* const scanSetFailStr = "initialize failed to set scan code se
 static const char* const enableScanFailStr = "initialize failed to enable scanning";
 static const char* const ledFailStr = "updateLedState failed to set led state";
 
+static bool altLeft = false;
+static bool altRight = false;
 static bool capsLocked = false;
 static bool capsToggleDone = false;
+static bool ctrlLeft = false;
+static bool ctrlRight = false;
 static bool numLocked = true;
 static bool numToggleDone = true;
 static bool scrollLocked = false;
 static bool scrollToggleDone = false;
+static bool shiftLeft = false;
+static bool shiftRight = false;
 static bool irqInstalled = false;
 static uint64_t scanCodeBuffer = 0;
 
@@ -159,7 +165,55 @@ void ps2KeyboardHandler() {
 		}
 	}
 	if (isValid) {
-		if (scanCodeBuffer == ScanCodeSet2::Pressed_CapsLock) {
+		if (scanCodeBuffer == ScanCodeSet2::Pressed_CtrlLeft) {
+			if (!ctrlLeft) {
+				ctrlLeft = true;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Released_CtrlLeft) {
+			if (ctrlLeft) {
+				ctrlLeft = false;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Pressed_CtrlRight) {
+			if (!ctrlRight) {
+				ctrlRight = true;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Released_CtrlRight) {
+			if (ctrlRight) {
+				ctrlRight = false;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Pressed_ShiftLeft) {
+			if (!shiftLeft) {
+				shiftLeft = true;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Released_ShiftLeft) {
+			if (shiftLeft) {
+				shiftLeft = false;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Pressed_ShiftRight) {
+			if (!shiftRight) {
+				shiftRight = true;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Released_ShiftRight) {
+			if (shiftRight) {
+				shiftRight = false;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Pressed_AltLeft) {
+			if (!altLeft) {
+				altLeft = true;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Released_AltLeft) {
+			if (altLeft) {
+				altLeft = false;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Pressed_AltRight) {
+			if (!altRight) {
+				altRight = true;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Released_AltRight) {
+			if (altRight) {
+				altRight = false;
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Pressed_CapsLock) {
 			if (!capsLocked) {
 				capsLocked = true;
 				updateLedState();
