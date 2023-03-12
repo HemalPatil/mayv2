@@ -33,7 +33,8 @@ static const char* const checkRandStr = "Checking RDRAND presence";
 static const char* const enableX2ApicStr = "Enabling x2APIC";
 static const char* const rootFailStr = "Failed to find root filesystem\n";
 static const char* const rootFoundStr = "Root filesystem found ";
-static const char* const sipiSentStr = "SIPI sent\n";
+static const char* const sipiSentStr = "SIPI sent, waiting for CPU to respond";
+static const char* const onlineStr = "online\n";
 static const char* const initApuDoneStr = "Initialized";
 static const char* const creatingTssStr = "Creating TSS";
 static const char* const loadingIdtStr = "Loading IDT";
@@ -324,6 +325,7 @@ extern "C" [[noreturn]] void apuMain() {
 	if (!enableSse4()) {
 		Kernel::panic();
 	}
+	terminalPrintString(onlineStr, strlen(onlineStr));
 	terminalPrintSpaces4();
 	terminalPrintSpaces4();
 	terminalPrintString(sse4Str, strlen(sse4Str));
@@ -416,10 +418,6 @@ extern "C" [[noreturn]] void apuMain() {
 static Async::Thenable<void> bootApus() {
 	using namespace Kernel::Memory;
 
-	if (1 == APIC::cpus.size()) {
-		co_return;
-	}
-
 	terminalPrintString(initApusStr, strlen(initApusStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	terminalPrintChar('\n');
@@ -477,6 +475,7 @@ static Async::Thenable<void> bootApus() {
 			terminalPrintSpaces4();
 			terminalPrintSpaces4();
 			terminalPrintString(sipiSentStr, strlen(sipiSentStr));
+			terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 			co_await Kernel::ApuAwaiter(cpu.apicId);
 			terminalPrintSpaces4();
 			terminalPrintSpaces4();

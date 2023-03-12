@@ -10,9 +10,19 @@
 
 static const char* const keyStr = "key ";
 static const char* const initKeyStr = "Initializing PS2 keyboard on CPU [";
-static const char* const discardStr = "Drivers::PS2::Keyboard::ps2KeyboardHandler discarded buffer ";
+static const char* const namespaceStr = "Drivers::PS2::Keyboard::";
+static const char* const discardStr = "ps2KeyboardHandler discarded buffer ";
+static const char* const scanSetFailStr = "initialize failed to set scan code set 2";
+static const char* const enableScanFailStr = "initialize failed to enable scanning";
+static const char* const ledFailStr = "updateLedState failed to set led state";
 
+static bool capsLocked = false;
+static bool capsToggleDone = false;
+static bool numLocked = true;
+static bool scrollLocked = false;
 static uint64_t scanCodeBuffer = 0;
+
+static void updateLedState();
 
 bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 	// Assumes the PS/2 controller has been properly initialized
@@ -24,10 +34,21 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 	terminalPrintChar(']');
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 
-	// Set scan code set 2
-	IO::outputByte(Controller::dataPort, 0xf0);
-	Timers::spinDelay(10000);
+	// Enable scanning, set scan code set 2, and set LED state
+	IO::outputByte(Controller::dataPort, Command::SetScanCodeSet);
 	IO::outputByte(Controller::dataPort, 2);
+	if (!Controller::isCommandAcknowledged()) {
+		terminalPrintString(namespaceStr, strlen(namespaceStr));
+		terminalPrintString(scanSetFailStr, strlen(scanSetFailStr));
+		return false;
+	}
+	updateLedState();
+	IO::outputByte(Controller::dataPort, Keyboard::Command::EnableScanning);
+	if (!Controller::isCommandAcknowledged()) {
+		terminalPrintString(namespaceStr, strlen(namespaceStr));
+		terminalPrintString(enableScanFailStr, strlen(enableScanFailStr));
+		return false;
+	}
 
 	// Enable the keyboard interrupt in PS2 controller configuration
 	Kernel::IDT::disableInterrupts();
@@ -36,7 +57,7 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 	const uint8_t status = IO::inputByte(Controller::commandPort);
 	if (
 		!(status & Controller::Status::OutputFull) ||
-		!(status & Controller::Status::IsCommand) ||
+		!(status & Controller::Status::FromController) ||
 		(status & Controller::Status::TimeoutError) ||
 		(status & Controller::Status::ParityError)
 	) {
@@ -81,13 +102,36 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 	return true;
 }
 
+static void updateLedState() {
+	using namespace Drivers::PS2;
+
+	uint8_t ledState =
+		(capsLocked ? 4 : 0) |
+		(numLocked ? 2 : 0) |
+		(scrollLocked ? 1 : 0);
+	IO::outputByte(Controller::dataPort, Keyboard::Command::SetLed);
+	Drivers::Timers::spinDelay(10000);
+	IO::outputByte(Controller::dataPort, ledState);
+	if (!Controller::isCommandAcknowledged()) {
+		terminalPrintString(namespaceStr, strlen(namespaceStr));
+		terminalPrintString(ledFailStr, strlen(ledFailStr));
+		// TODO: a panic is overkill here, helpful for debugging
+		// Remove when the driver is established enough (i.e. both mouse and keyboard are working)
+		Kernel::panic();
+	}
+}
+
 void ps2KeyboardHandler() {
 	using namespace Drivers::PS2::Keyboard;
 
 	const auto byte = IO::inputByte(Drivers::PS2::Controller::dataPort);
+	if (byte == 0xfa) {
+		terminalPrintHex(&byte, 1);
+		APIC::acknowledgeLocalInterrupt();
+		return;
+	}
 	scanCodeBuffer <<= 8;
 	scanCodeBuffer |= byte;
-	// terminalPrintHex(&byte, 1);
 	bool isValid = false;
 	for (size_t i = 0; i < 227; ++i) {
 		if (scanCodeBuffer == validScanCodes[i]) {
@@ -96,6 +140,22 @@ void ps2KeyboardHandler() {
 		}
 	}
 	if (isValid) {
+		if (scanCodeBuffer == ScanCodeSet2::Pressed_CapsLock) {
+			if (!capsLocked) {
+				capsLocked = true;
+				updateLedState();
+			}
+		} else if (scanCodeBuffer == ScanCodeSet2::Released_CapsLock) {
+			if (capsLocked) {
+				if (capsToggleDone) {
+					capsToggleDone = false;
+					capsLocked = false;
+					updateLedState();
+				} else {
+					capsToggleDone = true;
+				}
+			}
+		}
 		scanCodeBuffer = 0;
 	} else {
 		if (
@@ -117,6 +177,7 @@ void ps2KeyboardHandler() {
 		} else {
 			// Discard the scanCodeBuffer
 			// Perhaps it's an unhandled scan code or a fake shift code (0xe012/0xe0f012)
+			terminalPrintString(namespaceStr, strlen(namespaceStr));
 			terminalPrintString(discardStr, strlen(discardStr));
 			terminalPrintHex(&scanCodeBuffer, sizeof(scanCodeBuffer));
 			scanCodeBuffer = 0;

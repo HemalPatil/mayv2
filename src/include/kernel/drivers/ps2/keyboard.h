@@ -5,9 +5,22 @@
 namespace Drivers {
 	namespace PS2 {
 		namespace Keyboard {
+			enum Command : uint8_t {
+				SetLed = 0xed,
+				SetScanCodeSet = 0xf0,
+				EnableScanning = 0xf4
+			};
+
+			enum LedState : uint8_t {
+				ScrollLock = 1,
+				NumLock = 2,
+				CapsLock = 4,
+			};
+
 			enum ScanCodeSet2 : uint64_t {
 				// Key hints provided according to ANSI 104 US QWERTY layout
 				None = 0,
+
 				Pressed_F9 = 0x01,
 				Pressed_F5 = 0x03,
 				Pressed_F3 = 0x04,

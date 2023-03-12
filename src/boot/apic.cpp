@@ -27,6 +27,9 @@ static const char* const mappingApicStr = "Mapping local APIC to kernel address 
 static const char* const mappingIoApicStr = "Mapping IOAPIC to kernel address space";
 static const char* const enablingApicStr = "Enabling APIC";
 static const char* const bootCpuStr = "Boot CPU [";
+static const char* const noIoapicStr = "no IOAPIC";
+static const char* const cpusFoundStr = "CPUs found [";
+static const char* const require2CpusStr = "Require at least 2 CPUs\n";
 
 bool APIC::parse() {
 	using namespace Kernel::Memory;
@@ -131,11 +134,27 @@ bool APIC::parse() {
 		entry = (EntryHeader*)((uint64_t)entry + entry->length);
 	}
 
+	// Check at least 2 CPUs are present
+	terminalPrintSpaces4();
+	terminalPrintString(cpusFoundStr, strlen(cpusFoundStr));
+	terminalPrintDecimal(cpus.size());
+	terminalPrintString("]\n", 2);
+	if (cpus.size() < 2) {
+		terminalPrintSpaces4();
+		terminalPrintString(require2CpusStr, strlen(require2CpusStr));
+		return false;
+	}
+
 	// Map the 1st IOAPIC page to kernel address space
 	// TODO: deal with multiple IOAPICs
 	terminalPrintSpaces4();
 	terminalPrintString(mappingIoApicStr, strlen(mappingIoApicStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
+	if (ioEntries.size() == 0) {
+		terminalPrintString(noIoapicStr, strlen(noIoapicStr));
+		terminalPrintChar('\n');
+		return false;
+	}
 	const auto requestResult = Virtual::requestPages(
 		1,
 		(

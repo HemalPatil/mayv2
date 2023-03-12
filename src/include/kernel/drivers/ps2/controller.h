@@ -25,7 +25,7 @@ namespace Drivers {
 			enum Status : uint8_t {
 				OutputFull = 1,
 				InputFull = 2,
-				IsCommand = 8,
+				FromController = 8,
 				TimeoutError = 64,
 				ParityError = 128
 			};
@@ -34,6 +34,12 @@ namespace Drivers {
 			extern uint16_t dataPort;
 
 			extern bool initialize();
+
+			// Makes sure the input/output (bit 1/0, determined by isOutput) buffer is full
+			// fromController makes sure the data received is from controller (bit 3)
+			extern bool isBufferFull(bool isOutput, bool fromController);
+
+			extern bool isCommandAcknowledged();
 		}
 	}
 }
