@@ -5,6 +5,7 @@
 #include <drivers/filesystems/jolietIso.h>
 #include <drivers/ps2/controller.h>
 #include <drivers/ps2/keyboard.h>
+#include <drivers/ps2/mouse.h>
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
@@ -218,9 +219,10 @@ extern "C" [[noreturn]] void bpuMain(
 }
 
 static Async::Thenable<void> initPs2Devices() {
-	// Install keyboard IRQ handler on last CPU
+	// Install keyboard IRQ handler on last CPU and mouse IRQ handler on 2nd CPU
 	if (
 		!Drivers::PS2::Controller::initialize() ||
+		!Drivers::PS2::Mouse::initialize(APIC::cpus.at(1).apicId) ||
 		!Drivers::PS2::Keyboard::initialize(APIC::cpus.back().apicId)
 	) {
 		Kernel::panic();

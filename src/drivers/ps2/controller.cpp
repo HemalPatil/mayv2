@@ -90,13 +90,12 @@ bool Drivers::PS2::Controller::isBufferFull(bool isOutput, bool fromController) 
 	Timers::spinDelay(10000);
 	const auto status = IO::inputByte(commandPort);
 	if (
-		!(status & (isOutput ? Status::OutputFull : Status::InputFull)) ||
-		(fromController && !(status & Status::FromController)) ||
-		(!fromController && (status & Status::FromController)) ||
-		(status & Status::TimeoutError) ||
-		(status & Status::ParityError)
+		(status & (isOutput ? Status::OutputFull : Status::InputFull)) &&
+		((status & Status::FromController) == (fromController ? Status::FromController : 0)) &&
+		(status & Status::TimeoutError) == 0 &&
+		(status & Status::ParityError) == 0
 	) {
-		return false;
+		return true;
 	}
-	return true;
+	return false;
 }

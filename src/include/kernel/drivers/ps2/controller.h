@@ -11,7 +11,8 @@ namespace Drivers {
 				DisableMouse = 0xa7,
 				EnableMouse = 0xa8,
 				DisableKeyboard = 0xad,
-				EnableKeyboard = 0xae
+				EnableKeyboard = 0xae,
+				WriteToMouse = 0xd4,
 			};
 
 			enum Configruation : uint8_t {

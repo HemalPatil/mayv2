@@ -5,10 +5,8 @@
 #include <drivers/ps2/keyboard.h>
 #include <drivers/timers.h>
 #include <io.h>
-#include <kernel.h>
 #include <terminal.h>
 
-static const char* const keyStr = "key ";
 static const char* const initKeyStr = "Initializing PS2 keyboard on CPU [";
 static const char* const namespaceStr = "Drivers::PS2::Keyboard::";
 static const char* const discardStr = "ps2KeyboardHandler discarded buffer ";
@@ -65,14 +63,7 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 	// Enable the keyboard interrupt in PS2 controller configuration
 	Kernel::IDT::disableInterrupts();
 	IO::outputByte(Controller::commandPort, Controller::Command::ReadConfiguration);
-	Drivers::Timers::spinDelay(10000);
-	const uint8_t status = IO::inputByte(Controller::commandPort);
-	if (
-		!(status & Controller::Status::OutputFull) ||
-		!(status & Controller::Status::FromController) ||
-		(status & Controller::Status::TimeoutError) ||
-		(status & Controller::Status::ParityError)
-	) {
+	if (!Controller::isBufferFull(true, true)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
@@ -110,7 +101,6 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 	Kernel::IDT::enableInterrupts();
 
 	terminalPrintString(doneStr, strlen(doneStr));
-	terminalPrintChar('\n');
 	terminalPrintChar('\n');
 	return true;
 }
