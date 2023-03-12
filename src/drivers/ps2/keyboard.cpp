@@ -20,6 +20,7 @@ static bool capsLocked = false;
 static bool capsToggleDone = false;
 static bool numLocked = true;
 static bool scrollLocked = false;
+static bool irqInstalled = false;
 static uint64_t scanCodeBuffer = 0;
 
 static void updateLedState();
@@ -34,15 +35,24 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 	terminalPrintChar(']');
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 
-	// Enable scanning, set scan code set 2, and set LED state
+	// Set scan code set 2
 	IO::outputByte(Controller::dataPort, Command::SetScanCodeSet);
+	if (!Controller::isCommandAcknowledged()) {
+		terminalPrintString(namespaceStr, strlen(namespaceStr));
+		terminalPrintString(scanSetFailStr, strlen(scanSetFailStr));
+		return false;
+	}
 	IO::outputByte(Controller::dataPort, 2);
 	if (!Controller::isCommandAcknowledged()) {
 		terminalPrintString(namespaceStr, strlen(namespaceStr));
 		terminalPrintString(scanSetFailStr, strlen(scanSetFailStr));
 		return false;
 	}
+
+	// Update LED state
 	updateLedState();
+
+	// Enable scanning
 	IO::outputByte(Controller::dataPort, Keyboard::Command::EnableScanning);
 	if (!Controller::isCommandAcknowledged()) {
 		terminalPrintString(namespaceStr, strlen(namespaceStr));
@@ -94,6 +104,7 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 	keyEntry.destination = apicId;
 	writeIoRedirectionEntry(Kernel::IRQ::Keyboard, keyEntry);
 	++Kernel::IDT::availableInterrupt;
+	irqInstalled = true;
 	Kernel::IDT::enableInterrupts();
 
 	terminalPrintString(doneStr, strlen(doneStr));
@@ -105,11 +116,25 @@ bool Drivers::PS2::Keyboard::initialize(uint32_t apicId) {
 static void updateLedState() {
 	using namespace Drivers::PS2;
 
+	// Mask the IRQ handler to avoid getting ACK IRQs for commands
+	if (irqInstalled) {
+		APIC::IORedirectionEntry keyEntry = APIC::readIoRedirectionEntry(Kernel::IRQ::Keyboard);
+		keyEntry.mask = 1;
+		writeIoRedirectionEntry(Kernel::IRQ::Keyboard, keyEntry);
+	}
+
 	uint8_t ledState =
 		(capsLocked ? 4 : 0) |
 		(numLocked ? 2 : 0) |
 		(scrollLocked ? 1 : 0);
 	IO::outputByte(Controller::dataPort, Keyboard::Command::SetLed);
+	if (!Controller::isCommandAcknowledged()) {
+		terminalPrintString(namespaceStr, strlen(namespaceStr));
+		terminalPrintString(ledFailStr, strlen(ledFailStr));
+		// TODO: a panic is overkill here, helpful for debugging
+		// Remove when the driver is established enough (i.e. both mouse and keyboard are working)
+		Kernel::panic();
+	}
 	Drivers::Timers::spinDelay(10000);
 	IO::outputByte(Controller::dataPort, ledState);
 	if (!Controller::isCommandAcknowledged()) {
@@ -119,17 +144,19 @@ static void updateLedState() {
 		// Remove when the driver is established enough (i.e. both mouse and keyboard are working)
 		Kernel::panic();
 	}
+
+	// Unmask the IRQ handler
+	if (irqInstalled) {
+		APIC::IORedirectionEntry keyEntry = APIC::readIoRedirectionEntry(Kernel::IRQ::Keyboard);
+		keyEntry.mask = 0;
+		writeIoRedirectionEntry(Kernel::IRQ::Keyboard, keyEntry);
+	}
 }
 
 void ps2KeyboardHandler() {
 	using namespace Drivers::PS2::Keyboard;
 
 	const auto byte = IO::inputByte(Drivers::PS2::Controller::dataPort);
-	if (byte == 0xfa) {
-		terminalPrintHex(&byte, 1);
-		APIC::acknowledgeLocalInterrupt();
-		return;
-	}
 	scanCodeBuffer <<= 8;
 	scanCodeBuffer |= byte;
 	bool isValid = false;
