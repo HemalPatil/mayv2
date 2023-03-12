@@ -222,7 +222,6 @@ static Async::Thenable<void> initPs2Devices() {
 	// Install keyboard IRQ handler on last CPU and mouse IRQ handler on 2nd CPU
 	if (
 		!Drivers::PS2::Controller::initialize() ||
-		!Drivers::PS2::Mouse::initialize(APIC::cpus.at(1).apicId) ||
 		!Drivers::PS2::Keyboard::initialize(APIC::cpus.back().apicId)
 	) {
 		Kernel::panic();
