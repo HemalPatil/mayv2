@@ -17,7 +17,8 @@ struct InfoTable {
 	uint16_t vbeModesInfoCount;
 	uint64_t kernelPhyMemBase;
 	uint64_t pml4tPhysicalAddress;
-	uint64_t vbeModeNumbersLocation;
+	uint32_t vbeModeNumbersLocation;
+	uint32_t reserved0;
 	uint64_t globalCtorsLocation;
 	uint64_t globalCtorsCount;
 	char rootFsGuid[36];

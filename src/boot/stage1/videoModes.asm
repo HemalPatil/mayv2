@@ -10,15 +10,16 @@ VBE_MODES_INFO_LOCATION equ 0x30000
 VBE_MODE_INFO_SIZE equ 256
 VBE_INVALID_MODE equ 0xffff
 INFOTABLE_VBE_MODES_COUNT equ 22
-INFOTABLE_VBE_MODES_INFO_LOCATION equ 0x30000
+INFOTABLE_VBE_MODES_INFO_LOCATION equ 8
 INFOTABLE_VBE_MODE_NUMBERS_LOCATION equ 40
 
 times 8 - ($-$$) db 0
 
 magicBytes db 'VIDM'
-vidModesStr db 'Getting VESA VBE modes', 13, 10, 0
-infoBlockFailStr db 'Cannot get VESA VBE modes information. Cannot boot!', 13, 10, 0
+vidModesStr db 'Getting VESA VBE2 modes', 13, 10, 0
+infoBlockFailStr db 'Cannot get VESA VBE2 modes information. Cannot boot!', 13, 10, 0
 
+align 16
 vbeInfoBlock:
 	.signature db 'VBE2'
 	.version dw 0
@@ -57,13 +58,15 @@ start:
 	mov eax, [vbeInfoBlock]
 	cmp eax, VBE_VESA_SIGNATURE
 	jne errorEnd
+	mov ax, [vbeInfoBlock.version]
+	cmp ax, VBE_VERSION_2
+	jne errorEnd
 
 	; Start getting the modes info
 	; ds:si points at the modes array, si is incremented by 2 each time as each mode number is 2 bytes in size
 	; Keep loading cx with mode number from [ds:si] until VBE_INVALID_MODE is encountered
 	; es:di points to where each mode's info is stored, di is incremented by 256 each time i.e. size of mode info struct
-	; FIXME: assumes the memory at VBE_MODES_INFO_LOCATION of size 64KiB is free
-	; dx holds the mode count
+	; dx has the number of modes found
 	; store the modes count, numbers, and info location in InfoTable
 	mov ax, [vbeInfoBlock.videoModesSegment]
 	mov ds, ax
@@ -74,11 +77,11 @@ start:
 	mov ax, ds
 	shl eax, 4
 	add eax, esi
-	push eax
+	push eax	; Store the linear address of mode numbers array
 	mov ax, VBE_MODES_INFO_LOCATION >> 4
 	mov es, ax
-	xor di, di
-	xor dx, dx
+	xor edi, edi
+	xor edx, edx
 vbeModesLoop:
 	mov cx, [ds:si]
 	cmp cx, VBE_INVALID_MODE
@@ -95,17 +98,12 @@ vbeModesLoop:
 vbeModesLoopEnd:
 	mov ax, [bp + 8]
 	mov es, ax
+	xor ebx, ebx
 	mov bx, [bp + 6]
 	mov word [es:bx + INFOTABLE_VBE_MODES_COUNT], dx
 	mov dword [es:bx + INFOTABLE_VBE_MODES_INFO_LOCATION], VBE_MODES_INFO_LOCATION
 	pop eax
-	mov dword [es:bx + INFOTABLE_VBE_MODE_NUMBERS_LOCATION], eax
-	mov dword [es:bx + INFOTABLE_VBE_MODE_NUMBERS_LOCATION + 4], 0
-	; FIXME: should switch video mode by dropping from long->protected->real mode
-	; this is hacky
-	; mov ax, 0x4f02
-	; mov bx, 0x4144
-	; int 0x10
+	mov [es:bx + INFOTABLE_VBE_MODE_NUMBERS_LOCATION], eax
 	pop di
 	pop es
 	pop ds

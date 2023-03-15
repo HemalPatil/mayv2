@@ -9,13 +9,13 @@
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
+#include <drivers/video/vga.h>
 #include <kernel.h>
 #include <pcie.h>
 #include <random.h>
 #include <sse4.h>
 #include <terminal.h>
 #include <tss64.h>
-// #include <vbe.h>
 
 static const char* const kernelLoadedStr = "Kernel loaded\nRunning in 64-bit long mode\n\n";
 static const char* const kernelPanicStr = "\n!!! Kernel panic !!!\n!!! Halting the system !!!\n";
