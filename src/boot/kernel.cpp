@@ -2,6 +2,7 @@
 #include <apic.h>
 #include <commonstrings.h>
 #include <cstring>
+#include <drivers/console.h>
 #include <drivers/filesystems/jolietIso.h>
 #include <drivers/ps2/controller.h>
 #include <drivers/ps2/keyboard.h>
