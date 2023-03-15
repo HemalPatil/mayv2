@@ -1,6 +1,7 @@
 #pragma once
 
 #include <drivers/storage/blockdevice.h>
+#include <map>
 #include <memory>
 #include <random.h>
 #include <string>
@@ -9,23 +10,29 @@
 
 namespace Drivers {
 namespace FS {
-	enum Status : uint32_t {
+	class BaseFS;
+
+	enum Status : uint64_t {
 		Ok = 0,
-		IOError = 1,
-		NotDirectory = 2,
-		NotFile = 4,
-		NoSuchDirectoryOrFile = 8,
-		NoAccess = 16,
-		Locked = 32
+		IOError = 1 << 0,
+		NotDirectory = 1 << 1,
+		NotFile = 1 << 2,
+		NoSuchDirectoryOrFile = 1 << 3,
+		NoAccess = 1 << 4,
+		NonWriteable = 1 << 5,
+		AlreadyLocked = 1 << 6,
+		AlreadyMounted = 1 << 7,
 	};
 
 	struct [[nodiscard]] DirectoryEntry {
 		std::string name;
-		bool isFile;
 		bool isDir;
+		bool isFile;
+		bool isMounted;
 		bool isSymLink;
-		size_t lba;
-		size_t size;
+		size_t offset = SIZE_MAX;
+		size_t size = SIZE_MAX;
+		std::shared_ptr<BaseFS> mountedFs;
 	};
 
 	struct ReadDirectoryResult {
@@ -35,16 +42,26 @@ namespace FS {
 
 	struct ReadFileResult {
 		Status status = Status::Ok;
-		Drivers::Storage::Buffer data;
+		Storage::Buffer data;
 	};
 
 	class BaseFS {
 		protected:
-			std::shared_ptr<Drivers::Storage::BlockDevice> device;
-			Random::GUIDv4 guid;
+			const std::shared_ptr<Storage::BlockDevice> device;
+			const size_t deviceBlockSize;
+			const size_t blockSize;
+			const size_t rootDirOffset;
+			const size_t rootDirSize;
+			const Random::GUIDv4 guid;
+			std::map<std::string, std::vector<DirectoryEntry>> cachedDirectoryEntries;
 
 		public:
-			BaseFS(std::shared_ptr<Drivers::Storage::BlockDevice> blockDevice);
+			BaseFS(
+				std::shared_ptr<Storage::BlockDevice> blockDevice,
+				size_t blockSize,
+				size_t rootDirOffset,
+				size_t rootDirSize
+			);
 			const Random::GUIDv4& getGuid() const;
 
 			// Reads directory at given absolute path ending in '/'

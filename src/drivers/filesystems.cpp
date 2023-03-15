@@ -40,7 +40,17 @@ std::vector<std::string> Drivers::FS::splitAbsolutePath(const std::string &absol
 	return pathParts;
 }
 
-Drivers::FS::BaseFS::BaseFS(std::shared_ptr<Storage::BlockDevice> blockDevice) : device(blockDevice), guid() {}
+Drivers::FS::BaseFS::BaseFS(
+	std::shared_ptr<Storage::BlockDevice> blockDevice,
+	size_t blockSize,
+	size_t rootDirOffset,
+	size_t rootDirSize
+)	:	device(blockDevice),
+		deviceBlockSize(blockDevice->getBlockSize()),
+		blockSize(blockSize),
+		rootDirOffset(rootDirOffset),
+		rootDirSize(rootDirSize),
+		guid() {}
 
 const Random::GUIDv4& Drivers::FS::BaseFS::getGuid() const {
 	return this->guid;

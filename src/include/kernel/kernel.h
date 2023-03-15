@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <infotable.h>
 #include <pml4t.h>
-#include <terminal.h>
 #include <vector>
 
 #define GIB_1 (1024 * 1024 * 1024UL)

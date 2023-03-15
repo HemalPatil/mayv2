@@ -1,7 +1,6 @@
 #pragma once
 
 #include <drivers/filesystems.h>
-#include <map>
 
 namespace Drivers {
 namespace FS {
@@ -69,21 +68,21 @@ namespace FS {
 			} __attribute__((packed));
 
 		private:
-			size_t lbaSize;
-			size_t rootDirLba;
-			size_t rootDirExtentSize;
-			std::map<std::string, std::vector<DirectoryEntry>> cachedDirectoryEntries;
-
 			static std::vector<DirectoryEntry> extentToEntries(
 				const DirectoryRecord* const extent,
-				size_t lba,
+				size_t offset,
 				size_t size,
-				size_t parentLba,
+				size_t parentOffset,
 				size_t parentSize
 			);
 
 		public:
-			JolietISO(std::shared_ptr<Storage::BlockDevice> device, const Storage::Buffer &svdSectorBuffer);
+			JolietISO(
+				std::shared_ptr<Storage::BlockDevice> blockDevice,
+				size_t blockSize,
+				size_t rootDirOffset,
+				size_t rootDirSize
+			);
 
 			Async::Thenable<bool> initialize();
 
@@ -93,7 +92,9 @@ namespace FS {
 			// TODO: should accept a file descriptor instead that was obtained by opening the file first
 			Async::Thenable<ReadFileResult> readFile(const std::string &absolutePath) override;
 
-			static Async::Thenable<Storage::Buffer> isJolietIso(std::shared_ptr<Storage::BlockDevice> device);
+			// Returns a std::shared_ptr to JolietISO filesystem if found on device
+			// Returns nullptr otherwise
+			static Async::Thenable<std::shared_ptr<JolietISO>> isJolietIso(std::shared_ptr<Storage::BlockDevice> device);
 	};
 }
 }

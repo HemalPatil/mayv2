@@ -551,23 +551,20 @@ static Async::Thenable<void> createFileSystems() {
 		for (const auto &device : controller.getDevices()) {
 			// Try with JolietISO for SATAPI devices first because that is the most likely FS
 			if (AHCI::Device::Type::Satapi == device->getType()) {
-				auto svd = std::move(co_await FS::JolietISO::isJolietIso(device));
-				if (svd) {
-					std::shared_ptr<FS::JolietISO> iso = std::make_shared<FS::JolietISO>(device, svd);
-					if (co_await iso->initialize()) {
-						FS::filesystems.push_back(iso);
-						terminalPrintSpaces4();
-						iso->getGuid().print(true);
-						terminalPrintChar(' ');
-						terminalPrintString(isoFoundStr, strlen(isoFoundStr));
-						terminalPrintChar(' ');
-						terminalPrintString(atAhciStr, strlen(atAhciStr));
-						terminalPrintChar(' ');
-						terminalPrintDecimal(controllerCount);
-						terminalPrintChar(':');
-						terminalPrintDecimal(device->getPortNumber());
-						terminalPrintChar('\n');
-					}
+				auto iso = std::move(co_await FS::JolietISO::isJolietIso(device));
+				if (iso && co_await iso->initialize()) {
+					FS::filesystems.push_back(iso);
+					terminalPrintSpaces4();
+					iso->getGuid().print(true);
+					terminalPrintChar(' ');
+					terminalPrintString(isoFoundStr, strlen(isoFoundStr));
+					terminalPrintChar(' ');
+					terminalPrintString(atAhciStr, strlen(atAhciStr));
+					terminalPrintChar(' ');
+					terminalPrintDecimal(controllerCount);
+					terminalPrintChar(':');
+					terminalPrintDecimal(device->getPortNumber());
+					terminalPrintChar('\n');
 				}
 			}
 		}
