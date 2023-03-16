@@ -427,7 +427,7 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintSpaces4();
 	terminalPrintString(apuBootStr, strlen(apuBootStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	const auto fileReadResult = std::move(co_await Drivers::FS::root->readFile("/boot/stage1/apu.bin"));
+	const auto fileReadResult = Drivers::FS::ReadFileResult(); //std::move(co_await Drivers::FS::root->readFile("/boot/stage1/apu.bin"));
 	if (fileReadResult.status == Drivers::FS::Status::Ok && fileReadResult.data) {
 		memcpy((void*)APU_BOOTLOADER_ORIGIN, fileReadResult.data.getData(), fileReadResult.data.getSize());
 	} else {
@@ -512,10 +512,10 @@ static Async::Thenable<void> findRootFs() {
 	for (const auto &fs : FS::filesystems) {
 		const auto bootDirResult = std::move(co_await fs->readDirectory("/boot/"));
 		if (bootDirResult.status == FS::Status::Ok) {
-			for (const auto &file : bootDirResult.entries) {
+			for (const auto &file : bootDirResult.directory->children) {
 				if (
-					file.isFile &&
-					file.name == std::string(Kernel::infoTable.rootFsGuid) + ".root-fs"
+					(file->type & Drivers::FS::NodeType::File) &&
+					file->name == std::string(Kernel::infoTable.rootFsGuid) + ".root-fs"
 				) {
 					FS::root = fs;
 					break;
@@ -535,6 +535,7 @@ static Async::Thenable<void> findRootFs() {
 		terminalPrintString(rootFailStr, strlen(rootFailStr));
 		Kernel::panic();
 	}
+	Kernel::hangSystem();
 	co_return;
 }
 
@@ -552,7 +553,7 @@ static Async::Thenable<void> createFileSystems() {
 			// Try with JolietISO for SATAPI devices first because that is the most likely FS
 			if (AHCI::Device::Type::Satapi == device->getType()) {
 				auto iso = std::move(co_await FS::JolietISO::isJolietIso(device));
-				if (iso && co_await iso->initialize()) {
+				if (iso) {
 					FS::filesystems.push_back(iso);
 					terminalPrintSpaces4();
 					iso->getGuid().print(true);

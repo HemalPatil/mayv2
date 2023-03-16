@@ -1,11 +1,12 @@
 #include <cstring>
 #include <drivers/filesystems.h>
 #include <terminal.h>
+#include <unicode.h>
 
 static const char* const malformedStr = "FS::isValidAbsolutePath malformed absolute path [";
 
-std::vector<std::shared_ptr<Drivers::FS::BaseFS>> Drivers::FS::filesystems;
-std::shared_ptr<Drivers::FS::BaseFS> Drivers::FS::root;
+std::vector<std::shared_ptr<Drivers::FS::Base>> Drivers::FS::filesystems;
+std::shared_ptr<Drivers::FS::Base> Drivers::FS::root;
 
 std::tuple<std::string, std::string> Drivers::FS::splitParentDirectory(const std::string &absolutePath) {
 	if (absolutePath == "/") {
@@ -40,23 +41,24 @@ std::vector<std::string> Drivers::FS::splitAbsolutePath(const std::string &absol
 	return pathParts;
 }
 
-Drivers::FS::BaseFS::BaseFS(
+Drivers::FS::Base::Base(
 	std::shared_ptr<Storage::BlockDevice> blockDevice,
 	size_t blockSize,
-	size_t rootDirOffset,
-	size_t rootDirSize
+	std::shared_ptr<Node> rootNode
 )	:	device(blockDevice),
 		deviceBlockSize(blockDevice->getBlockSize()),
 		blockSize(blockSize),
-		rootDirOffset(rootDirOffset),
-		rootDirSize(rootDirSize),
+		rootNode(rootNode),
 		guid() {}
 
-const Random::GUIDv4& Drivers::FS::BaseFS::getGuid() const {
+const Random::GUIDv4& Drivers::FS::Base::getGuid() const {
 	return this->guid;
 }
 
 bool Drivers::FS::isValidAbsolutePath(const std::string &absolutePath, bool isDir) {
+	if (!Unicode::isValidUtf8(absolutePath)) {
+		return false;
+	}
 	if (!(
 		0 == absolutePath.length() ||
 		'/' != absolutePath.at(0) ||
@@ -64,15 +66,20 @@ bool Drivers::FS::isValidAbsolutePath(const std::string &absolutePath, bool isDi
 		(!isDir && '/' == absolutePath.back())
 	)) {
 		for (size_t i = 1; i < absolutePath.length(); ++i) {
-			if (absolutePath.at(i) == '/' && absolutePath.at(i - 1) == '/') {
+			auto c = absolutePath.at(i);
+			// Check consecutive '/'
+			if (c == '/' && absolutePath.at(i - 1) == '/') {
+				return false;
+			}
+			if (
+				(c >= 0 && c <= 0x1f) ||	// Unicode control characters C0
+				c == '\\' ||
+				c == '|'
+			) {
 				return false;
 			}
 		}
 		return true;
-	} else {
-		terminalPrintString(malformedStr, strlen(malformedStr));
-		terminalPrintString(absolutePath.c_str(), absolutePath.length());
-		terminalPrintChar(']');
-		Kernel::panic();
 	}
+	return false;
 }

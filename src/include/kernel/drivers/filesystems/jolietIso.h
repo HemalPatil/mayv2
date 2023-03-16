@@ -4,7 +4,7 @@
 
 namespace Drivers {
 namespace FS {
-	class JolietISO : public BaseFS {
+	class JolietISO : public Base {
 		public:
 			static const std::string cdSignature;
 			static const uint8_t directoryFlag = 2;
@@ -68,29 +68,24 @@ namespace FS {
 			} __attribute__((packed));
 
 		private:
-			static std::vector<DirectoryEntry> extentToEntries(
+			static std::vector<std::shared_ptr<Node>> extentToNodes(
 				const DirectoryRecord* const extent,
-				size_t offset,
-				size_t size,
-				size_t parentOffset,
-				size_t parentSize
+				size_t blockSize,
+				const std::shared_ptr<Node> &selfNode
 			);
 
 		public:
 			JolietISO(
 				std::shared_ptr<Storage::BlockDevice> blockDevice,
 				size_t blockSize,
-				size_t rootDirOffset,
-				size_t rootDirSize
+				std::shared_ptr<Node> rootNode
 			);
-
-			Async::Thenable<bool> initialize();
 
 			// Reads directory at given absolute path ending in '/'
 			Async::Thenable<ReadDirectoryResult> readDirectory(const std::string &absolutePath) override;
 
-			// TODO: should accept a file descriptor instead that was obtained by opening the file first
-			Async::Thenable<ReadFileResult> readFile(const std::string &absolutePath) override;
+			// // TODO: should accept a file descriptor instead that was obtained by opening the file first
+			// Async::Thenable<ReadFileResult> readFile(const std::string &absolutePath) override;
 
 			// Returns a std::shared_ptr to JolietISO filesystem if found on device
 			// Returns nullptr otherwise
