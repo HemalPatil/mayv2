@@ -11,7 +11,8 @@
 namespace Drivers {
 namespace FS {
 	class Base;
-	class Node;
+	struct FileDescriptor;
+	struct Node;
 
 	enum Status : uint64_t {
 		Ok = 0,
@@ -21,7 +22,7 @@ namespace FS {
 		NotFile = 1 << 3,
 		NoSuchDirectoryOrFile = 1 << 4,
 		NoAccess = 1 << 5,
-		NonWriteable = 1 << 6,
+		NonWritable = 1 << 6,
 		AlreadyLocked = 1 << 7,
 		AlreadyMounted = 1 << 8,
 	};
@@ -35,6 +36,27 @@ namespace FS {
 		Process = 1 << 4,
 	};
 
+	enum OpenFileType : uint64_t {
+		Read = 0,
+		Create = 1 << 0,
+		Write = 1 << 1,
+		Append = 1 << 2,
+		SeekEnd = 1 << 3,
+	};
+
+	struct FileDescriptor {
+		std::shared_ptr<Node> fileNode;
+		size_t readOffset = SIZE_MAX;
+		size_t writeOffset = SIZE_MAX;
+		OpenFileType openType;
+	};
+
+	struct FileBuffer {
+		size_t base = SIZE_MAX;
+		bool locked = false;
+		Storage::Buffer buffer;
+	};
+
 	struct Node {
 		std::string name;
 		NodeType type = NodeType::None;
@@ -44,6 +66,14 @@ namespace FS {
 		std::shared_ptr<Node> parent;
 		bool childrenCreated = false;
 		std::vector<std::shared_ptr<Node>> children;
+		std::vector<std::shared_ptr<FileDescriptor>> openFileDescriptors;
+		std::vector<FileBuffer> fileBuffers;
+		bool locked = false;
+	};
+
+	struct OpenFileResult {
+		Status status = Status::Ok;
+		std::shared_ptr<FileDescriptor> file;
 	};
 
 	struct ReadDirectoryResult {
@@ -63,6 +93,7 @@ namespace FS {
 			const size_t blockSize;
 			const std::shared_ptr<Node> rootNode;
 			const Random::GUIDv4 guid;
+			std::vector<std::shared_ptr<Node>> openFiles;	// To be used when this FS will be mounted
 			Base(
 				std::shared_ptr<Storage::BlockDevice> blockDevice,
 				size_t blockSize,
@@ -71,6 +102,8 @@ namespace FS {
 
 		public:
 			const Random::GUIDv4& getGuid() const;
+
+			Async::Thenable<OpenFileResult> openFile(const std::string &absolutePath, OpenFileType openType);
 
 			// Reads directory at given absolute path ending in '/'
 			virtual Async::Thenable<ReadDirectoryResult> readDirectory(const std::string &absolutePath) = 0;

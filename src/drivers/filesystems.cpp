@@ -8,6 +8,27 @@ static const char* const malformedStr = "FS::isValidAbsolutePath malformed absol
 std::vector<std::shared_ptr<Drivers::FS::Base>> Drivers::FS::filesystems;
 std::shared_ptr<Drivers::FS::Base> Drivers::FS::root;
 
+Async::Thenable<Drivers::FS::OpenFileResult>
+Drivers::FS::Base::openFile(const std::string &absolutePath, OpenFileType openType) {
+	OpenFileResult errorResult;
+	if (!isValidAbsolutePath(absolutePath, false)) {
+		errorResult.status = Status::InvalidPath;
+		co_return std::move(errorResult);
+	}
+	const auto parentSplit = splitParentDirectory(absolutePath);
+	const auto parentDirResult = co_await this->readDirectory(std::get<0>(parentSplit));
+	if (parentDirResult.status != Status::Ok) {
+		errorResult.status = parentDirResult.status;
+		co_return std::move(errorResult);
+	}
+	std::shared_ptr<Node> fileNode;
+	for (const auto &child : parentDirResult.directory->children) {
+		if (child->type & NodeType::File) {
+			
+		}
+	}
+}
+
 std::tuple<std::string, std::string> Drivers::FS::splitParentDirectory(const std::string &absolutePath) {
 	if (absolutePath == "/") {
 		return {absolutePath, ""};

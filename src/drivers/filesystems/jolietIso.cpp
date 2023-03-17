@@ -157,6 +157,14 @@ Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::JolietISO::readDi
 	std::shared_ptr<Node> currentNode = this->rootNode;
 	for (size_t i = 0; i <= pathParts.size(); ++i) {
 		if (currentNode->type & NodeType::Directory) {
+			if (currentNode->type & NodeType::MountPoint) {
+				std::string remainingPath = "/";
+				for (size_t j = i; j < pathParts.size(); ++j) {
+					remainingPath += pathParts.at(j);
+					remainingPath += '/';
+				}
+				co_return co_await currentNode->mountedFs->readDirectory(remainingPath);
+			}
 			if (!currentNode->childrenCreated) {
 				size_t blockCount = currentNode->size / this->deviceBlockSize;
 				if (currentNode->size != blockCount * this->deviceBlockSize) {
@@ -200,4 +208,5 @@ Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::JolietISO::readDi
 			co_return std::move(errorResult);
 		}
 	}
+	co_return std::move(errorResult);
 }
