@@ -48,7 +48,7 @@ bool Drivers::Timers::HPET::initialize() {
 			requestResult.address,
 			(void*)hpetTable->address,
 			1,
-			RequestType::CacheDisable
+			RequestType::CacheDisable | RequestType::Writable
 		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
@@ -117,6 +117,7 @@ void hpetHandler() {
 	if (Drivers::Timers::HPET::timerInterruptCallback) {
 		Drivers::Timers::HPET::timerInterruptCallback();
 	} else {
+		// TODO: remove this unused HPET interrupt
 		terminalPrintString(hpetStr, strlen(hpetStr));
 	}
 	APIC::acknowledgeLocalInterrupt();

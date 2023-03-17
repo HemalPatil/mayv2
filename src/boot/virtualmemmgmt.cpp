@@ -30,7 +30,7 @@ static const char* const nullUnmapStr = "Unmapping first page";
 static const char* const reservingHeapStr = "Reserving memory for dynamic memory manager";
 static const char* const pageTablesStr = "Page tables of ";
 static const char* const isCanonicalStr = "isCanonical = ";
-static const char* const crawlTableHeader = "L Tables               Physical tables      Indexes              C\n";
+static const char* const crawlTableHeader = "L Tables               Physical tables      Indexes              CWX\n";
 static const char* const addrSpaceStr = " address space list\n";
 static const char* const addrSpaceHeader = "Base                 Page count           Available\n";
 static const char* const creatingListsStr = "Creating virtual address space lists";
@@ -121,7 +121,7 @@ bool Kernel::Memory::Virtual::initialize(
 	terminalPrintString(recursiveStr, strlen(recursiveStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	PML4E *root = (PML4E*)infoTable.pml4tPhysicalAddress;
-	root[pml4tRecursiveEntry].present = root[pml4tRecursiveEntry].writable = 1;
+	root[pml4tRecursiveEntry].present = root[pml4tRecursiveEntry].writable = root[pml4tRecursiveEntry].executeDisable = 1;
 	root[pml4tRecursiveEntry].physicalAddress = infoTable.pml4tPhysicalAddress >> pageSizeShift;
 	terminalPrintString(doneStr, strlen(doneStr));
 	terminalPrintChar('\n');
@@ -130,7 +130,12 @@ bool Kernel::Memory::Virtual::initialize(
 	terminalPrintSpaces4();
 	terminalPrintString(movingBuddiesStr, strlen(movingBuddiesStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	if (!mapPages(usableKernelSpaceStart, Physical::buddyBitmaps[0], phyMemBuddyPagesCount, 0)) {
+	if (!mapPages(
+		usableKernelSpaceStart,
+		Physical::buddyBitmaps[0],
+		phyMemBuddyPagesCount,
+		RequestType::Writable
+	)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
@@ -185,10 +190,9 @@ bool Kernel::Memory::Virtual::initialize(
 	terminalPrintString(reservingHeapStr, strlen(reservingHeapStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
 	if (!Heap::create(
-			usableKernelSpaceStart,
-			(void**)((uint64_t)usableKernelSpaceStart + Heap::newRegionSize)
-		)
-	) {
+		usableKernelSpaceStart,
+		(void**)((uint64_t)usableKernelSpaceStart + Heap::newRegionSize)
+	)) {
 		terminalPrintString(failedStr, strlen(failedStr));
 		terminalPrintChar('\n');
 		return false;
@@ -621,12 +625,26 @@ Kernel::Memory::Virtual::CrawlResult::CrawlResult(void *virtualAddress) {
 	this->physicalTables[4] =
 		(PML4E*)INVALID_ADDRESS;
 
-	this->cached[0] = 
-	this->cached[1] = 
-	this->cached[2] = 
-	this->cached[3] = 
+	this->cached[0] =
+	this->cached[1] =
+	this->cached[2] =
+	this->cached[3] =
 		false;
 	this->cached[4] = (pml4t->cacheDisable & 1) ? false : true;
+
+	this->writable[0] =
+	this->writable[1] =
+	this->writable[2] =
+	this->writable[3] =
+		false;
+	this->writable[4] = (pml4t->writable & 1) ? true : false;
+
+	this->executable[0] =
+	this->executable[1] =
+	this->executable[2] =
+	this->executable[3] =
+		false;
+	this->executable[4] = (pml4t->executeDisable & 1) ? false : true;
 
 	if (Virtual::isCanonical(virtualAddress)) {
 		this->isCanonical = true;
@@ -635,6 +653,8 @@ Kernel::Memory::Virtual::CrawlResult::CrawlResult(void *virtualAddress) {
 			if (this->tables[i][indexes[i]].present) {
 				this->physicalTables[i - 1] = (PML4E*)((uint64_t)this->tables[i][this->indexes[i]].physicalAddress << pageSizeShift);
 				this->cached[i - 1] = (this->tables[i][this->indexes[i]].cacheDisable & 1) ? false : true;
+				this->writable[i - 1] = (this->tables[i][this->indexes[i]].writable & 1) ? true : false;
+				this->executable[i - 1] = (this->tables[i][this->indexes[i]].executeDisable & 1) ? false : true;
 			} else {
 				break;
 			}
@@ -665,6 +685,8 @@ void Kernel::Memory::Virtual::displayCrawlPageTablesResult(void *virtualAddress)
 		terminalPrintHex(&result.indexes[i], sizeof(result.indexes[i]));
 		terminalPrintChar(' ');
 		terminalPrintDecimal(result.cached[i]);
+		terminalPrintDecimal(result.writable[i]);
+		terminalPrintDecimal(result.executable[i]);
 		terminalPrintChar('\n');
 	}
 }

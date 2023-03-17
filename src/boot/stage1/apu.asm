@@ -55,7 +55,7 @@ start:
 	or eax, 1 << 8 | 1 << 11	; Set LM (long mode) bit and NX (execute disable) bit
 	wrmsr				; Write back to EFER MSR
 	mov eax, cr0
-	or eax, 1 << 31 | 1			; Enable protected mode and paging
+	or eax, 1 << 31 | 1 << 16 | 1			; Enable protected mode, paging, and write protection
 	mov cr0, eax
 	lgdt [gdtCopyDescriptor]
 	jmp 0x8:apuCompatibilityModeStart

@@ -246,6 +246,8 @@ namespace Kernel {
 					PML4E* physicalTables[5];
 					PML4E* tables[5];
 					bool cached[5];
+					bool writable[5];
+					bool executable[5];
 
 					CrawlResult(void* virtualAddress);
 			};

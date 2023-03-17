@@ -213,7 +213,8 @@ bool Drivers::Storage::AHCI::Device::initialize() {
 			RequestType::PhysicalContiguous |
 			RequestType::VirtualContiguous |
 			RequestType::AllocatePhysical |
-			RequestType::CacheDisable
+			RequestType::CacheDisable |
+			RequestType::Writable
 		)
 	);
 	if (requestResult.address == INVALID_ADDRESS || requestResult.allocatedCount != 1) {
@@ -249,7 +250,8 @@ bool Drivers::Storage::AHCI::Device::initialize() {
 			RequestType::PhysicalContiguous |
 			RequestType::VirtualContiguous |
 			RequestType::AllocatePhysical |
-			RequestType::CacheDisable
+			RequestType::CacheDisable |
+			RequestType::Writable
 		)
 	);
 	if (

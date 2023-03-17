@@ -81,7 +81,7 @@ static void* mapBDFPage(uint64_t baseAddress, uint8_t bus, uint8_t device, uint8
 			requestResult.address,
 			(void*) functionAddress,
 			1,
-			RequestType::CacheDisable
+			RequestType::CacheDisable | RequestType::Writable
 		)
 	) {
 		return requestResult.address;

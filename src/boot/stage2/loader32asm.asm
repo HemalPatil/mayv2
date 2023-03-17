@@ -303,8 +303,8 @@ jumpToKernel64:
 	rdmsr
 	or eax, 1 << 8 | 1 << 11	; Set LM (long mode) bit and NX (execute disable) bit
 	wrmsr				; Write back to EFER MSR
-	mov eax, cr0			; Enable paging
-	or eax, 1 << 31
+	mov eax, cr0			; Enable paging and write protection
+	or eax, (1 << 31 | 1 << 16)
 	mov cr0, eax
 	cli
 	mov edi, [ebp + 12]	; Load edi/rdi with info table address, which is the 1st parameter passed to bpuMain

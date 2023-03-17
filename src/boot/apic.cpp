@@ -170,7 +170,7 @@ bool APIC::parse() {
 			requestResult.address,
 			(void*)(uint64_t)ioEntries.at(0).address,
 			1,
-			RequestType::CacheDisable
+			RequestType::CacheDisable | RequestType::Writable
 		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));

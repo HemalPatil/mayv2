@@ -187,24 +187,36 @@ static bool validHeap(Kernel::Memory::Heap::Header *heap) {
 // of total size of heap + entry table
 // Returns true if the operation was successful
 bool Kernel::Memory::Heap::create(void *newHeapAddress, void **entryTable) {
-	PageRequestResult requestResult = Physical::requestPages(newRegionSize / pageSize, RequestType::PhysicalContiguous);
+	const size_t heapPageCount = newRegionSize / pageSize;
+	PageRequestResult requestResult = Physical::requestPages(
+		heapPageCount,
+		RequestType::PhysicalContiguous
+	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
-		requestResult.allocatedCount != (newRegionSize/ pageSize) ||
-		!Virtual::mapPages(newHeapAddress, requestResult.address, requestResult.allocatedCount, 0)
+		requestResult.allocatedCount != heapPageCount ||
+		!Virtual::mapPages(
+			newHeapAddress,
+			requestResult.address,
+			requestResult.allocatedCount,
+			RequestType::Writable
+		)
 	) {
 		return false;
 	}
 	memset(newHeapAddress, 0, newRegionSize);
-	requestResult = Physical::requestPages(entryTableSize / pageSize, RequestType::PhysicalContiguous);
+	requestResult = Physical::requestPages(
+		entryTableSize / pageSize,
+		RequestType::PhysicalContiguous
+	);
 	if (
 		requestResult.address == INVALID_ADDRESS ||
 		requestResult.allocatedCount != (entryTableSize / pageSize) ||
 		!Virtual::mapPages(
-			(void*)((uint64_t)newHeapAddress + newRegionSize),
+			entryTable,
 			requestResult.address,
 			requestResult.allocatedCount,
-			0
+			RequestType::Writable
 		)
 	) {
 		return false;

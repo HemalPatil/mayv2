@@ -37,7 +37,7 @@ Async::Thenable<bool> Drivers::Storage::AHCI::Controller::initialize(const PCIe:
 			requestResult.address,
 			(void*)(uint64_t)ahciHeader->bar5,
 			2,
-			RequestType::CacheDisable
+			RequestType::CacheDisable | RequestType::Writable
 		)
 	) {
 		terminalPrintString(failedStr, strlen(failedStr));
