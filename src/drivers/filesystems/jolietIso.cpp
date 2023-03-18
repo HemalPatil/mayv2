@@ -35,6 +35,7 @@ Drivers::FS::JolietISO::isJolietIso(std::shared_ptr<Storage::BlockDevice> device
 				rootNode->type = NodeType::Directory;
 				rootNode->offset = rootDirOffset;
 				rootNode->size = rootDirSize;
+				rootNode->parent = rootNode;
 				auto iso = std::shared_ptr<JolietISO>(new JolietISO(
 					device,
 					(size_t)descriptor->lbaSize,

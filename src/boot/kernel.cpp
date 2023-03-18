@@ -32,7 +32,8 @@ static const char* const noFsStr = "Expected to find at least 1 filesystem\n";
 static const char* const sse4Str = "SSE4.2 enabled\n";
 static const char* const checkRandStr = "Checking RDRAND presence";
 static const char* const enableX2ApicStr = "Enabling x2APIC";
-static const char* const rootFailStr = "Failed to find root filesystem\n";
+static const char* const rootFailStr = "Failed to find root filesystem";
+static const char* const withErrorStr = " with error [";
 static const char* const rootFoundStr = "Root filesystem found ";
 static const char* const sipiSentStr = "SIPI sent, waiting for CPU to respond";
 static const char* const onlineStr = "online\n";
@@ -523,8 +524,10 @@ static Async::Thenable<void> findRootFs() {
 			co_await FS::closeFile(rootFsResult.file);
 			FS::root = fs;
 		} else {
-			terminalPrintDecimal(rootFsResult.status);
 			terminalPrintString(rootFailStr, strlen(rootFailStr));
+			terminalPrintString(withErrorStr, strlen(withErrorStr));
+			terminalPrintDecimal(rootFsResult.status);
+			terminalPrintString("]\n", 2);
 			Kernel::panic();
 		}
 	}
@@ -535,6 +538,7 @@ static Async::Thenable<void> findRootFs() {
 		terminalPrintChar('\n');
 	} else {
 		terminalPrintString(rootFailStr, strlen(rootFailStr));
+		terminalPrintChar('\n');
 		Kernel::panic();
 	}
 	Kernel::hangSystem();

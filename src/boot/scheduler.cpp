@@ -23,6 +23,7 @@ Kernel::Scheduler::TimerType Kernel::Scheduler::timerUsed = Kernel::Scheduler::T
 
 void Kernel::Scheduler::timerLoop() {
 	// Dispatch events synchronously until the queue has dispatchable events and < SCHEDULER_EVENT_DISPATCH_LIMIT in 1 loop
+	// FIXME: should lock the event queue
 	size_t dispatchedEventsCount = 0;
 	while (!eventQueue.empty() && dispatchedEventsCount < SCHEDULER_EVENT_DISPATCH_LIMIT) {
 		std::coroutine_handle<> x = eventQueue.front();
@@ -37,6 +38,7 @@ void Kernel::Scheduler::timerLoop() {
 }
 
 void Kernel::Scheduler::queueEvent(std::coroutine_handle<> event) {
+	// FIXME: should lock the event queue
 	eventQueue.push(event);
 }
 

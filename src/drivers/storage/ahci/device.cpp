@@ -77,7 +77,8 @@ Drivers::Storage::Buffer Drivers::Storage::AHCI::Device::setupRead(size_t blockC
 }
 
 void Drivers::Storage::AHCI::Device::msiHandler() {
-	Device *thisDevice = this;
+	// FIXME: should lock the block device
+	auto *thisDevice = this;
 	uint32_t interruptStatus = this->port->interruptStatus;
 	this->port->interruptStatus = interruptStatus;
 	uint32_t completedCommands = ~this->port->commandIssue & this->runningCommandsBitmap;
@@ -342,6 +343,7 @@ Drivers::Storage::AHCI::Device::Command::~Command() {
 }
 
 void Drivers::Storage::AHCI::Device::Command::await_suspend(std::coroutine_handle<> awaitingCoroutine) noexcept {
+	// FIXME: should lock the block device
 	this->awaitingCoroutine = new std::coroutine_handle<>(awaitingCoroutine);
 	this->device->commands[freeSlot] = this;
 	this->device->runningCommandsBitmap |= 1 << freeSlot;

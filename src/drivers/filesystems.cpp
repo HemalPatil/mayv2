@@ -87,12 +87,14 @@ Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::readDirectory(
 	std::vector<std::string> pathParts = splitAbsolutePath(absolutePath);
 	std::shared_ptr<Node> currentNode = fs->rootNode;
 	for (size_t i = 0; i <= pathParts.size(); ++i) {
-		if (currentNode->type & NodeType::Directory) {
+		if (currentNode && (currentNode->type & NodeType::Directory)) {
 			if (currentNode->type & NodeType::MountPoint) {
 				currentNode = currentNode->mountedNode;
 			}
 			if (!currentNode->childrenCreated) {
-				auto status = co_await currentNode->fs->readDirectory(currentNode);
+				auto status = co_await currentNode->fs->readDirectory(
+					currentNode
+				);
 				if (status != Status::Ok) {
 					errorResult.status = status;
 					co_return std::move(errorResult);
@@ -104,17 +106,23 @@ Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::readDirectory(
 					.directory = currentNode
 				};
 			}
-			bool found = false;
-			for (const auto &child : currentNode->children) {
-				if (child->name == pathParts[i]) {
-					currentNode = child;
-					found = true;
-					break;
+			if (pathParts[i] == ".") {
+				// Do nothing, stay in current directory
+			} else if (pathParts[i] == "..") {
+				currentNode = currentNode->parent;
+			} else {
+				bool found = false;
+				for (const auto &child : currentNode->children) {
+					if (child->name == pathParts[i]) {
+						currentNode = child;
+						found = true;
+						break;
+					}
 				}
-			}
-			if (!found) {
-				errorResult.status = Status::NoSuchDirectoryOrFile;
-				co_return std::move(errorResult);
+				if (!found) {
+					errorResult.status = Status::NoSuchDirectoryOrFile;
+					co_return std::move(errorResult);
+				}
 			}
 		} else {
 			errorResult.status = Status::NotDirectory;
