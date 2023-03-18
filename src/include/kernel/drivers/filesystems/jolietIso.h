@@ -63,30 +63,19 @@ namespace FS {
 				DirectoryRecord rootDirectory;
 				// Add 1 byte padding because directory record length is variable
 				uint8_t directoryRecordPadding;
-				// TODO: add other attributes present in the Primary Volume Descriptor
 				uint8_t reserved3[1858];
 			} __attribute__((packed));
 
 		private:
-			static std::vector<std::shared_ptr<Node>> extentToNodes(
-				const DirectoryRecord* const extent,
-				size_t blockSize,
-				const std::shared_ptr<Node> &selfNode
-			);
-
-		public:
 			JolietISO(
 				std::shared_ptr<Storage::BlockDevice> blockDevice,
 				size_t blockSize,
 				std::shared_ptr<Node> rootNode
 			);
 
-			// Reads directory at given absolute path ending in '/'
-			Async::Thenable<ReadDirectoryResult> readDirectory(const std::string &absolutePath) override;
+			Async::Thenable<Status> readDirectory(const std::shared_ptr<Node> &node) override;
 
-			// // TODO: should accept a file descriptor instead that was obtained by opening the file first
-			// Async::Thenable<ReadFileResult> readFile(const std::string &absolutePath) override;
-
+		public:
 			// Returns a std::shared_ptr to JolietISO filesystem if found on device
 			// Returns nullptr otherwise
 			static Async::Thenable<std::shared_ptr<JolietISO>> isJolietIso(std::shared_ptr<Storage::BlockDevice> device);

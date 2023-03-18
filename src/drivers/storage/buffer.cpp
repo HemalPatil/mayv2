@@ -22,7 +22,6 @@ Drivers::Storage::Buffer::Buffer(size_t size, size_t alignAt) {
 	PageRequestResult requestResult = Virtual::requestPages(
 		this->pageCount,
 		(
-			RequestType::Kernel |	// TODO: maybe RequestType::Kernel is not required
 			RequestType::PhysicalContiguous |
 			RequestType::VirtualContiguous |
 			RequestType::AllocatePhysical |

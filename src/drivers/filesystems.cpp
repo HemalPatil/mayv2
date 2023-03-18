@@ -1,6 +1,5 @@
 #include <cstring>
 #include <drivers/filesystems.h>
-#include <terminal.h>
 #include <unicode.h>
 
 static const char* const malformedStr = "FS::isValidAbsolutePath malformed absolute path [";
@@ -8,23 +7,118 @@ static const char* const malformedStr = "FS::isValidAbsolutePath malformed absol
 std::vector<std::shared_ptr<Drivers::FS::Base>> Drivers::FS::filesystems;
 std::shared_ptr<Drivers::FS::Base> Drivers::FS::root;
 
-Async::Thenable<Drivers::FS::OpenFileResult>
-Drivers::FS::Base::openFile(const std::string &absolutePath, OpenFileType openType) {
+Async::Thenable<Drivers::FS::OpenFileResult> Drivers::FS::openFile(
+	const std::string &absolutePath,
+	const OpenFileType &openType,
+	const std::shared_ptr<Base> &fs
+) {
 	OpenFileResult errorResult;
 	if (!isValidAbsolutePath(absolutePath, false)) {
 		errorResult.status = Status::InvalidPath;
 		co_return std::move(errorResult);
 	}
 	const auto parentSplit = splitParentDirectory(absolutePath);
-	const auto parentDirResult = co_await this->readDirectory(std::get<0>(parentSplit));
+	const auto parentDirResult = co_await readDirectory(std::get<0>(parentSplit), fs);
 	if (parentDirResult.status != Status::Ok) {
 		errorResult.status = parentDirResult.status;
 		co_return std::move(errorResult);
 	}
 	std::shared_ptr<Node> fileNode;
 	for (const auto &child : parentDirResult.directory->children) {
-		if (child->type & NodeType::File) {
-			
+		if (child->name == std::get<1>(parentSplit)) {
+			if (child->type & NodeType::File) {
+				fileNode = child;
+			} else {
+				errorResult.status = Status::NotFile;
+				co_return std::move(errorResult);
+			}
+		}
+	}
+	if (!fileNode) {
+		if (openType & OpenFileType::CreateIfNotExists) {
+			// TODO: complete implementation
+			Kernel::panic();
+		} else {
+			errorResult.status = Status::NoSuchDirectoryOrFile;
+			co_return std::move(errorResult);
+		}
+	}
+	const auto descriptor = std::make_shared<FileDescriptor>();
+	descriptor->node = fileNode;
+	descriptor->openType = openType;
+	descriptor->readOffset =
+	descriptor->writeOffset =
+		(openType & OpenFileType::SeekEnd) ? fileNode->size : 0;
+	fileNode->openFileDescriptors.push_back(descriptor);
+	co_return {
+		.status = Status::Ok,
+		.file = descriptor
+	};
+}
+
+Async::Thenable<Drivers::FS::Status> Drivers::FS::closeFile(const std::shared_ptr<FileDescriptor> &file) {
+	if (file && file->node) {
+		// Find the descriptor in the list of open file descriptors
+		// Remove it if found or return error
+		for (size_t i = 0; i < file->node->openFileDescriptors.size(); ++i) {
+			if (file->node->openFileDescriptors.at(i) == file) {
+				file->node->openFileDescriptors.erase(file->node->openFileDescriptors.begin() + i);
+
+				// TODO: should check if this was the last descriptor to be closed
+				// and do something about it. Maybe free all the buffers.
+
+				co_return Status::Ok;
+			}
+		}
+		co_return Status::NotFile;
+	}
+	co_return Status::NotFile;
+}
+
+Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::readDirectory(
+	const std::string &absolutePath,
+	const std::shared_ptr<Base> &fs
+) {
+	ReadDirectoryResult errorResult;
+	if (!isValidAbsolutePath(absolutePath, true)) {
+		errorResult.status = Status::InvalidPath;
+		co_return std::move(errorResult);
+	}
+	std::vector<std::string> pathParts = splitAbsolutePath(absolutePath);
+	std::shared_ptr<Node> currentNode = fs->rootNode;
+	for (size_t i = 0; i <= pathParts.size(); ++i) {
+		if (currentNode->type & NodeType::Directory) {
+			if (currentNode->type & NodeType::MountPoint) {
+				currentNode = currentNode->mountedNode;
+			}
+			if (!currentNode->childrenCreated) {
+				auto status = co_await currentNode->fs->readDirectory(currentNode);
+				if (status != Status::Ok) {
+					errorResult.status = status;
+					co_return std::move(errorResult);
+				}
+			}
+			if (i == pathParts.size()) {
+				co_return {
+					.status = Status::Ok,
+					.directory = currentNode
+				};
+			}
+			bool found = false;
+			for (const auto &child : currentNode->children) {
+				if (child->name == pathParts[i]) {
+					currentNode = child;
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				errorResult.status = Status::NoSuchDirectoryOrFile;
+				co_return std::move(errorResult);
+			}
+		} else {
+			errorResult.status = Status::NotDirectory;
+			co_return std::move(errorResult);
 		}
 	}
 }

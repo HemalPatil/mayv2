@@ -510,18 +510,20 @@ static Async::Thenable<void> findRootFs() {
 	using namespace Drivers;
 	
 	for (const auto &fs : FS::filesystems) {
-		const auto bootDirResult = std::move(co_await fs->readDirectory("/boot/"));
-		if (bootDirResult.status == FS::Status::Ok) {
-			for (const auto &file : bootDirResult.directory->children) {
-				if (
-					(file->type & Drivers::FS::NodeType::File) &&
-					file->name == std::string(Kernel::infoTable.rootFsGuid) + ".root-fs"
-				) {
-					FS::root = fs;
-					break;
-				}
-			}
+		const auto rootFsResult = std::move(co_await FS::openFile(
+			(
+				std::string("/boot/") +
+				std::string(Kernel::infoTable.rootFsGuid, Kernel::infoTable.rootFsGuid + 36) +
+				".root-fs"
+			),
+			FS::OpenFileType::Read,
+			fs
+		));
+		if (rootFsResult.status == FS::Status::Ok) {
+			co_await FS::closeFile(rootFsResult.file);
+			FS::root = fs;
 		} else {
+			terminalPrintDecimal(rootFsResult.status);
 			terminalPrintString(rootFailStr, strlen(rootFailStr));
 			Kernel::panic();
 		}

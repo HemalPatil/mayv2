@@ -38,14 +38,14 @@ namespace FS {
 
 	enum OpenFileType : uint64_t {
 		Read = 0,
-		Create = 1 << 0,
+		CreateIfNotExists = 1 << 0,
 		Write = 1 << 1,
 		Append = 1 << 2,
 		SeekEnd = 1 << 3,
 	};
 
 	struct FileDescriptor {
-		std::shared_ptr<Node> fileNode;
+		std::shared_ptr<Node> node;
 		size_t readOffset = SIZE_MAX;
 		size_t writeOffset = SIZE_MAX;
 		OpenFileType openType;
@@ -53,7 +53,7 @@ namespace FS {
 
 	struct FileBuffer {
 		size_t base = SIZE_MAX;
-		bool locked = false;
+		bool isBusy = false;	// TODO: Change to mutex and use it while reading/writing
 		Storage::Buffer buffer;
 	};
 
@@ -62,13 +62,16 @@ namespace FS {
 		NodeType type = NodeType::None;
 		size_t offset = SIZE_MAX;
 		size_t size = SIZE_MAX;
-		std::shared_ptr<Base> mountedFs;
+		std::shared_ptr<Base> fs;
+		std::shared_ptr<Node> mountedNode;
+		std::shared_ptr<Storage::BlockDevice> blockDevice;
 		std::shared_ptr<Node> parent;
 		bool childrenCreated = false;
 		std::vector<std::shared_ptr<Node>> children;
 		std::vector<std::shared_ptr<FileDescriptor>> openFileDescriptors;
 		std::vector<FileBuffer> fileBuffers;
-		bool locked = false;
+		bool isLocked = false;
+		bool isBusy = false;	// TODO: Change to mutex and use it while manipulating children, descriptors, buffers
 	};
 
 	struct OpenFileResult {
@@ -86,6 +89,34 @@ namespace FS {
 		Storage::Buffer data;
 	};
 
+	extern std::vector<std::shared_ptr<Base>> filesystems;
+	extern std::shared_ptr<Base> root;
+
+	Async::Thenable<Status> closeFile(const std::shared_ptr<FileDescriptor> &file);
+
+	bool isValidAbsolutePath(const std::string &absolutePath, bool isDir);
+
+	Async::Thenable<OpenFileResult> openFile(
+		const std::string &absolutePath,
+		const OpenFileType &openType,
+		const std::shared_ptr<Base> &fs = root
+	);
+
+	// Reads directory at given absolute path ending in '/'
+	Async::Thenable<ReadDirectoryResult> readDirectory(
+		const std::string &absolutePath,
+		const std::shared_ptr<Base> &fs = root
+	);
+
+	// Splits an absolute path into components using '/' as the delimiter
+	// Assumes the path is a valid absolute path
+	std::vector<std::string> splitAbsolutePath(const std::string &absolutePath);
+
+	// Splits an absolute path into parent directory absolute path
+	// and file/directory name using '/' as the delimiter
+	// Assumes the path is a valid absolute path
+	std::tuple<std::string, std::string> splitParentDirectory(const std::string &absolutePath);
+
 	class Base {
 		protected:
 			const std::shared_ptr<Storage::BlockDevice> device;
@@ -93,30 +124,20 @@ namespace FS {
 			const size_t blockSize;
 			const std::shared_ptr<Node> rootNode;
 			const Random::GUIDv4 guid;
-			std::vector<std::shared_ptr<Node>> openFiles;	// To be used when this FS will be mounted
 			Base(
 				std::shared_ptr<Storage::BlockDevice> blockDevice,
 				size_t blockSize,
 				std::shared_ptr<Node> rootNode
 			);
+			virtual Async::Thenable<Status> readDirectory(const std::shared_ptr<Node> &node) = 0;
 
 		public:
 			const Random::GUIDv4& getGuid() const;
 
-			Async::Thenable<OpenFileResult> openFile(const std::string &absolutePath, OpenFileType openType);
-
-			// Reads directory at given absolute path ending in '/'
-			virtual Async::Thenable<ReadDirectoryResult> readDirectory(const std::string &absolutePath) = 0;
-
-			// // TODO: may have to remove it depending on openFile
-			// virtual Async::Thenable<ReadFileResult> readFile(const std::string &absolutePath) = 0;
+		friend Async::Thenable<ReadDirectoryResult> readDirectory(
+			const std::string &absolutePath,
+			const std::shared_ptr<Base> &fs
+		);
 	};
-
-	extern std::vector<std::shared_ptr<Base>> filesystems;
-	extern std::shared_ptr<Base> root;
-
-	bool isValidAbsolutePath(const std::string &absolutePath, bool isDir);
-	std::vector<std::string> splitAbsolutePath(const std::string &absolutePath);
-	std::tuple<std::string, std::string> splitParentDirectory(const std::string &absolutePath);
 }
 }
