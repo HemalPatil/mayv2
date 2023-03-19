@@ -9,6 +9,7 @@
 #include <drivers/storage/ahci.h>
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
+#include <drivers/timers.h>
 #include <kernel.h>
 #include <pcie.h>
 #include <random.h>
@@ -227,6 +228,11 @@ static Async::Thenable<void> initPs2Devices() {
 	) {
 		Kernel::panic();
 	}
+
+	while (true) {
+		terminalPrintString("bbbbbbbbbb", 10);
+		Drivers::Timers::spinDelay(1000);
+	}
 	co_return;
 }
 
@@ -411,6 +417,11 @@ extern "C" [[noreturn]] void apuMain() {
 
 	if (apuAwaiter) {
 		apuAwaiter->resumeBpu();
+	}
+
+	while (true) {
+		terminalPrintString("aaaaaaaaaa", 10);
+		Drivers::Timers::spinDelay(10000);
 	}
 
 	// Wait perpetually and let the scheduler and interrupts do their thing
