@@ -2,7 +2,8 @@
 #include <drivers/filesystems.h>
 #include <unicode.h>
 
-static const char* const malformedStr = "FS::isValidAbsolutePath malformed absolute path [";
+static const char* const sectorMultiStr1 = "Drivers::FS::Base block size [";
+static const char* const sectorMultiStr2 = "] not a multiple of device sector size [";
 
 std::vector<std::shared_ptr<Drivers::FS::Base>> Drivers::FS::filesystems;
 std::shared_ptr<Drivers::FS::Base> Drivers::FS::root;
@@ -33,9 +34,20 @@ Async::Thenable<Drivers::FS::Status> Drivers::FS::readFile(
 		co_return Status::OutOfBounds;
 	}
 
-	// FIXME: should lock FD/node/buffers
-	std::vector<std::reference_wrapper<FileBuffer>> affectedBuffers;
-	auto lambda = [](){};
+	// // FIXME: should lock FD/node/buffers
+	// std::vector<std::reference_wrapper<FileBuffer>> affectedBuffers;
+	// auto lambda = [](){};
+
+	// TODO: Read the entire file for now
+	// Once device locking is implemented and mutexes are added to scheduler
+	// and other crucial places, change this to read only required sectors
+	file->node->fileBuffers.push_back({
+		.base = 0,
+		.isBusy = false,
+		.buffer = std::move(co_await file->node->fs->readFile(file->node, 0, file->node->size))
+	});
+	memcpy(readBuffer, (char*)file->node->fileBuffers.at(0).buffer.getData() + offset, count);
+	co_return Status::Ok;
 }
 
 Async::Thenable<Drivers::FS::OpenFileResult> Drivers::FS::openFile(
@@ -93,8 +105,8 @@ Async::Thenable<Drivers::FS::Status> Drivers::FS::closeFile(const std::shared_pt
 			if (file->node->openFileDescriptors.at(i) == file) {
 				file->node->openFileDescriptors.erase(file->node->openFileDescriptors.begin() + i);
 
-				// TODO: should check if this was the last descriptor to be closed
-				// and do something about it. Maybe free all the buffers.
+				// FIXME: should check if this was the last descriptor to be closed
+				// and do something about it like freeing all the buffers.
 
 				co_return Status::Ok;
 			}
@@ -228,11 +240,21 @@ Drivers::FS::Base::Base(
 	std::shared_ptr<Storage::BlockDevice> blockDevice,
 	size_t blockSize,
 	std::shared_ptr<Node> rootNode
-)	:	device(blockDevice),
-		deviceBlockSize(blockDevice->getBlockSize()),
-		blockSize(blockSize),
-		rootNode(rootNode),
-		guid() {}
+)	:
+device(blockDevice),
+deviceBlockSize(blockDevice->getBlockSize()),
+blockSize(blockSize),
+rootNode(rootNode),
+guid() {
+	if (blockSize % deviceBlockSize != 0) {
+		terminalPrintString(sectorMultiStr1, strlen(sectorMultiStr1));
+		terminalPrintDecimal(this->blockSize);
+		terminalPrintString(sectorMultiStr2, strlen(sectorMultiStr2));
+		terminalPrintDecimal(this->deviceBlockSize);
+		terminalPrintChar(']');
+		Kernel::panic();
+	}
+}
 
 const Random::GUIDv4& Drivers::FS::Base::getGuid() const {
 	return this->guid;

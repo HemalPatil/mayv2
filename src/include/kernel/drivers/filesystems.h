@@ -146,6 +146,11 @@ namespace FS {
 				std::shared_ptr<Node> rootNode
 			);
 			virtual Async::Thenable<Status> readDirectory(const std::shared_ptr<Node> &node) = 0;
+			virtual Async::Thenable<Storage::Buffer> readFile(
+				const std::shared_ptr<Node> &node,
+				const size_t offset,
+				const size_t count
+			) = 0;
 
 		public:
 			const Random::GUIDv4& getGuid() const;
@@ -158,6 +163,13 @@ namespace FS {
 		friend Async::Thenable<ReadDirectoryResult> readDirectory(
 			const std::string &absolutePath,
 			const std::shared_ptr<Base> &fs
+		);
+
+		friend Async::Thenable<Status> readFile(
+			const std::shared_ptr<FileDescriptor> &file,
+			void* const readBuffer,
+			size_t offset,
+			size_t count
 		);
 	};
 }

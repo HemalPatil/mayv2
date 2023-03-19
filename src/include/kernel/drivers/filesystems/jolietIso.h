@@ -74,6 +74,11 @@ namespace FS {
 			);
 
 			Async::Thenable<Status> readDirectory(const std::shared_ptr<Node> &node) override;
+			Async::Thenable<Storage::Buffer> readFile(
+				const std::shared_ptr<Node> &node,
+				const size_t offset,
+				const size_t count
+			) override;
 
 		public:
 			// Returns a std::shared_ptr to JolietISO filesystem if found on device

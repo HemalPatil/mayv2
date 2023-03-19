@@ -55,6 +55,18 @@ Drivers::FS::JolietISO::JolietISO(
 	std::shared_ptr<Node> rootNode
 )	:	Base(blockDevice, blockSize, rootNode) {}
 
+Async::Thenable<Drivers::Storage::Buffer> Drivers::FS::JolietISO::readFile(
+	const std::shared_ptr<Node> &node,
+	const size_t offset,
+	const size_t count
+) {
+	size_t blockCount = count / this->deviceBlockSize;
+	if (count != blockCount * this->deviceBlockSize) {
+		++blockCount;
+	}
+	return this->device->read((node->offset + offset) / this->deviceBlockSize, blockCount);
+}
+
 Async::Thenable<Drivers::FS::Status> Drivers::FS::JolietISO::readDirectory(const std::shared_ptr<Node> &node) {
 	if (!node || !(node->type & NodeType::Directory)) {
 		co_return Status::NotDirectory;

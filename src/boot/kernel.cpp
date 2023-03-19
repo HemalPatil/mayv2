@@ -419,6 +419,7 @@ extern "C" [[noreturn]] void apuMain() {
 
 static Async::Thenable<void> bootApus() {
 	using namespace Kernel::Memory;
+	using namespace Drivers;
 
 	terminalPrintString(initApusStr, strlen(initApusStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
@@ -428,16 +429,20 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintSpaces4();
 	terminalPrintString(apuBootStr, strlen(apuBootStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	// const auto fileReadResult = Drivers::FS::ReadFileResult(); //std::move(co_await Drivers::FS::root->readFile("/boot/stage1/apu.bin"));
-	// if (fileReadResult.status == Drivers::FS::Status::Ok && fileReadResult.data) {
-	// 	memcpy((void*)APU_BOOTLOADER_ORIGIN, fileReadResult.data.getData(), fileReadResult.data.getSize());
-	// } else {
-	// 	terminalPrintString(failedStr, strlen(failedStr));
-	// 	terminalPrintChar('\n');
-	// 	Kernel::panic();
-	// }
-	// terminalPrintString(doneStr, strlen(doneStr));
-	// terminalPrintChar('\n');
+	const auto openFileResult = std::move(co_await Drivers::FS::openFile("/boot/stage1/apu.bin", FS::OpenFileType::Read));
+	if (openFileResult.status != FS::Status::Ok) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
+	const auto fileReadResult = co_await FS::readFile(openFileResult.file, (void*)APU_BOOTLOADER_ORIGIN, 0, openFileResult.file->node->size);
+	if (fileReadResult != FS::Status::Ok) {
+		terminalPrintString(failedStr, strlen(failedStr));
+		terminalPrintChar('\n');
+		Kernel::panic();
+	}
+	terminalPrintString(doneStr, strlen(doneStr));
+	terminalPrintChar('\n');
 
 	for (auto &cpu : APIC::cpus) {
 		if (cpu.apicId != APIC::bootCpu->apicId) {
@@ -541,7 +546,6 @@ static Async::Thenable<void> findRootFs() {
 		terminalPrintChar('\n');
 		Kernel::panic();
 	}
-	Kernel::hangSystem();
 	co_return;
 }
 
