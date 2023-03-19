@@ -74,6 +74,11 @@ namespace FS {
 		bool isBusy = false;	// TODO: Change to mutex and use it while manipulating children, descriptors, buffers
 	};
 
+	struct InfoResult {
+		Status status = Status::Ok;
+		std::shared_ptr<Node> node;
+	};
+
 	struct OpenFileResult {
 		Status status = Status::Ok;
 		std::shared_ptr<FileDescriptor> file;
@@ -94,7 +99,12 @@ namespace FS {
 
 	Async::Thenable<Status> closeFile(const std::shared_ptr<FileDescriptor> &file);
 
-	bool isValidAbsolutePath(const std::string &absolutePath, bool isDir);
+	Async::Thenable<InfoResult> getInfo(
+		const std::string &absolutePath,
+		const std::shared_ptr<Base> &fs = root
+	);
+
+	bool isValidAbsolutePath(const std::string &absolutePath);
 
 	Async::Thenable<OpenFileResult> openFile(
 		const std::string &absolutePath,
@@ -133,6 +143,11 @@ namespace FS {
 
 		public:
 			const Random::GUIDv4& getGuid() const;
+
+		friend Async::Thenable<InfoResult> getInfo(
+			const std::string &absolutePath,
+			const std::shared_ptr<Base> &fs
+		);
 
 		friend Async::Thenable<ReadDirectoryResult> readDirectory(
 			const std::string &absolutePath,

@@ -13,7 +13,7 @@ Async::Thenable<Drivers::FS::OpenFileResult> Drivers::FS::openFile(
 	const std::shared_ptr<Base> &fs
 ) {
 	OpenFileResult errorResult;
-	if (!isValidAbsolutePath(absolutePath, false)) {
+	if (!isValidAbsolutePath(absolutePath) || absolutePath.back() == '/') {
 		errorResult.status = Status::InvalidPath;
 		co_return std::move(errorResult);
 	}
@@ -75,18 +75,18 @@ Async::Thenable<Drivers::FS::Status> Drivers::FS::closeFile(const std::shared_pt
 	co_return Status::NotFile;
 }
 
-Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::readDirectory(
+Async::Thenable<Drivers::FS::InfoResult> Drivers::FS::getInfo(
 	const std::string &absolutePath,
 	const std::shared_ptr<Base> &fs
 ) {
-	ReadDirectoryResult errorResult;
-	if (!isValidAbsolutePath(absolutePath, true)) {
+	InfoResult errorResult;
+	if (!isValidAbsolutePath(absolutePath)) {
 		errorResult.status = Status::InvalidPath;
 		co_return std::move(errorResult);
 	}
-	std::vector<std::string> pathParts = splitAbsolutePath(absolutePath);
+	const auto pathParts = splitAbsolutePath(absolutePath);
 	std::shared_ptr<Node> currentNode = fs->rootNode;
-	for (size_t i = 0; i <= pathParts.size(); ++i) {
+	for (size_t i = 0; i < pathParts.size(); ++i) {
 		if (currentNode && (currentNode->type & NodeType::Directory)) {
 			if (currentNode->type & NodeType::MountPoint) {
 				currentNode = currentNode->mountedNode;
@@ -99,12 +99,6 @@ Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::readDirectory(
 					errorResult.status = status;
 					co_return std::move(errorResult);
 				}
-			}
-			if (i == pathParts.size()) {
-				co_return {
-					.status = Status::Ok,
-					.directory = currentNode
-				};
 			}
 			if (pathParts[i] == ".") {
 				// Do nothing, stay in current directory
@@ -129,6 +123,43 @@ Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::readDirectory(
 			co_return std::move(errorResult);
 		}
 	}
+	co_return {
+		.status = Status::Ok,
+		.node = currentNode
+	};
+}
+
+Async::Thenable<Drivers::FS::ReadDirectoryResult> Drivers::FS::readDirectory(
+	const std::string &absolutePath,
+	const std::shared_ptr<Base> &fs
+) {
+	ReadDirectoryResult errorResult;
+	if (absolutePath.back() != '/') {
+		errorResult.status = Status::InvalidPath;
+		co_return std::move(errorResult);
+	}
+	const auto info = co_await getInfo(absolutePath, fs);
+	if (info.status != Status::Ok) {
+		errorResult.status = info.status;
+		co_return std::move(errorResult);
+	}
+	if (!info.node || !(info.node->type & NodeType::Directory)) {
+		errorResult.status = Status::NotDirectory;
+		co_return std::move(errorResult);
+	}
+	if (!info.node->childrenCreated) {
+		auto status = co_await info.node->fs->readDirectory(
+			info.node
+		);
+		if (status != Status::Ok) {
+			errorResult.status = status;
+			co_return std::move(errorResult);
+		}
+	}
+	co_return {
+		.status = Status::Ok,
+		.directory = info.node
+	};
 }
 
 std::tuple<std::string, std::string> Drivers::FS::splitParentDirectory(const std::string &absolutePath) {
@@ -136,7 +167,7 @@ std::tuple<std::string, std::string> Drivers::FS::splitParentDirectory(const std
 		return {absolutePath, ""};
 	}
 	bool isDir = absolutePath.back() == '/';
-	int length = absolutePath.length() - (isDir ? 2 : 1);
+	int64_t length = absolutePath.length() - (isDir ? 2 : 1);
 	for (; length >= 0; --length) {
 		if (absolutePath.at(length) == '/') {
 			break;
@@ -178,15 +209,13 @@ const Random::GUIDv4& Drivers::FS::Base::getGuid() const {
 	return this->guid;
 }
 
-bool Drivers::FS::isValidAbsolutePath(const std::string &absolutePath, bool isDir) {
+bool Drivers::FS::isValidAbsolutePath(const std::string &absolutePath) {
 	if (!Unicode::isValidUtf8(absolutePath)) {
 		return false;
 	}
 	if (!(
 		0 == absolutePath.length() ||
-		'/' != absolutePath.at(0) ||
-		(isDir && '/' != absolutePath.back()) ||
-		(!isDir && '/' == absolutePath.back())
+		'/' != absolutePath.at(0)
 	)) {
 		for (size_t i = 1; i < absolutePath.length(); ++i) {
 			auto c = absolutePath.at(i);
