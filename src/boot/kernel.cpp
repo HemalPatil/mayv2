@@ -428,16 +428,16 @@ static Async::Thenable<void> bootApus() {
 	terminalPrintSpaces4();
 	terminalPrintString(apuBootStr, strlen(apuBootStr));
 	terminalPrintString(ellipsisStr, strlen(ellipsisStr));
-	const auto fileReadResult = Drivers::FS::ReadFileResult(); //std::move(co_await Drivers::FS::root->readFile("/boot/stage1/apu.bin"));
-	if (fileReadResult.status == Drivers::FS::Status::Ok && fileReadResult.data) {
-		memcpy((void*)APU_BOOTLOADER_ORIGIN, fileReadResult.data.getData(), fileReadResult.data.getSize());
-	} else {
-		terminalPrintString(failedStr, strlen(failedStr));
-		terminalPrintChar('\n');
-		Kernel::panic();
-	}
-	terminalPrintString(doneStr, strlen(doneStr));
-	terminalPrintChar('\n');
+	// const auto fileReadResult = Drivers::FS::ReadFileResult(); //std::move(co_await Drivers::FS::root->readFile("/boot/stage1/apu.bin"));
+	// if (fileReadResult.status == Drivers::FS::Status::Ok && fileReadResult.data) {
+	// 	memcpy((void*)APU_BOOTLOADER_ORIGIN, fileReadResult.data.getData(), fileReadResult.data.getSize());
+	// } else {
+	// 	terminalPrintString(failedStr, strlen(failedStr));
+	// 	terminalPrintChar('\n');
+	// 	Kernel::panic();
+	// }
+	// terminalPrintString(doneStr, strlen(doneStr));
+	// terminalPrintChar('\n');
 
 	for (auto &cpu : APIC::cpus) {
 		if (cpu.apicId != APIC::bootCpu->apicId) {

@@ -56,6 +56,9 @@ Drivers::FS::JolietISO::JolietISO(
 )	:	Base(blockDevice, blockSize, rootNode) {}
 
 Async::Thenable<Drivers::FS::Status> Drivers::FS::JolietISO::readDirectory(const std::shared_ptr<Node> &node) {
+	if (!node || !(node->type & NodeType::Directory)) {
+		co_return Status::NotDirectory;
+	}
 	if (node->childrenCreated) {
 		co_return Status::Ok;
 	}

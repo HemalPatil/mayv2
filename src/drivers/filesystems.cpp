@@ -7,6 +7,37 @@ static const char* const malformedStr = "FS::isValidAbsolutePath malformed absol
 std::vector<std::shared_ptr<Drivers::FS::Base>> Drivers::FS::filesystems;
 std::shared_ptr<Drivers::FS::Base> Drivers::FS::root;
 
+Async::Thenable<Drivers::FS::Status> Drivers::FS::readFile(
+	const std::shared_ptr<FileDescriptor> &file,
+	void* const readBuffer,
+	size_t offset,
+	size_t count
+) {
+	// Check the FD is valid
+	if (!file || !file->node || !(file->node->type & NodeType::File)) {
+		co_return Status::NotFile;
+	}
+	bool isValid = false;
+	for (const auto &fd : file->node->openFileDescriptors) {
+		if (fd == file) {
+			isValid = true;
+			break;
+		}
+	}
+	if (!isValid) {
+		co_return Status::NotFile;
+	}
+
+	// Check bounds
+	if (count == 0 || offset + count > file->node->size) {
+		co_return Status::OutOfBounds;
+	}
+
+	// FIXME: should lock FD/node/buffers
+	std::vector<std::reference_wrapper<FileBuffer>> affectedBuffers;
+	auto lambda = [](){};
+}
+
 Async::Thenable<Drivers::FS::OpenFileResult> Drivers::FS::openFile(
 	const std::string &absolutePath,
 	const OpenFileType &openType,
@@ -43,12 +74,10 @@ Async::Thenable<Drivers::FS::OpenFileResult> Drivers::FS::openFile(
 			co_return std::move(errorResult);
 		}
 	}
-	const auto descriptor = std::make_shared<FileDescriptor>();
-	descriptor->node = fileNode;
-	descriptor->openType = openType;
-	descriptor->readOffset =
-	descriptor->writeOffset =
-		(openType & OpenFileType::SeekEnd) ? fileNode->size : 0;
+	const auto descriptor = std::make_shared<FileDescriptor>(FileDescriptor{
+		.node = fileNode,
+		.openType = openType,
+	});
 	fileNode->openFileDescriptors.push_back(descriptor);
 	co_return {
 		.status = Status::Ok,

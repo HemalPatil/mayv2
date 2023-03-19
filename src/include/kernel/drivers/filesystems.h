@@ -25,6 +25,7 @@ namespace FS {
 		NonWritable = 1 << 6,
 		AlreadyLocked = 1 << 7,
 		AlreadyMounted = 1 << 8,
+		OutOfBounds = 1 << 9
 	};
 
 	enum NodeType : uint64_t {
@@ -45,10 +46,8 @@ namespace FS {
 	};
 
 	struct FileDescriptor {
-		std::shared_ptr<Node> node;
-		size_t readOffset = SIZE_MAX;
-		size_t writeOffset = SIZE_MAX;
-		OpenFileType openType;
+		const std::shared_ptr<Node> node;
+		const OpenFileType openType;
 	};
 
 	struct FileBuffer {
@@ -89,11 +88,6 @@ namespace FS {
 		std::shared_ptr<Node> directory;
 	};
 
-	struct ReadFileResult {
-		Status status = Status::Ok;
-		Storage::Buffer data;
-	};
-
 	extern std::vector<std::shared_ptr<Base>> filesystems;
 	extern std::shared_ptr<Base> root;
 
@@ -116,6 +110,18 @@ namespace FS {
 	Async::Thenable<ReadDirectoryResult> readDirectory(
 		const std::string &absolutePath,
 		const std::shared_ptr<Base> &fs = root
+	);
+
+	// Reads count number of bytes starting from offset into the readBuffer provided
+	// Assumes the buffer provided is long enough to hold all the bytes requested
+	// OutOfBounds status is returned for following conditions:
+	// 1. count == 0
+	// 2. offset + count > file->size
+	Async::Thenable<Status> readFile(
+		const std::shared_ptr<FileDescriptor> &file,
+		void* const readBuffer,
+		size_t offset,
+		size_t count
 	);
 
 	// Splits an absolute path into components using '/' as the delimiter
