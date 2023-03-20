@@ -6,14 +6,12 @@
 #include <drivers/ps2/controller.h>
 #include <drivers/ps2/keyboard.h>
 #include <drivers/ps2/mouse.h>
-#include <drivers/storage/ahci.h>
 #include <drivers/storage/ahci/controller.h>
 #include <drivers/storage/ahci/device.h>
 #include <drivers/timers.h>
 #include <kernel.h>
 #include <pcie.h>
 #include <random.h>
-#include <sse4.h>
 #include <terminal.h>
 #include <tss64.h>
 // #include <vbe.h>
@@ -55,6 +53,8 @@ static Kernel::ApuAwaiter *apuAwaiter = nullptr;
 bool Kernel::debug = false;
 InfoTable Kernel::infoTable;
 uint8_t Kernel::TSS::type = 9;
+
+extern "C" bool enableSse4();
 
 extern "C" [[noreturn]] void bpuMain(
 	InfoTable *infoTableAddress,

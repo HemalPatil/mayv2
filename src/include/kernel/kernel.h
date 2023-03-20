@@ -1,6 +1,5 @@
 #pragma once
 
-#include <acpi.h>
 #include <coroutine>
 #include <cstddef>
 #include <cstdint>

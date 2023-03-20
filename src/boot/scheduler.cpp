@@ -1,4 +1,3 @@
-#include <acpi.h>
 #include <apic.h>
 #include <commonstrings.h>
 #include <cstring>

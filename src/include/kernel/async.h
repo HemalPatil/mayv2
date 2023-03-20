@@ -1,10 +1,7 @@
 #pragma once
 
-#include <coroutine>
-#include <functional>
 #include <kernel.h>
 #include <terminal.h>
-#include <vector>
 
 namespace Async {
 	template<typename T>
@@ -151,32 +148,6 @@ namespace Async {
 			}
 
 			template<typename ThenT>
-			Thenable<ThenT> then(std::function<ThenT()> func) & noexcept {
-				co_await *this;
-				co_return func();
-			}
-
-			template<typename ThenT>
-			Thenable<ThenT> then(std::function<ThenT()> func) && noexcept {
-				Thenable<T> moveThis(std::move(*this));
-				co_await moveThis;
-				co_return func();
-			}
-
-			template<typename ThenT>
-			Thenable<ThenT> then(std::function<ThenT(T)> func) & noexcept {
-				T result = co_await *this;
-				co_return func(result);
-			}
-
-			template<typename ThenT>
-			Thenable<ThenT> then(std::function<ThenT(T)> func) && noexcept {
-				Thenable<T> moveThis(std::move(*this));
-				T result = co_await moveThis;
-				co_return func(result);
-			}
-
-			template<typename ThenT>
 			Thenable<ThenT> then(Thenable<ThenT> (*func)()) & noexcept {
 				co_await *this;
 				co_return co_await func();
@@ -237,19 +208,6 @@ namespace Async {
 			}
 
 			void await_resume() const noexcept {}
-
-			template<typename ThenT>
-			Thenable<ThenT> then(std::function<ThenT()> func) & noexcept {
-				co_await *this;
-				co_return func();
-			}
-
-			template<typename ThenT>
-			Thenable<ThenT> then(std::function<ThenT()> func) && noexcept {
-				Thenable<void> moveThis(std::move(*this));
-				co_await moveThis;
-				co_return func();
-			}
 
 			template<typename ThenT>
 			Thenable<ThenT> then(Thenable<ThenT> (*func)()) & noexcept {

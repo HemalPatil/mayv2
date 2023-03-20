@@ -1,9 +1,7 @@
-#include <acpi.h>
 #include <apic.h>
 #include <commonstrings.h>
 #include <cstring>
 #include <drivers/timers/hpet.h>
-#include <kernel.h>
 #include <terminal.h>
 
 static const char* const initHpetStr = "Initializing HPET";

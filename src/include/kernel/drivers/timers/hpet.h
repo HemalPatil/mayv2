@@ -1,7 +1,6 @@
 #pragma once
 
 #include <acpi.h>
-#include <cstdint>
 
 namespace Drivers {
 	namespace Timers {

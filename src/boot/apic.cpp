@@ -2,7 +2,6 @@
 #include <apic.h>
 #include <commonstrings.h>
 #include <cstring>
-#include <kernel.h>
 #include <terminal.h>
 
 APIC::CPU *APIC::bootCpu = nullptr;

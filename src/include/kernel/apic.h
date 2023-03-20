@@ -1,9 +1,6 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
 #include <kernel.h>
-#include <vector>
 
 #define IOAPIC_READTBL_LOW(n) (0x10 + 2 * n)
 #define IOAPIC_READTBL_HIGH(n) (0x10 + 2 * n + 1)

@@ -1,3 +1,4 @@
+#include <acpi.h>
 #include <commonstrings.h>
 #include <cstring>
 #include <kernel.h>

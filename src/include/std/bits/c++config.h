@@ -1001,16 +1001,16 @@ namespace std
 #define _GLIBCXX_HAVE_LINK 1
 
 /* Define if futex syscall is available. */
-#define _GLIBCXX_HAVE_LINUX_FUTEX 1
+// #define _GLIBCXX_HAVE_LINUX_FUTEX 1
 
 /* Define to 1 if you have the <linux/random.h> header file. */
-#define _GLIBCXX_HAVE_LINUX_RANDOM_H 1
+// #define _GLIBCXX_HAVE_LINUX_RANDOM_H 1
 
 /* Define to 1 if you have the <linux/types.h> header file. */
-#define _GLIBCXX_HAVE_LINUX_TYPES_H 1
+// #define _GLIBCXX_HAVE_LINUX_TYPES_H 1
 
 /* Define to 1 if you have the <locale.h> header file. */
-#define _GLIBCXX_HAVE_LOCALE_H 1
+// #define _GLIBCXX_HAVE_LOCALE_H 1
 
 /* Define to 1 if you have the `log10f' function. */
 #define _GLIBCXX_HAVE_LOG10F 1
@@ -1077,7 +1077,7 @@ namespace std
 
 /* Define to 1 if POSIX Semaphores with sem_timedwait are available in
    <semaphore.h>. */
-#define _GLIBCXX_HAVE_POSIX_SEMAPHORE 1
+// #define _GLIBCXX_HAVE_POSIX_SEMAPHORE 1
 
 /* Define to 1 if you have the `powf' function. */
 #define _GLIBCXX_HAVE_POWF 1
@@ -1489,7 +1489,7 @@ namespace std
 /* #undef _GLIBCXX_HAVE___CXA_THREAD_ATEXIT */
 
 /* Define to 1 if you have the `__cxa_thread_atexit_impl' function. */
-#define _GLIBCXX_HAVE___CXA_THREAD_ATEXIT_IMPL 1
+// #define _GLIBCXX_HAVE___CXA_THREAD_ATEXIT_IMPL 1
 
 /* Define as const if the declaration of iconv() needs const. */
 #define _GLIBCXX_ICONV_CONST 
@@ -1730,29 +1730,29 @@ namespace std
 #define _GLIBCXX_USE_LONG_LONG 1
 
 /* Define if lstat is available in <sys/stat.h>. */
-#define _GLIBCXX_USE_LSTAT 1
+// #define _GLIBCXX_USE_LSTAT 1
 
 /* Defined if nanosleep is available. */
-#define _GLIBCXX_USE_NANOSLEEP 1
+// #define _GLIBCXX_USE_NANOSLEEP 1
 
 /* Define if NLS translations are to be used. */
 #define _GLIBCXX_USE_NLS 1
 
 /* Define if pthreads_num_processors_np is available in <pthread.h>. */
-/* #undef _GLIBCXX_USE_PTHREADS_NUM_PROCESSORS_NP */
+#undef _GLIBCXX_USE_PTHREADS_NUM_PROCESSORS_NP
 
 /* Define if pthread_cond_clockwait is available in <pthread.h>. */
-#define _GLIBCXX_USE_PTHREAD_COND_CLOCKWAIT 1
+// #define _GLIBCXX_USE_PTHREAD_COND_CLOCKWAIT 1
 
 /* Define if pthread_mutex_clocklock is available in <pthread.h>. */
-#define _GLIBCXX_USE_PTHREAD_MUTEX_CLOCKLOCK 1
+// #define _GLIBCXX_USE_PTHREAD_MUTEX_CLOCKLOCK 1
 
 /* Define if pthread_rwlock_clockrdlock and pthread_rwlock_clockwrlock are
    available in <pthread.h>. */
-#define _GLIBCXX_USE_PTHREAD_RWLOCK_CLOCKLOCK 1
+// #define _GLIBCXX_USE_PTHREAD_RWLOCK_CLOCKLOCK 1
 
 /* Define if POSIX read/write locks are available in <gthr.h>. */
-#define _GLIBCXX_USE_PTHREAD_RWLOCK_T 1
+// #define _GLIBCXX_USE_PTHREAD_RWLOCK_T 1
 
 /* Define if /dev/random and /dev/urandom are available for the random_device
    of TR1 (Chapter 5.1). */
@@ -1805,7 +1805,7 @@ namespace std
 #define _GLIBCXX_X86_RDSEED 1
 
 /* Define to 1 if mutex_timedlock is available. */
-#define _GTHREAD_USE_MUTEX_TIMEDLOCK 1
+// #define _GTHREAD_USE_MUTEX_TIMEDLOCK 1
 
 /* Define for large files, on AIX-style hosts. */
 /* #undef _GLIBCXX_LARGE_FILES */

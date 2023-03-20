@@ -1,6 +1,6 @@
+#include <acpi.h>
 #include <commonstrings.h>
 #include <cstring>
-#include <kernel.h>
 #include <pcie.h>
 #include <terminal.h>
 
