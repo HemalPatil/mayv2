@@ -230,7 +230,7 @@ static Async::Thenable<void> initPs2Devices() {
 	}
 
 	while (true) {
-		terminalPrintString("bbbbbbbbbb", 10);
+		terminalPrintString("bbbbbbbbbb\n", 11);
 		Drivers::Timers::spinDelay(1000);
 	}
 	co_return;
@@ -419,8 +419,10 @@ extern "C" [[noreturn]] void apuMain() {
 		apuAwaiter->resumeBpu();
 	}
 
+	char tag[13] = "aaaaaaaaaaa\n";
+	tag[10] = '0' + apuApicId;
 	while (true) {
-		terminalPrintString("aaaaaaaaaa", 10);
+		terminalPrintString(tag, 12);
 		Drivers::Timers::spinDelay(10000);
 	}
 

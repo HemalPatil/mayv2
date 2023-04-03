@@ -1,3 +1,4 @@
+#include <async.h>
 #include <commonstrings.h>
 #include <cstring>
 #include <io.h>
@@ -28,6 +29,8 @@ static uint8_t currentTerminalColour = DEFAULT_TERMINAL_COLOUR;
 static uint16_t cursorPort = 0x3d4;
 static uint16_t cursorPortIndex = 0x3d5;
 static const char* const spaces4 = "    ";
+
+static Async::Spinlock consoleLock;
 
 extern "C" {
 
@@ -125,6 +128,8 @@ void terminalPrintChar(char c) {
 
 // Prints a string of given length to the terminal
 void terminalPrintString(const char *str, const size_t length) {
+	consoleLock.lock();
+
 	// Print only length number of characters to the terminal to avoid a potential buffer overrun
 	// that can be caused by no null char at end of string
 	if (!isTerminalMode()) {
@@ -133,6 +138,8 @@ void terminalPrintString(const char *str, const size_t length) {
 	for (size_t i = 0; i < length; ++i, ++str) {
 		terminalPrintChar(*str);
 	}
+
+	consoleLock.unlock();
 }
 
 void terminalPrintSpaces4() {

@@ -1,9 +1,19 @@
 #pragma once
 
+#include <atomic>
 #include <kernel.h>
 #include <terminal.h>
 
 namespace Async {
+	class Spinlock {
+		private:
+			std::atomic_flag flag = ATOMIC_FLAG_INIT;
+
+		public:
+			void lock();
+			void unlock();
+	};
+
 	template<typename T>
 	class ThenablePromise;
 
